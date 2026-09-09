@@ -26,9 +26,10 @@ interface DeactivateModalProps {
   service: FavoriteService;
   onConfirm: () => void;
   onCancel: () => void;
+  processing?: boolean;
 }
 
-const DeactivateModal: React.FC<DeactivateModalProps> = ({ service, onConfirm, onCancel }) => (
+const DeactivateModal: React.FC<DeactivateModalProps> = ({ service, onConfirm, onCancel, processing }) => (
   <div
     style={{
       position: 'fixed',
@@ -71,11 +72,79 @@ const DeactivateModal: React.FC<DeactivateModalProps> = ({ service, onConfirm, o
         nas sugestões para novos pacotes. Os pacotes já existentes não serão alterados.
       </p>
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-        <button type="button" className="btn btn-secondary" onClick={onCancel}>
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={processing}>
           Cancelar
         </button>
-        <button type="button" className="btn btn-danger-outline" onClick={onConfirm}>
-          Desativar
+        <button type="button" className="btn btn-danger-outline" onClick={onConfirm} disabled={processing}>
+          {processing ? 'Desativando...' : 'Desativar'}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+interface DeleteModalProps {
+  service: FavoriteService;
+  onConfirm: () => void;
+  onCancel: () => void;
+  processing: boolean;
+}
+
+const DeleteModal: React.FC<DeleteModalProps> = ({ service, onConfirm, onCancel, processing }) => (
+  <div
+    style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.5)',
+      zIndex: 200,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1rem',
+    }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="delete-title"
+  >
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: '8px',
+        padding: '1.5rem',
+        maxWidth: '440px',
+        width: '100%',
+        boxShadow: '0 8px 32px var(--shadow)',
+      }}
+    >
+      <h3
+        id="delete-title"
+        style={{
+          margin: '0 0 0.5rem 0',
+          fontSize: '15px',
+          fontWeight: 600,
+          color: 'var(--text-primary)',
+        }}
+      >
+        Excluir serviço?
+      </h3>
+      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 0.75rem 0' }}>
+        Você está prestes a excluir permanentemente &apos;{service.name}&apos; do catálogo de Serviços.
+      </p>
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 1.25rem 0' }}>
+        Esta ação não altera Pacotes ou Cotações que já utilizam este serviço.
+      </p>
+      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={processing}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          className="btn btn-danger-outline"
+          onClick={onConfirm}
+          disabled={processing}
+        >
+          {processing ? 'Excluindo...' : 'Excluir serviço'}
         </button>
       </div>
     </div>
@@ -90,6 +159,7 @@ export const ServicesListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [deactivatingService, setDeactivatingService] = useState<FavoriteService | null>(null);
+  const [deletingService, setDeletingService] = useState<FavoriteService | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const loadServices = useCallback(async () => {
@@ -111,6 +181,7 @@ export const ServicesListPage: React.FC = () => {
   }, [loadServices]);
 
   const handleDeactivate = async (service: FavoriteService) => {
+    if (processing) return;
     try {
       setProcessing(true);
       await favoriteServicesService.deactivateService(service.id);
@@ -121,12 +192,53 @@ export const ServicesListPage: React.FC = () => {
         type: 'success',
         message: `Serviço "${service.name}" desativado. Os pacotes existentes não foram alterados.`,
       });
+      setDeactivatingService(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao desativar serviço.';
       setFeedback({ type: 'error', message: msg });
     } finally {
       setProcessing(false);
-      setDeactivatingService(null);
+    }
+  };
+
+  const handleActivate = async (service: FavoriteService) => {
+    if (processing) return;
+    try {
+      setProcessing(true);
+      await favoriteServicesService.activateService(service.id);
+      setServices((prev) =>
+        prev.map((s) => (s.id === service.id ? { ...s, active: true } : s))
+      );
+      setFeedback({
+        type: 'success',
+        message: `Serviço "${service.name}" ativado com sucesso.`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao ativar serviço.';
+      setFeedback({ type: 'error', message: msg });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDelete = async (service: FavoriteService) => {
+    if (processing) return;
+    try {
+      setProcessing(true);
+      await favoriteServicesService.deleteService(service.id);
+      setServices((prev) => prev.filter((s) => s.id !== service.id));
+      setFeedback({
+        type: 'success',
+        message: 'Serviço excluído com sucesso.',
+      });
+      setDeletingService(null);
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Não foi possível excluir o serviço. Tente novamente.',
+      });
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -300,17 +412,36 @@ export const ServicesListPage: React.FC = () => {
                           >
                             Editar
                           </Link>
-                          {service.active && (
+                          {service.active ? (
                             <button
                               type="button"
-                              className="btn btn-sm btn-danger-outline"
+                              className="btn btn-sm btn-secondary"
                               onClick={() => setDeactivatingService(service)}
                               disabled={processing}
                               title="Desativar serviço"
                             >
                               Desativar
                             </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              onClick={() => handleActivate(service)}
+                              disabled={processing}
+                              title="Ativar serviço"
+                            >
+                              Ativar
+                            </button>
                           )}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger-outline"
+                            onClick={() => setDeletingService(service)}
+                            disabled={processing}
+                            title="Excluir serviço"
+                          >
+                            Excluir
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -327,6 +458,16 @@ export const ServicesListPage: React.FC = () => {
           service={deactivatingService}
           onConfirm={() => handleDeactivate(deactivatingService)}
           onCancel={() => setDeactivatingService(null)}
+          processing={processing}
+        />
+      )}
+
+      {deletingService && (
+        <DeleteModal
+          service={deletingService}
+          onConfirm={() => handleDelete(deletingService)}
+          onCancel={() => setDeletingService(null)}
+          processing={processing}
         />
       )}
     </div>

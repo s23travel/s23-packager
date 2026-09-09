@@ -161,4 +161,29 @@ export const favoriteServicesService = {
   async deactivateService(id: string): Promise<FavoriteService> {
     return favoriteServicesService.updateService(id, { active: false });
   },
+
+  /**
+   * Ativa um serviço previamente inativo.
+   * Volta a disponibilizar o serviço no autocomplete.
+   */
+  async activateService(id: string): Promise<FavoriteService> {
+    return favoriteServicesService.updateService(id, { active: true });
+  },
+
+  /**
+   * Exclui permanentemente um serviço do catálogo (DELETE físico).
+   * Pacotes e cotações mantêm snapshots próprios e não são alterados.
+   */
+  async deleteService(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('favorite_services')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Erro ao excluir serviço ${id}:`, error);
+      throw new Error(error.message);
+    }
+  },
 };
+
