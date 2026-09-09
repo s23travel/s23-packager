@@ -4,7 +4,6 @@ import { buildContentGenerationInput } from '../../services/contentValidationSer
 import { generateContentForWebsite } from '../../services/aiContentService';
 import { generatePackageMarkdown, getMarkdownFileName } from '../../services/markdownService';
 import { validatePackageMarkdown } from '../../services/markdownValidationService';
-import { publishPackageToWebsite } from '../../services/publishService';
 
 interface AIContentGeneratorProps {
   source: {
@@ -20,34 +19,21 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'geral' | 'sobre' | 'inclusoes' | 'seo' | 'json' | 'markdown'>('geral');
 
-  // Estados do Markdown do Website (Fase 6B)
+  // Estados do Markdown do Website (Fase 6B/6C)
   const [markdownString, setMarkdownString] = useState<string | null>(null);
   const [markdownFileName, setMarkdownFileName] = useState<string | null>(null);
   const [markdownErrors, setMarkdownErrors] = useState<string[]>([]);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
-
-  // Estados de Publicação no Website / Manager (Fase 6C)
-  const [publishing, setPublishing] = useState(false);
-  const [publishStatus, setPublishStatus] = useState<string | null>(null);
-  const [publishAction, setPublishAction] = useState<'created' | 'updated' | null>(null);
-  const [publishCommitUrl, setPublishCommitUrl] = useState<string | null>(null);
-  const [publishError, setPublishError] = useState<string | null>(null);
-  const [publishDetails, setPublishDetails] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     try {
       setGenerating(true);
       setError(null);
       setErrorDetails(null);
-      // Invalida markdown e publicação anteriores ao gerar novo conteúdo estruturado (item 16)
+      // Invalida markdown anterior ao gerar novo conteúdo estruturado
       setMarkdownString(null);
       setMarkdownFileName(null);
       setMarkdownErrors([]);
-      setPublishStatus(null);
-      setPublishAction(null);
-      setPublishCommitUrl(null);
-      setPublishError(null);
-      setPublishDetails(null);
 
       // Constrói input sanitizado garantindo que nenhum custo interno seja enviado
       const input = buildContentGenerationInput(source);
@@ -74,13 +60,6 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
     if (!content) return;
 
     try {
-      // Invalida status de publicação anterior (item 16)
-      setPublishStatus(null);
-      setPublishAction(null);
-      setPublishCommitUrl(null);
-      setPublishError(null);
-      setPublishDetails(null);
-
       // 1. Geração determinística
       const md = generatePackageMarkdown(content);
       const filename = getMarkdownFileName(content);
@@ -103,40 +82,6 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
       setMarkdownErrors([err.message || 'Erro ao gerar arquivo Markdown.']);
       setMarkdownString(null);
       setMarkdownFileName(null);
-    }
-  };
-
-  const handlePublish = async () => {
-    if (!markdownString || !content) return;
-
-    // Confirmação simples exigida pelo requisito 11
-    const confirmed = window.confirm('Publicar este pacote no website?');
-    if (!confirmed) return;
-
-    try {
-      setPublishing(true);
-      setPublishError(null);
-      setPublishDetails(null);
-
-      const result = await publishPackageToWebsite({
-        markdown: markdownString,
-        slug: content.slug,
-        structuredContent: content,
-        overwrite: true,
-      });
-
-      if (result.success) {
-        setPublishAction(result.action || 'created');
-        setPublishStatus(result.message);
-        setPublishCommitUrl(result.commitUrl || null);
-      } else {
-        setPublishError(result.message || 'Falha ao publicar no website.');
-        setPublishDetails(result.details || null);
-      }
-    } catch (err: any) {
-      setPublishError(err.message || 'Erro inesperado ao publicar pacote.');
-    } finally {
-      setPublishing(false);
     }
   };
 
@@ -490,136 +435,21 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
                 </div>
               )}
 
-              {/* Área de Publicação (Fase 6C) - Aparece somente quando o Markdown foi validado */}
+              {/* Indicação Oficial para o Manager (Fase 6C - Escopo MVP) */}
               {markdownString && (
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🚀</span>
-                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                        Publicação
-                      </h4>
-                    </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                      Website S23 • content/pacotes/
-                    </span>
-                  </div>
-
-                  {/* Grade de Metadados da Publicação */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-[11px]">
-                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase">Status do Markdown</div>
-                      <div className="text-emerald-700 font-bold mt-0.5 flex items-center gap-1">
-                        <span>✓</span> Validado com sucesso
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase">Nome do Arquivo</div>
-                      <div className="font-mono font-bold text-slate-700 mt-0.5 truncate">
-                        {markdownFileName || `${content.slug}.md`}
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase">Slug Oficial</div>
-                      <div className="font-mono font-bold text-slate-700 mt-0.5 truncate">
-                        {content.slug}
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase">Destino</div>
-                      <div className="font-mono font-semibold text-slate-600 mt-0.5 truncate">
-                        content/pacotes/{content.slug}.md
-                      </div>
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between text-xs text-emerald-900">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">📁</span>
+                    <div>
+                      <span className="font-bold">Arquivo pronto para publicação no Manager.</span>
+                      <p className="text-[11px] text-emerald-700 mt-0.5">
+                        Baixe o arquivo .md e envie-o manualmente ao Manager.
+                      </p>
                     </div>
                   </div>
-
-                  {/* Status da Publicação */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold text-slate-600">Status da Publicação:</span>
-                      {publishStatus ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                            <span>✓</span> {publishStatus}
-                          </span>
-                          {publishAction && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              {publishAction === 'created' ? 'Criado' : 'Atualizado'}
-                            </span>
-                          )}
-                        </div>
-                      ) : publishError ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
-                          <span>⚠️</span> Erro na publicação
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 text-slate-700">
-                          Pronto para publicação
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handlePublish}
-                        disabled={publishing}
-                        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {publishing ? (
-                          <>
-                            <span className="inline-block animate-spin">⏳</span> Publicando...
-                          </>
-                        ) : (
-                          <>
-                            <span>🚀</span> Publicar no Website
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Link do commit no GitHub após sucesso */}
-                  {publishCommitUrl && (
-                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <span>🎉</span> Commit registrado no repositório com sucesso!
-                      </span>
-                      <a
-                        href={publishCommitUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-bold underline text-emerald-900 hover:text-emerald-700"
-                      >
-                        Ver commit no GitHub ↗
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Mensagem de Erro amigável e acionável sem exibir secrets */}
-                  {publishError && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5">
-                        <span>⚠️</span> {publishError}
-                      </div>
-                      {publishDetails && (
-                        <p className="text-[11px] text-amber-800">{publishDetails}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Indicação Clara oficial de integração com o Manager */}
-                  <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-[11px] text-slate-600 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">📁</span>
-                      <span>
-                        <strong>Arquivo pronto para publicação no Manager.</strong> Você também pode copiar ou baixar o arquivo acima e salvá-lo em <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-800">content/pacotes/</code>.
-                      </span>
-                    </div>
-                  </div>
+                  <span className="font-mono text-[11px] font-semibold bg-white px-2.5 py-1 rounded border border-emerald-300 text-emerald-800">
+                    content/pacotes/{markdownFileName || `${content.slug}.md`}
+                  </span>
                 </div>
               )}
 

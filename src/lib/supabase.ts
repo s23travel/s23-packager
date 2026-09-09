@@ -1,15 +1,8 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const env: Record<string, any> =
-  typeof import.meta !== 'undefined' && import.meta.env
-    ? import.meta.env
-    : typeof process !== 'undefined' && process.env
-    ? process.env
-    : {};
-
 export const supabaseConfig = {
-  url: (env.VITE_SUPABASE_URL as string) || 'https://iqtfqitquykasvfybndl.supabase.co',
-  anonKey: (env.VITE_SUPABASE_ANON_KEY as string) || '',
+  url: import.meta.env.VITE_SUPABASE_URL || 'https://iqtfqitquykasvfybndl.supabase.co',
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
 };
 
 export const isSupabaseConfigured = Boolean(

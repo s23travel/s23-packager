@@ -297,25 +297,3 @@ export interface ContentGenerationInput {
   localTaxNotes?: string;
   transferService?: string;
 }
-
-/**
- * Tipos para o fluxo de publicação do pacote no website (Fase 6C)
- */
-export interface PublishPackageInput {
-  markdown: string;
-  slug: string;
-  structuredContent?: StructuredPackageContent;
-  overwrite?: boolean;
-}
-
-export type PublishAction = 'created' | 'updated';
-
-export interface PublishPackageResult {
-  success: boolean;
-  action?: PublishAction;
-  message: string;
-  filePath?: string;
-  commitUrl?: string;
-  error?: string;
-  details?: string;
-}
