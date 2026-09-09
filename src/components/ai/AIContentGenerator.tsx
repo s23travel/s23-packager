@@ -155,7 +155,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
         <span>
           🛡️ <strong>Hierarquia Nível 1:</strong> Preço, datas e hotéis são soberanos e nunca são alterados pela IA. Custos internos nunca são enviados à API.
         </span>
-        <span className="text-[11px] font-semibold text-indigo-700">Fase 6A — Modelo Estruturado</span>
+        <span className="text-[11px] font-semibold text-indigo-700">Dados Comerciais Protegidos</span>
       </div>
 
       {/* Mensagem de Erro (caso ocorra ou secret não esteja configurada) */}

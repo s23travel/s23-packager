@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { packagesService } from '../../services/packagesService';
 import { quotationsService } from '../../services/quotationsService';
@@ -9,6 +9,7 @@ import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 export const PackagesListPage: React.FC = () => {
   const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [cloningId, setCloningId] = useState<string | null>(null);
@@ -54,13 +55,26 @@ export const PackagesListPage: React.FC = () => {
     }
   };
 
+  const filteredPackages = useMemo(() => {
+    if (!searchTerm.trim()) return packages;
+    const term = searchTerm.toLowerCase();
+    return packages.filter((pkg) => {
+      const name = pkg.name?.toLowerCase() || '';
+      const ref = pkg.reference?.toLowerCase() || '';
+      const curr = pkg.base_currency?.toLowerCase() || '';
+      const hotel = pkg.data?.lodging?.[0]?.name?.toLowerCase() || '';
+      const dest = pkg.data?.lodging?.[0]?.destination?.toLowerCase() || '';
+      return name.includes(term) || ref.includes(term) || curr.includes(term) || dest.includes(term) || hotel.includes(term);
+    });
+  }, [packages, searchTerm]);
+
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Pacotes de Viagem</h1>
           <p className="page-subtitle">
-            Catálogo operacional de pacotes base da S23 para geração de cotações.
+            Catálogo operacional de pacotes base para geração de cotações personalizadas.
           </p>
         </div>
         <Link to="/pacotes/novo" className="btn btn-primary">
@@ -90,70 +104,101 @@ export const PackagesListPage: React.FC = () => {
           </Link>
         </div>
       ) : (
-        <div className="table-responsive card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Referência</th>
-                <th>Nome do Pacote</th>
-                <th>Status</th>
-                <th>Moeda</th>
-                <th>Criado em</th>
-                <th style={{ textAlign: 'right' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {packages.map((pkg) => (
-                <tr key={pkg.id}>
-                  <td>
-                    <Link to={`/pacotes/${pkg.id}`} className="table-link-highlight">
-                      <code>{pkg.reference}</code>
-                    </Link>
-                  </td>
-                  <td>
-                    <Link to={`/pacotes/${pkg.id}`} className="table-link-title">
-                      {pkg.name}
-                    </Link>
-                  </td>
-                  <td>
-                    <StatusBadge status={pkg.status} />
-                  </td>
-                  <td>
-                    <span className="badge badge-neutral">{pkg.base_currency}</span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                    {new Date(pkg.created_at).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div className="table-actions">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-action-primary"
-                        onClick={() => handleCloneToQuotation(pkg)}
-                        disabled={cloningId === pkg.id}
-                        title="Criar nova cotação independente a partir deste pacote"
-                      >
-                        {cloningId === pkg.id ? 'Criando...' : '⚡ Nova Cotação'}
-                      </button>
-                      <Link to={`/pacotes/${pkg.id}`} className="btn btn-sm btn-secondary">
-                        Ver
-                      </Link>
-                      <Link to={`/pacotes/${pkg.id}/editar`} className="btn btn-sm btn-secondary">
-                        Editar
-                      </Link>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger-outline"
-                        onClick={() => handleDelete(pkg.id, pkg.name)}
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Barra de Pesquisa e Filtros */}
+          <div className="table-toolbar">
+            <div className="search-input-wrapper">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Buscar por nome, ref, destino..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Mostrando <strong>{filteredPackages.length}</strong> de {packages.length} pacote(s)
+            </div>
+          </div>
+
+          {filteredPackages.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Nenhum pacote encontrado para "<strong>{searchTerm}</strong>".
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Referência</th>
+                    <th>Nome do Pacote</th>
+                    <th>Destino / Duração</th>
+                    <th>Status</th>
+                    <th>Moeda</th>
+                    <th style={{ textAlign: 'right' }}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPackages.map((pkg) => {
+                    const destination = pkg.data?.lodging?.[0]?.destination || pkg.data?.lodging?.[0]?.name || '—';
+                    const duration = pkg.data?.dates?.durationDays ? `${pkg.data.dates.durationDays} dias` : null;
+
+                    return (
+                      <tr key={pkg.id}>
+                        <td>
+                          <Link to={`/pacotes/${pkg.id}`} className="table-link-highlight">
+                            <code>{pkg.reference}</code>
+                          </Link>
+                        </td>
+                        <td>
+                          <Link to={`/pacotes/${pkg.id}`} className="table-link-title">
+                            {pkg.name}
+                          </Link>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                          <span>{destination}</span>
+                          {duration && <span style={{ color: 'var(--text-muted)' }}> • {duration}</span>}
+                        </td>
+                        <td>
+                          <StatusBadge status={pkg.status} />
+                        </td>
+                        <td>
+                          <span className="badge badge-neutral">{pkg.base_currency}</span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="table-actions">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-action-primary"
+                              onClick={() => handleCloneToQuotation(pkg)}
+                              disabled={cloningId === pkg.id}
+                              title="Emitir nova cotação a partir deste pacote"
+                            >
+                              {cloningId === pkg.id ? 'Criando...' : '⚡ Nova Cotação'}
+                            </button>
+                            <Link to={`/pacotes/${pkg.id}`} className="btn btn-sm btn-secondary">
+                              Ver
+                            </Link>
+                            <Link to={`/pacotes/${pkg.id}/editar`} className="btn btn-sm btn-secondary">
+                              Editar
+                            </Link>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger-outline"
+                              onClick={() => handleDelete(pkg.id, pkg.name)}
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

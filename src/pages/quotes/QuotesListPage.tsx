@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
 import { Quotation } from '../../types';
@@ -8,6 +8,7 @@ import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 export const QuotesListPage: React.FC = () => {
   const location = useLocation();
   const [quotes, setQuotes] = useState<Quotation[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     (location.state as any)?.message
@@ -42,13 +43,25 @@ export const QuotesListPage: React.FC = () => {
     }
   };
 
+  const filteredQuotes = useMemo(() => {
+    if (!searchTerm.trim()) return quotes;
+    const term = searchTerm.toLowerCase();
+    return quotes.filter((q) => {
+      const client = q.client_name?.toLowerCase() || '';
+      const ref = q.reference?.toLowerCase() || '';
+      const origin = (q.origin_package_name || q.data?.originPackageName || '')?.toLowerCase();
+      const curr = q.currency?.toLowerCase() || '';
+      return client.includes(term) || ref.includes(term) || origin.includes(term) || curr.includes(term);
+    });
+  }, [quotes, searchTerm]);
+
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Central de Cotações</h1>
           <p className="page-subtitle">
-            Cotações geradas a partir de pacotes (snapshots independentes) ou emitidas avulsas.
+            Cotações comerciais personalizadas derivadas de pacotes ou elaboradas de forma avulsa.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -56,7 +69,7 @@ export const QuotesListPage: React.FC = () => {
             Ver Catálogo de Pacotes
           </Link>
           <Link to="/cotacoes/novo" className="btn btn-primary">
-            + Nova Cotação Avulsa
+            + Nova Cotação
           </Link>
         </div>
       </div>
@@ -77,7 +90,7 @@ export const QuotesListPage: React.FC = () => {
         <div className="placeholder-view">
           <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📋</div>
           <h3>Nenhuma cotação gerada</h3>
-          <p>Você pode criar uma cotação avulsa ou clonar diretamente a partir de um pacote base.</p>
+          <p>Você pode emitir uma cotação avulsa ou clonar diretamente a partir de um pacote base do catálogo.</p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
             <Link to="/pacotes" className="btn btn-primary">
               Escolher Pacote para Cotar
@@ -88,71 +101,105 @@ export const QuotesListPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="table-responsive card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Referência</th>
-                <th>Cliente</th>
-                <th>Pacote de Origem</th>
-                <th>Status</th>
-                <th>Moeda</th>
-                <th>Data</th>
-                <th style={{ textAlign: 'right' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quotes.map((q) => (
-                <tr key={q.id}>
-                  <td>
-                    <Link to={`/cotacoes/${q.id}`} className="table-link-highlight">
-                      <code>{q.reference}</code>
-                    </Link>
-                  </td>
-                  <td>
-                    <span style={{ fontWeight: 600, color: q.client_name ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                      {q.client_name || 'Sem cliente definido'}
-                    </span>
-                  </td>
-                  <td>
-                    {q.package_id ? (
-                      <Link to={`/pacotes/${q.package_id}`} className="table-link-secondary" title="Ver pacote original">
-                        📦 {q.origin_package_name || 'Pacote Base'}
-                      </Link>
-                    ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Avulsa / Direta</span>
-                    )}
-                  </td>
-                  <td>
-                    <StatusBadge status={q.status} />
-                  </td>
-                  <td>
-                    <span className="badge badge-neutral">{q.currency}</span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                    {new Date(q.created_at).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div className="table-actions">
-                      <Link to={`/cotacoes/${q.id}`} className="btn btn-sm btn-secondary">
-                        Ver
-                      </Link>
-                      <Link to={`/cotacoes/${q.id}/editar`} className="btn btn-sm btn-secondary">
-                        Editar
-                      </Link>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger-outline"
-                        onClick={() => handleDelete(q.id, q.reference)}
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Barra de Pesquisa e Filtros */}
+          <div className="table-toolbar">
+            <div className="search-input-wrapper">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Buscar por cliente, ref, pacote de origem..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Mostrando <strong>{filteredQuotes.length}</strong> de {quotes.length} cotação(ões)
+            </div>
+          </div>
+
+          {filteredQuotes.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Nenhuma cotação encontrada para "<strong>{searchTerm}</strong>".
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Referência</th>
+                    <th>Cliente</th>
+                    <th>Origem</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                    <th style={{ textAlign: 'right' }}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredQuotes.map((q) => {
+                    const originName = q.origin_package_name || q.data?.originPackageName;
+                    const salePrice = q.data?.financials?.salePrice ?? q.data?.financials?.priceTotal?.amount;
+                    const formattedPrice =
+                      typeof salePrice === 'number' && salePrice > 0
+                        ? `${q.currency} ${salePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        : '—';
+
+                    return (
+                      <tr key={q.id}>
+                        <td>
+                          <Link to={`/cotacoes/${q.id}`} className="table-link-highlight">
+                            <code>{q.reference}</code>
+                          </Link>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: q.client_name ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                            {q.client_name || 'Sem cliente definido'}
+                          </span>
+                        </td>
+                        <td>
+                          {q.package_id ? (
+                            <Link to={`/pacotes/${q.package_id}`} className="table-link-secondary" title="Ver pacote de origem">
+                              📦 {originName || 'Pacote Base'}
+                            </Link>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Avulsa / Direta</span>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                          {formattedPrice}
+                        </td>
+                        <td>
+                          <StatusBadge status={q.status} />
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                          {new Date(q.created_at).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="table-actions">
+                            <Link to={`/cotacoes/${q.id}`} className="btn btn-sm btn-secondary">
+                              Ver
+                            </Link>
+                            <Link to={`/cotacoes/${q.id}/editar`} className="btn btn-sm btn-secondary">
+                              Editar
+                            </Link>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger-outline"
+                              onClick={() => handleDelete(q.id, q.reference)}
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

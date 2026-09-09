@@ -47,10 +47,10 @@ export const PackageDetailPage: React.FC = () => {
       setFeedback(null);
       const newQuote = await quotationsService.createQuotationFromPackage(pkg.id);
       navigate(`/cotacoes/${newQuote.id}/editar`, {
-        state: { message: `Cotação ${newQuote.reference} criada via snapshot independente a partir de "${pkg.name}".` },
+        state: { message: `Cotação ${newQuote.reference} criada com sucesso a partir de "${pkg.name}".` },
       });
     } catch (err: any) {
-      setFeedback({ type: 'error', message: `Erro ao clonar cotação: ${err.message}` });
+      setFeedback({ type: 'error', message: `Erro ao criar cotação: ${err.message}` });
       setCloning(false);
     }
   };
@@ -126,7 +126,7 @@ export const PackageDetailPage: React.FC = () => {
             onClick={handleCloneToQuotation}
             disabled={cloning}
           >
-            {cloning ? 'Gerando Snapshot...' : '⚡ Nova Cotação a partir deste Pacote'}
+            {cloning ? 'Criando Cotação...' : '⚡ Nova Cotação a partir deste Pacote'}
           </button>
           <Link to={`/pacotes/${pkg.id}/editar`} className="btn btn-secondary">
             Editar

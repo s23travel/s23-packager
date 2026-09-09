@@ -38,10 +38,10 @@ export const App: React.FC = () => {
 
       <footer className="app-footer">
         <div>
-          <strong>Packager</strong> &copy; {new Date().getFullYear()} — Ferramenta Interna de Operações S23
+          <strong>Packager</strong> &copy; {new Date().getFullYear()} — S23 Travel Operations
         </div>
-        <div>
-          Fase 3: CRUD & Snapshot • Supabase Conectado
+        <div style={{ color: 'var(--text-muted)' }}>
+          Gestão de Pacotes &amp; Cotações
         </div>
       </footer>
     </div>

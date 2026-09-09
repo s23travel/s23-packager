@@ -55,7 +55,7 @@ export const WhatsAppMessagePreview: React.FC<WhatsAppMessagePreviewProps> = ({ 
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Texto comercial gerado deterministicamente a partir do snapshot desta cotação.
+              Texto comercial preparado a partir dos dados desta cotação.
             </p>
           </div>
         </div>

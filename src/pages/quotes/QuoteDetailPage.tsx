@@ -123,27 +123,18 @@ export const QuoteDetailPage: React.FC = () => {
         />
       )}
 
-      {/* Snapshot Info Banner */}
-      <div className="info-banner" style={{ marginBottom: '1.25rem' }}>
-        <div className="info-banner-text">
-          <h4>📸 Snapshot Independente</h4>
-          <p>
-            {quote.package_id ? (
-              <span>
-                Esta cotação foi derivada do pacote <strong>{quote.origin_package_name || d.originPackageName || 'Base'}</strong>.
-                Os dados abaixo representam uma fotografia autônoma que não sofrerá interferência de alterações no pacote original.
-              </span>
-            ) : (
-              <span>Cotação avulsa com snapshot autônomo.</span>
-            )}
-          </p>
-        </div>
-        {quote.package_id && (
+      {/* Aviso de Origem Discreto */}
+      {quote.package_id && (
+        <div className="notice-banner" style={{ marginBottom: '1.25rem' }}>
+          <span>📦</span>
+          <span style={{ flex: 1 }}>
+            Cotação vinculada ao pacote <strong>{quote.origin_package_name || d.originPackageName || 'Base'}</strong>. Os dados estão preservados para esta proposta.
+          </span>
           <Link to={`/pacotes/${quote.package_id}`} className="btn btn-sm btn-secondary" target="_blank">
-            Ver Pacote Original ↗
+            Ver Pacote Base ↗
           </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Barra de Status Rápida */}
       <div className="card quick-status-bar">
@@ -199,7 +190,7 @@ export const QuoteDetailPage: React.FC = () => {
           </div>
 
           <div className="card">
-            <h3 className="card-title">Transportes (Snapshot)</h3>
+            <h3 className="card-title">Transportes</h3>
             <div className="detail-rows">
               <div className="detail-row">
                 <span className="detail-label">Ida:</span>
@@ -225,7 +216,7 @@ export const QuoteDetailPage: React.FC = () => {
         {/* Painel Direito: Hospedagem */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="card">
-            <h3 className="card-title">Hospedagem (Snapshot)</h3>
+            <h3 className="card-title">Hospedagem</h3>
             {d.lodging && d.lodging.length > 0 ? (
               <div className="detail-rows">
                 {d.lodging.map((h, idx) => (
@@ -238,7 +229,7 @@ export const QuoteDetailPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nenhum hotel no snapshot.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nenhum hotel configurado.</p>
             )}
           </div>
         </div>
