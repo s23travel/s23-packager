@@ -1,0 +1,8 @@
+/**
+ * Camada de Serviços da aplicação S23 Packages.
+ * 
+ * Nesta etapa de fundação técnica, a pasta está reservada para
+ * futuras chamadas de API, integração com Supabase e motor de regras de negócio.
+ */
+
+export {};
