@@ -6,6 +6,7 @@ import { Package, PackageStatus } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
+import { AIContentGenerator } from '../../components/ai/AIContentGenerator';
 
 export const PackageDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -254,6 +255,11 @@ export const PackageDetailPage: React.FC = () => {
           passengers={d.passengers}
           readOnly={true}
         />
+      </div>
+
+      {/* Seção Conteúdo para Website (IA - Fase 6A) */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <AIContentGenerator source={{ package: pkg }} />
       </div>
     </div>
   );

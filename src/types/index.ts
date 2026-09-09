@@ -126,6 +126,7 @@ export interface PackageData {
   paymentConditions?: string;
   localTaxNotes?: string;
   extraServicesNotes?: string;
+  customNotes?: string;
   [key: string]: unknown;
 }
 
@@ -195,3 +196,104 @@ export type CreateQuotationInput = {
 };
 
 export type UpdateQuotationInput = Partial<CreateQuotationInput>;
+
+// ==========================================
+// MODELO ESTRUTURADO DE CONTEÚDO (FASE 6A)
+// ==========================================
+
+export interface InclusoItem {
+  icon?: string;
+  title: string;
+  desc?: string;
+}
+
+export interface RoteiroItem {
+  title: string;
+  desc?: string;
+}
+
+export interface SobreDestino {
+  title: string;
+  text: string;
+  image?: string;
+}
+
+export interface InfoDestino {
+  localizacao?: string;
+  idiomaCultura?: string;
+  clima?: string;
+  documentacao?: string;
+}
+
+export interface PagamentoInfo {
+  valor?: string;
+  formas?: string[];
+  observacao: string;
+}
+
+/**
+ * Modelo completo e estruturado de conteúdo do pacote para o website S23
+ * (Conforme docs/COMO_ADICIONAR_PACOTE.md e docs/perplexity_space.txt)
+ */
+export interface StructuredPackageContent {
+  // Obrigatórios gerais
+  title: string;
+  category: string;
+  excerpt: string;
+  slug: string;
+  price: number | string;
+  published: boolean;
+  featured: boolean;
+
+  // Imagens (controladas pelo operador no Markdown final)
+  heroImage?: string;
+  cardImage?: string;
+  imagemDestaque?: string;
+
+  // Campos avançados
+  subtitle?: string;
+  duracao?: string;
+  origem?: string;
+  date?: string;
+  ctaLabel?: string;
+  customInfo?: string;
+
+  // Blocos estruturados
+  incluso: InclusoItem[];
+  naoIncluso: string[];
+  sobre: SobreDestino;
+  infoDestino?: InfoDestino;
+  roteiro?: RoteiroItem[];
+  pagamento: PagamentoInfo;
+
+  // SEO
+  seoTitle: string;
+  seoDescription: string;
+}
+
+/**
+ * Input seguro fornecido ao backend de IA (Gemini + Grounding)
+ * Protegido contra vazamento de custos internos, lucro, margem ou dados confidenciais de fornecedor.
+ */
+export interface ContentGenerationInput {
+  sourceType: 'package' | 'quotation';
+  sourceId: string;
+  reference: string;
+  name: string;
+  destination: string;
+  origin?: string;
+  durationDays?: number;
+  startDate?: string;
+  endDate?: string;
+  hotelName?: string;
+  mealPlan?: string;
+  nights?: number;
+  salePrice: number;
+  currency: Currency;
+  includedServices: string[];
+  notIncludedServices: string[];
+  paymentConditions?: string;
+  customNotes?: string;
+  localTaxNotes?: string;
+  transferService?: string;
+}

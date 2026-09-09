@@ -182,3 +182,60 @@ A mensagem é destinada ao cliente final. O gerador aplica uma barreira de confi
 ### 6.5 Experiência do Usuário (UI)
 - Componente [`WhatsAppMessagePreview.tsx`](file:///c:/Users/ptmaralvoli/Documents/Antigravity/packager/src/components/whatsapp/WhatsAppMessagePreview.tsx) exibe pré-visualização fidedigna do texto formatado com emojis.
 - Botão integrado "Copiar Mensagem" que utiliza a Clipboard API do navegador com feedback visual instantâneo.
+
+---
+
+## 7. Backend de IA, Gemini Grounding e Modelo Estruturado de Conteúdo (Fase 6A)
+
+A Fase 6A implementa o backend seguro de inteligência artificial para pesquisa factual e estruturação editorial de pacotes de viagem destinados ao website da S23 (`www.s23.travel/pacotes`).
+
+### 7.1 Documentos Oficiais de Referência Editorial
+As regras de redação, estilo, SEO, campos obrigatórios e estrutura de pacotes respeitam estritamente a documentação prévia da S23:
+1. `docs/perplexity_space.txt`: Persona, tom comercial persuasivo (PT-BR), regras de dados comerciais soberanos, regras de imagens e itens obrigatórios.
+2. `docs/COMO_ADICIONAR_PACOTE.md`: Estrutura de campos de frontmatter e regras da página interna de pacotes.
+3. `docs/ARQUITETURA_CARDS.md`: Mecanismo de publicação de pacotes via Markdown e renderização estática.
+4. `docs/ARQUITETURA_MANAGER.md`: Gestão editorial de conteúdo.
+
+### 7.2 Arquitetura de Segurança do Backend
+- **Chamada Segura**: A API do Google Gemini **NUNCA** é chamada pelo navegador/frontend.
+- **Edge Function Supabase**: Toda solicitação passa pela função serverless `generate-content` hospedada no Supabase.
+- **Isolamento de Secrets**: A chave `GEMINI_API_KEY` reside exclusivamente nos secrets de ambiente da Supabase Edge Function (`Deno.env.get('GEMINI_API_KEY')`).
+- **Prevenção de Vazamento**: Custos internos, lucros, margens, markups, dados de fornecedores e UUIDs de banco são **expurgados deterministicamente** antes do envio para a IA (`buildContentGenerationInput`).
+
+### 7.3 Hierarquia de Confiança dos Dados
+O sistema adota uma hierarquia estrita de 3 níveis:
+1. **NÍVEL 1 — DADOS COMERCIAIS DA S23 (Soberanos)**:
+   - Preço oficial, datas da viagem, origem, destino, hotel, número de noites, configuração de passageiros, itens incluídos/não incluídos, condições de pagamento e taxas.
+   - **Regra**: A IA NÃO tem permissão para alterar, estimar ou substituir nenhum dado comercial do Nível 1.
+2. **NÍVEL 2 — PESQUISA FACTUAL WEB (Google Search Grounding)**:
+   - A ferramenta `googleSearch` do Gemini pesquisa dados contextuais e factuais atualizados sobre o destino (clima, atrações turísticas, cultura local, documentação necessária para brasileiros).
+   - Não interfere nos preços ou condições comerciais.
+3. **NÍVEL 3 — GERAÇÃO EDITORIAL ESTRUTURADA**:
+   - Gemini redige textos persuasivos e comerciais nos campos editoriais (`title`, `excerpt`, `subtitle`, `sobre.text`, `infoDestino`, `seoTitle`, `seoDescription`).
+
+### 7.4 Classificação dos Campos do Conteúdo
+Os campos do modelo `StructuredPackageContent` dividem-se em 3 categorias operacionais:
+- **A) Campos Comerciais Soberanos (Nível 1)**:
+  - `price`: Lido diretamente do snapshot financeiro da cotação/pacote (`salePrice`).
+  - `pagamento.observacao`: Frase obrigatória exata: `"Valor por pessoa. Consulte-nos sobre personalizações, pagamento parcelado ou em outras moedas."`.
+  - `incluso`: Contém obrigatoriamente os serviços contratados mais o item fixo da S23: `{ icon: "gift", title: "Guia exclusivo S23", desc: "Nossas dicas práticas." }`.
+  - `duracao` / `origem` / `date`: Derivados estritamente dos transportes e datas aprovadas.
+- **B) Campos Editoriais Gerados pela IA (Nível 2 e 3)**:
+  - `title`: Título comercial chamativo.
+  - `category`: Sugerida pela IA ou selecionada pelo operador.
+  - `excerpt`: Resumo de 1 a 2 frases para o card.
+  - `slug`: Slug amigável validado (`^[a-z0-9]+(-[a-z0-9]+)*$`).
+  - `subtitle`: Frase de destaque no topo.
+  - `sobre`: Bloco descritivo do destino (`title`, `text`).
+  - `infoDestino`: Localização, clima, cultura, documentação.
+  - `seoTitle` / `seoDescription`: Metadados otimizados para busca.
+- **C) Campos sob Controle do Operador**:
+  - `heroImage` e `cardImage`: Imagens permanentes HTTPS válidas (o Markdown final depende de validação manual de imagens).
+  - `published`: Padrão `false`.
+  - `featured`: Padrão `false`.
+  - `ctaLabel`: Padrão `"Quero garantir minha vaga"`.
+
+### 7.5 Validação Determinística e Tratamento de Erros
+- A função pura `validateStructuredContent` inspeciona cada campo do JSON retornado antes de qualquer persistência.
+- Se a IA omitir campos obrigatórios, violar o padrão de slug, omitir o item fixo S23 ou divergir do preço comercial soberano, a resposta é **rejeitada imediatamente** com mensagens de erro acionáveis.
+- Se a secret `GEMINI_API_KEY` não estiver configurada no Supabase, a Edge Function retorna código `GEMINI_API_KEY_MISSING` e a UI orienta claramente o operador sobre onde configurar o secret, sem travar a aplicação nem vazar informações sensíveis.

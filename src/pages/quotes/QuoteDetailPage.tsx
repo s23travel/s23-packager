@@ -6,6 +6,7 @@ import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { WhatsAppMessagePreview } from '../../components/whatsapp/WhatsAppMessagePreview';
+import { AIContentGenerator } from '../../components/ai/AIContentGenerator';
 
 export const QuoteDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -265,6 +266,11 @@ export const QuoteDetailPage: React.FC = () => {
       {/* Seção WhatsApp (Fase 5) */}
       <div style={{ marginTop: '1.5rem' }}>
         <WhatsAppMessagePreview quotation={quote} />
+      </div>
+
+      {/* Seção Conteúdo para Website (IA - Fase 6A) */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <AIContentGenerator source={{ quotation: quote }} />
       </div>
     </div>
   );
