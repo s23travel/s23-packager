@@ -144,7 +144,7 @@ Estrutura JSON obrigatória:
         ],
         generationConfig: {
           temperature: 0.2,
-          responseMimeType: 'application/json',
+          maxOutputTokens: 8192,
         },
       }),
     });
@@ -168,14 +168,30 @@ Estrutura JSON obrigatória:
     }
 
     const geminiData = await geminiResponse.json();
-    const candidateText =
-      geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const candidate = geminiData.candidates?.[0];
+    const parts = candidate?.content?.parts || [];
+    // Prioritize non-thought text parts (Gemini thinking models can emit thought parts)
+    const nonThoughtParts = parts
+      .filter((p: any) => typeof p?.text === 'string' && !p?.thought)
+      .map((p: any) => p.text);
+    let candidateText = nonThoughtParts.join('').trim();
 
     if (!candidateText) {
+      // Fallback: use all text parts
+      candidateText = parts
+        .filter((p: any) => typeof p?.text === 'string')
+        .map((p: any) => p.text)
+        .join('')
+        .trim();
+    }
+
+    if (!candidateText) {
+      console.error('Resposta do Gemini sem texto:', JSON.stringify(geminiData));
       return new Response(
         JSON.stringify({
           error: 'EMPTY_AI_RESPONSE',
           message: 'O modelo Gemini não retornou conteúdo estruturado válido.',
+          details: JSON.stringify(candidate || geminiData),
         }),
         {
           status: 502,
