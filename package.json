@@ -1,5 +1,5 @@
 {
-  "name": "s23-packages",
+  "name": "packager",
   "private": true,
   "version": "0.1.0",
   "type": "module",

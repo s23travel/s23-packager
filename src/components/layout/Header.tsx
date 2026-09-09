@@ -13,7 +13,7 @@ export const Header: React.FC = () => {
     <header className="app-header">
       <div className="brand-section">
         <div className="brand-logo">S23</div>
-        <div className="brand-title">S23 Packages</div>
+        <div className="brand-title">Packager</div>
         <span className="brand-badge">Fundação Técnica</span>
       </div>
 

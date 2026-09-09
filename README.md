@@ -1,4 +1,4 @@
-# S23 Packages
+# Packager
 
 Aplicação web interna para gerenciamento do workflow de criação de pacotes de viagem e cotações da S23.
 

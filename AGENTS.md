@@ -1,9 +1,9 @@
 # Diretrizes para Agentes de IA (AGENTS.md)
 
-Este documento orienta agentes de IA e desenvolvedores que atuam no repositório **S23 Packages**.
+Este documento orienta agentes de IA e desenvolvedores que atuam no repositório **Packager**.
 
 ## 📌 Contexto do Projeto
-- **Nome**: S23 Packages
+- **Nome**: Packager
 - **Propósito**: Aplicação web interna da S23 para gerenciar o workflow de pacotes de viagem e cotações.
 - **Ambiente de Desenvolvimento**: Antigravity (o Antigravity é apenas o ambiente utilizado para desenvolver a aplicação, não faz parte do runtime da aplicação).
 

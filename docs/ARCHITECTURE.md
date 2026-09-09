@@ -1,8 +1,8 @@
-# Arquitetura e Visão Técnica - S23 Packages
+# Arquitetura e Visão Técnica - Packager
 
 ## 1. Visão Geral
 
-O **S23 Packages** é uma ferramenta interna focada em otimizar a criação, precificação e distribuição de pacotes e cotações da S23.
+O **Packager** é uma ferramenta interna focada em otimizar a criação, precificação e distribuição de pacotes e cotações da S23.
 
 ### Fluxo Operacional Futuro
 ```

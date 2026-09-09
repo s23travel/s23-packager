@@ -1,4 +1,4 @@
-// Definições de tipos fundamentais da aplicação S23 Packages
+// Definições de tipos fundamentais da aplicação Packager
 
 export type NavigationItem = {
   label: string;

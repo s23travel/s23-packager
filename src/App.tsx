@@ -22,7 +22,7 @@ export const App: React.FC = () => {
 
       <footer className="app-footer">
         <div>
-          <strong>S23 Packages</strong> &copy; {new Date().getFullYear()} — Ferramenta Interna de Operações S23
+          <strong>Packager</strong> &copy; {new Date().getFullYear()} — Ferramenta Interna de Operações S23
         </div>
         <div>
           Versão 0.1.0 (Fundação Técnica) • Cloudflare Pages Ready
