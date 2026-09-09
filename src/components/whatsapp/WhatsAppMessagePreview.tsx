@@ -84,7 +84,7 @@ export const WhatsAppMessagePreview: React.FC<WhatsAppMessagePreviewProps> = ({ 
       {/* Caixa de Pré-visualização */}
       <div style={{ padding: '1rem', background: 'var(--bg-surface-elevated)' }}>
         <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-          <div style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '1rem', position: 'relative' }}>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '1rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: '0.5rem', right: '0.75rem', fontSize: '11px', color: 'var(--text-muted)' }}>
               Pré-visualização
             </div>
