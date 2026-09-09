@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { packagesService } from '../../services/packagesService';
-import { Currency, PackageStatus, PackageData } from '../../types';
+import { Currency, PackageStatus, PackageData, CostComponent } from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
+import { FinancialEditor } from '../../components/finance/FinancialEditor';
+import { calculateFinancialSummary } from '../../services/financeService';
 
 export const PackageFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,9 +36,9 @@ export const PackageFormPage: React.FC = () => {
   const [hotelDestination, setHotelDestination] = useState('');
   const [hotelMealPlan, setHotelMealPlan] = useState('Café da Manhã');
 
-  // Valores previstos
-  const [priceTotal, setPriceTotal] = useState<string>('');
-  const [pricePerPerson, setPricePerPerson] = useState<string>('');
+  // Componentes e valores financeiros (Fase 4)
+  const [costComponents, setCostComponents] = useState<CostComponent[]>([]);
+  const [salePrice, setSalePrice] = useState<number>(0);
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
@@ -96,8 +98,14 @@ export const PackageFormPage: React.FC = () => {
         }
 
         if (d.financials) {
-          if (d.financials.priceTotal) setPriceTotal(String(d.financials.priceTotal.amount));
-          if (d.financials.pricePerPerson) setPricePerPerson(String(d.financials.pricePerPerson.amount));
+          if (Array.isArray(d.financials.components)) {
+            setCostComponents(d.financials.components);
+          }
+          if (typeof d.financials.salePrice === 'number') {
+            setSalePrice(d.financials.salePrice);
+          } else if (d.financials.priceTotal?.amount) {
+            setSalePrice(d.financials.priceTotal.amount);
+          }
         }
       } catch (err: any) {
         setFeedback({ type: 'error', message: err.message || 'Erro ao carregar dados do pacote.' });
@@ -162,10 +170,16 @@ export const PackageFormPage: React.FC = () => {
               },
             ]
           : [],
-        financials: {
-          priceTotal: priceTotal ? { amount: Number(priceTotal), currency: baseCurrency } : undefined,
-          pricePerPerson: pricePerPerson ? { amount: Number(pricePerPerson), currency: baseCurrency } : undefined,
-        },
+        financials: calculateFinancialSummary({
+          components: costComponents,
+          salePrice: Number(salePrice) || 0,
+          targetCurrency: baseCurrency,
+          passengers: {
+            adults: Number(adults) || 2,
+            children: Number(children) || 0,
+            infants: 0,
+          },
+        }),
       };
 
       if (isEditing && id) {
@@ -449,40 +463,21 @@ export const PackageFormPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Seção 4: Valores e Notas */}
+        {/* Seção 4: Financeiro */}
         <div className="card form-card">
-          <h3 className="form-section-title">4. Valores de Referência ({baseCurrency}) e Observações</h3>
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label className="form-label" htmlFor="priceTotal">
-                Preço Base Total ({baseCurrency})
-              </label>
-              <input
-                id="priceTotal"
-                type="number"
-                step="0.01"
-                className="form-input"
-                value={priceTotal}
-                onChange={(e) => setPriceTotal(e.target.value)}
-                placeholder="Ex: 4850.00"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="pricePerPerson">
-                Preço Base por Pessoa ({baseCurrency})
-              </label>
-              <input
-                id="pricePerPerson"
-                type="number"
-                step="0.01"
-                className="form-input"
-                value={pricePerPerson}
-                onChange={(e) => setPricePerPerson(e.target.value)}
-                placeholder="Ex: 2425.00"
-              />
-            </div>
-          </div>
+          <h3 className="form-section-title">4. Financeiro ({baseCurrency})</h3>
+          <FinancialEditor
+            currency={baseCurrency}
+            components={costComponents}
+            onChangeComponents={setCostComponents}
+            salePrice={salePrice}
+            onChangeSalePrice={setSalePrice}
+            passengers={{
+              adults: Number(adults) || 2,
+              children: Number(children) || 0,
+              infants: 0,
+            }}
+          />
 
           <div className="form-group" style={{ marginTop: '1rem' }}>
             <label className="form-label" htmlFor="additionalInfo">

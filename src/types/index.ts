@@ -71,13 +71,41 @@ export interface AdditionalServiceItem {
   notes?: string;
 }
 
-// Resumo financeiro e estimativas (preparação para Fase 4)
+// Categorias de componentes de custo financeiro
+export type CostCategory =
+  | 'outbound_transport' // Transporte de ida
+  | 'inbound_transport'  // Transporte de volta
+  | 'lodging'            // Hospedagem
+  | 'services'           // Serviços adicionais
+  | 'taxes'              // Impostos e taxas
+  | 'other';             // Outros custos
+
+// Componente de custo financeiro individual
+export interface CostComponent {
+  id: string;
+  category: CostCategory;
+  description: string;
+  amount: number;
+  currency: Currency;
+  quantity: number;
+  notes?: string;
+}
+
+// Resumo financeiro e cálculos determinísticos do motor financeiro
 export interface FinancialSummary {
+  currency: Currency;
+  components: CostComponent[];
+  totalCost: number;
+  salePrice: number;
+  pricePerPerson: number;
+  profit: number;
+  profitPercent: number;
+  taxesAndFeesTotal: number;
+  exchangeRateUsed?: number | null;
+  conversionError?: string | null;
+  // Campos para compatibilidade com exibições anteriores
   priceTotal?: MoneyAmount;
-  pricePerPerson?: MoneyAmount;
-  estimatedCostTotal?: MoneyAmount;
-  estimatedMarginPercent?: number;
-  taxesAndFees?: MoneyAmount;
+  pricePerPersonAmount?: MoneyAmount;
 }
 
 /**

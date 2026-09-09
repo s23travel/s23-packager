@@ -84,7 +84,69 @@ O modelo relacional do Packager foi desenhado para equilibrar integridade refere
 
 1. **Fase 1**: Fundação técnica, ambiente, roteamento básico e design tokens. *(Concluída)*
 2. **Fase 2**: Modelagem de dados Supabase e migrations base. *(Concluída)*
-3. **Fase 3**: Gestão de Pacotes (CRUD inicial e catálogo).
-4. **Fase 4**: Motor de Cotações e Cálculos.
+3. **Fase 3**: CRUD de Pacotes e Cotações com Snapshot Independente. *(Concluída)*
+4. **Fase 4**: Motor Financeiro Determinístico + Multi-Moeda. *(Concluída)*
 5. **Fase 5**: Exportações (WhatsApp, Markdown, Website, S23 Manager).
 6. **Fase 6**: Polimento, automações e deploy em produção.
+
+---
+
+## 5. Motor Financeiro Determinístico e Multi-Moeda (Fase 4)
+
+A Fase 4 substitui cálculos manuais e planilhas por um motor financeiro determinístico, puramente implementado em TypeScript (`src/services/financeService.ts`), sem dependências de IA, serviços externos ou bibliotecas pesadas.
+
+### 5.1 Regra Fundamental do Determinismo
+- **Zero IA em cálculos**: Nenhuma conta ou estimativa matemática é terceirizada para modelos de IA.
+- **Funções Puras**: Todas as operações de cálculo (`calculateCosts`, `calculatePricePerPerson`, `calculateProfit`, `calculateProfitPercent`, `calculateFinancialSummary`, `convertCurrency`) recebem argumentos imutáveis e retornam resultados estritamente previsíveis e reproduzíveis.
+- **Proteção Numérica**: Tratamento contra divisões por zero, valores ausentes, preços zerados e margens negativas, garantindo que `NaN` ou `Infinity` nunca sejam gerados ou renderizados na interface.
+
+### 5.2 Estrutura de Componentes de Custo
+Cada pacote e cotação organiza seus custos em uma lista de componentes (`CostComponent`):
+- `id`: Identificador único do item.
+- `category`: Categoria operacional:
+  1. `outbound_transport` (Transporte de ida)
+  2. `inbound_transport` (Transporte de volta)
+  3. `lodging` (Hospedagem)
+  4. `services` (Serviços adicionais / transfers / passeios)
+  5. `taxes` (Impostos e taxas turísticas)
+  6. `other` (Outros custos)
+- `description`: Descrição detalhada do custo.
+- `amount`: Valor monetário unitário.
+- `currency`: Moeda de origem do item (`EUR` ou `BRL`).
+- `quantity`: Quantidade aplicável (padrão 1).
+- `notes`: Observações adicionais opcionais.
+
+### 5.3 Fórmulas Matemáticas Implementadas
+
+#### A. Custo Total (`totalCost`)
+$$\text{totalCost} = \sum_{i} \text{roundMoney}(\text{amount}_i \times \text{quantity}_i \xrightarrow{\text{convert}} \text{targetCurrency})$$
+- O custo total é calculado automaticamente pela soma dos componentes e não pode ser sobrescrito manualmente quando houver componentes registrados.
+
+#### B. Preço de Venda (`salePrice`) e Preço por Pessoa (`pricePerPerson`)
+- O preço de venda total (`salePrice`) é a entrada principal da precificação comercial.
+- O divisor para preço por pessoa é determinado pelos passageiros pagantes:
+  $$\text{payingPassengers} = \text{adults} + \text{children}$$
+  $$\text{divisor} = \begin{cases} \text{payingPassengers} & \text{se } \text{payingPassengers} > 0 \\ 1 & \text{caso contrário} \end{cases}$$
+- **Convenção de turismo**: Bebês (`infants`) não entram no divisor do pacote base pois viajam no colo/berço sem ocupação tarifária integral.
+  $$\text{pricePerPerson} = \text{roundMoney}\left(\frac{\text{salePrice}}{\text{divisor}}\right)$$
+
+#### C. Lucro Bruto (`profit`)
+$$\text{profit} = \text{roundMoney}(\text{salePrice} - \text{totalCost})$$
+- Suporta lucro positivo, nulo ou negativo (quando custos superam o preço de venda).
+
+#### D. Margem de Lucro Percentual (`profitPercent`)
+$$\text{profitPercent} = \begin{cases} \text{roundPercent}\left(\frac{\text{profit}}{\text{salePrice}} \times 100\right) & \text{se } \text{salePrice} > 0 \\ 0 & \text{se } \text{salePrice} \le 0 \end{cases}$$
+
+### 5.4 Convenção Unificada de Câmbio e Multi-Moeda
+- **Convenção Oficial do Packager**: **`1 EUR = X BRL`** (ex.: `1 EUR = 6.20 BRL`).
+- **EUR para BRL**: $\text{amount} \times \text{exchangeRate}$
+- **BRL para EUR**: $\text{amount} / \text{exchangeRate}$
+- **Validação Estrita**:
+  - Se todos os itens estiverem na mesma moeda da cotação, nenhuma conversão é exigida.
+  - Se houver qualquer componente em moeda diferente e a taxa manual não tiver sido informada (`!exchangeRate || exchangeRate <= 0`), o motor bloqueia o cálculo do custo total, retorna erro explicativo e alerta o operador na interface.
+  - O câmbio é exclusivamente uma entrada manual congelada no registro, sem chamadas a APIs bancárias instáveis ou externas.
+
+### 5.5 Independência Financeira das Quotations
+- Ao gerar uma cotação a partir de um pacote (`createQuotationFromPackage`), todo o bloco financeiro (`financials`) é clonado em profundidade (`deep-clone`).
+- A cotação preserva seu snapshot de componentes, moeda base, preço de venda, lucro e margem naquele instante.
+- Alterações posteriores nos custos ou preços do pacote base nunca alteram silenciosamente cotações emitidas no passado.

@@ -4,6 +4,7 @@ import { quotationsService } from '../../services/quotationsService';
 import { Quotation, QuotationStatus } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
+import { FinancialEditor } from '../../components/finance/FinancialEditor';
 
 export const QuoteDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -219,46 +220,8 @@ export const QuoteDetailPage: React.FC = () => {
           )}
         </div>
 
-        {/* Painel Direito: Valores e Câmbio */}
+        {/* Painel Direito: Hospedagem */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="card">
-            <h3 className="card-title">Valores da Cotação ({quote.currency})</h3>
-            <div className="detail-rows">
-              <div className="detail-row">
-                <span className="detail-label">Valor Total:</span>
-                <span className="detail-value" style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-text)' }}>
-                  {d.financials?.priceTotal?.amount
-                    ? `${quote.currency === 'EUR' ? '€' : 'R$'} ${Number(d.financials.priceTotal.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    : 'A calcular'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Valor por Pessoa:</span>
-                <span className="detail-value">
-                  {d.financials?.pricePerPerson?.amount
-                    ? `${quote.currency === 'EUR' ? '€' : 'R$'} ${Number(d.financials.pricePerPerson.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    : '—'}
-                </span>
-              </div>
-              {quote.exchange_rate && (
-                <>
-                  <div className="detail-row">
-                    <span className="detail-label">Câmbio Registrado:</span>
-                    <span className="detail-value">
-                      1 EUR = {quote.exchange_rate} BRL
-                    </span>
-                  </div>
-                  {quote.exchange_rate_date && (
-                    <div className="detail-row">
-                      <span className="detail-label">Data do Câmbio:</span>
-                      <span className="detail-value">{quote.exchange_rate_date}</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
           <div className="card">
             <h3 className="card-title">Hospedagem (Snapshot)</h3>
             {d.lodging && d.lodging.length > 0 ? (
@@ -277,6 +240,25 @@ export const QuoteDetailPage: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Seção Financeiro (Motor Financeiro - Fase 4) */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <FinancialEditor
+          currency={quote.currency}
+          components={d.financials?.components || []}
+          onChangeComponents={() => {}}
+          salePrice={
+            typeof d.financials?.salePrice === 'number'
+              ? d.financials.salePrice
+              : d.financials?.priceTotal?.amount || 0
+          }
+          onChangeSalePrice={() => {}}
+          exchangeRate={quote.exchange_rate ?? d.financials?.exchangeRateUsed ?? null}
+          exchangeRateDate={quote.exchange_rate_date ?? null}
+          passengers={d.passengers}
+          readOnly={true}
+        />
       </div>
     </div>
   );

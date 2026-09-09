@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
-import { Currency, QuotationStatus, QuotationData } from '../../types';
+import { Currency, QuotationStatus, QuotationData, CostComponent } from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
+import { FinancialEditor } from '../../components/finance/FinancialEditor';
+import { calculateFinancialSummary } from '../../services/financeService';
 
 export const QuoteFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,9 +39,9 @@ export const QuoteFormPage: React.FC = () => {
   const [hotelDestination, setHotelDestination] = useState('');
   const [hotelMealPlan, setHotelMealPlan] = useState('');
 
-  // Valores
-  const [priceTotal, setPriceTotal] = useState<string>('');
-  const [pricePerPerson, setPricePerPerson] = useState<string>('');
+  // Componentes e valores financeiros (Fase 4)
+  const [costComponents, setCostComponents] = useState<CostComponent[]>([]);
+  const [salePrice, setSalePrice] = useState<number>(0);
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
@@ -104,8 +106,14 @@ export const QuoteFormPage: React.FC = () => {
         }
 
         if (d.financials) {
-          if (d.financials.priceTotal) setPriceTotal(String(d.financials.priceTotal.amount));
-          if (d.financials.pricePerPerson) setPricePerPerson(String(d.financials.pricePerPerson.amount));
+          if (Array.isArray(d.financials.components)) {
+            setCostComponents(d.financials.components);
+          }
+          if (typeof d.financials.salePrice === 'number') {
+            setSalePrice(d.financials.salePrice);
+          } else if (d.financials.priceTotal?.amount) {
+            setSalePrice(d.financials.priceTotal.amount);
+          }
         }
       } catch (err: any) {
         setFeedback({ type: 'error', message: err.message || 'Erro ao carregar cotação.' });
@@ -154,10 +162,17 @@ export const QuoteFormPage: React.FC = () => {
               },
             ]
           : [],
-        financials: {
-          priceTotal: priceTotal ? { amount: Number(priceTotal), currency } : undefined,
-          pricePerPerson: pricePerPerson ? { amount: Number(pricePerPerson), currency } : undefined,
-        },
+        financials: calculateFinancialSummary({
+          components: costComponents,
+          salePrice: Number(salePrice) || 0,
+          targetCurrency: currency,
+          exchangeRate: exchangeRate ? Number(exchangeRate) : null,
+          passengers: {
+            adults: Number(adults) || 2,
+            children: Number(children) || 0,
+            infants: 0,
+          },
+        }),
       };
 
       if (isEditing && id) {
@@ -475,40 +490,25 @@ export const QuoteFormPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Seção 4: Valores e Notas da Proposta */}
+        {/* Seção 4: Financeiro */}
         <div className="card form-card">
-          <h3 className="form-section-title">4. Valores da Proposta ({currency}) e Notas Personalizadas</h3>
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label className="form-label" htmlFor="priceTotal">
-                Valor Total da Cotação ({currency})
-              </label>
-              <input
-                id="priceTotal"
-                type="number"
-                step="0.01"
-                className="form-input"
-                value={priceTotal}
-                onChange={(e) => setPriceTotal(e.target.value)}
-                placeholder="Ex: 5200.00"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="pricePerPerson">
-                Valor por Pessoa ({currency})
-              </label>
-              <input
-                id="pricePerPerson"
-                type="number"
-                step="0.01"
-                className="form-input"
-                value={pricePerPerson}
-                onChange={(e) => setPricePerPerson(e.target.value)}
-                placeholder="Ex: 2600.00"
-              />
-            </div>
-          </div>
+          <h3 className="form-section-title">4. Financeiro ({currency})</h3>
+          <FinancialEditor
+            currency={currency}
+            components={costComponents}
+            onChangeComponents={setCostComponents}
+            salePrice={salePrice}
+            onChangeSalePrice={setSalePrice}
+            exchangeRate={exchangeRate ? parseFloat(exchangeRate) : null}
+            onChangeExchangeRate={(rate) => setExchangeRate(rate !== null ? String(rate) : '')}
+            exchangeRateDate={exchangeRateDate}
+            onChangeExchangeRateDate={setExchangeRateDate}
+            passengers={{
+              adults: Number(adults) || 2,
+              children: Number(children) || 0,
+              infants: 0,
+            }}
+          />
 
           <div className="form-group" style={{ marginTop: '1rem' }}>
             <label className="form-label" htmlFor="customNotes">

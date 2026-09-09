@@ -5,6 +5,7 @@ import { quotationsService } from '../../services/quotationsService';
 import { Package, PackageStatus } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
+import { FinancialEditor } from '../../components/finance/FinancialEditor';
 
 export const PackageDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -227,28 +228,6 @@ export const PackageDetailPage: React.FC = () => {
             )}
           </div>
 
-          <div className="card">
-            <h3 className="card-title">Valores Base ({pkg.base_currency})</h3>
-            <div className="detail-rows">
-              <div className="detail-row">
-                <span className="detail-label">Preço Base Total:</span>
-                <span className="detail-value" style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-text)' }}>
-                  {d.financials?.priceTotal?.amount
-                    ? `${pkg.base_currency === 'EUR' ? '€' : 'R$'} ${Number(d.financials.priceTotal.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    : 'A cotar'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Preço por Pessoa:</span>
-                <span className="detail-value">
-                  {d.financials?.pricePerPerson?.amount
-                    ? `${pkg.base_currency === 'EUR' ? '€' : 'R$'} ${Number(d.financials.pricePerPerson.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    : '—'}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {d.additionalInfo && (
             <div className="card">
               <h3 className="card-title">Informações Adicionais</h3>
@@ -258,6 +237,23 @@ export const PackageDetailPage: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Seção Financeiro (Motor Financeiro - Fase 4) */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <FinancialEditor
+          currency={pkg.base_currency}
+          components={d.financials?.components || []}
+          onChangeComponents={() => {}}
+          salePrice={
+            typeof d.financials?.salePrice === 'number'
+              ? d.financials.salePrice
+              : d.financials?.priceTotal?.amount || 0
+          }
+          onChangeSalePrice={() => {}}
+          passengers={d.passengers}
+          readOnly={true}
+        />
       </div>
     </div>
   );
