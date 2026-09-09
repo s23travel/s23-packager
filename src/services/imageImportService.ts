@@ -223,6 +223,18 @@ export async function importPackageDataFromImage(file: File): Promise<ImageImpor
       let errorMsg = error.message || 'Erro ao conectar ao serviço de leitura de imagem.';
       let details = '';
 
+      try {
+        if ((error as any).context && typeof (error as any).context.json === 'function') {
+          const body = await (error as any).context.json();
+          if (body?.message) errorMsg = body.message;
+          if (body?.details) {
+            details = typeof body.details === 'string' ? body.details : JSON.stringify(body.details);
+          }
+        }
+      } catch {
+        // ignora se não houver json no contexto
+      }
+
       if (errorMsg.includes('GEMINI_API_KEY_MISSING') || (data && data.error === 'GEMINI_API_KEY_MISSING')) {
         errorMsg = 'Chave GEMINI_API_KEY não configurada no Supabase Edge Functions.';
         details = 'Configure a secret GEMINI_API_KEY no painel do Supabase para habilitar a extração com IA.';
@@ -234,6 +246,7 @@ export async function importPackageDataFromImage(file: File): Promise<ImageImpor
         details,
       };
     }
+
 
     if (!data || !data.success || !data.data) {
       return {
