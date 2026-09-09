@@ -33,3 +33,6 @@ supabase/.temp/
 .env.development
 .env.local
 !.env.example
+
+# Temporary and scratch files
+scratch/

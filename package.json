@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "npx tsx tests/test_finance_engine.ts && npx tsx tests/test_whatsapp_service.ts && npx tsx tests/test_ai_content.ts && npx tsx tests/test_markdown_service.ts",
+    "test:all": "npm run test && npx tsx tests/test_real_ai_integration.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

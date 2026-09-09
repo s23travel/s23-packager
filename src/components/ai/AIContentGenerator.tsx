@@ -140,7 +140,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
       {/* Alerta Informativo de Segurança e Soberania dos Dados */}
       <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs text-slate-700 flex items-center justify-between">
         <span>
-          <strong>Hierarquia nível 1:</strong> Preço, datas e hotéis são soberanos e nunca são alterados pela IA. Custos internos nunca são enviados à API.
+          <strong>Hierarquia nível 1:</strong> Preço, datas e hotéis são soberanos e nunca são alterados pela IA. Custos internos são estritamente confidenciais e nunca são transmitidos.
         </span>
         <span className="text-[11px] font-medium text-slate-600">Dados comerciais protegidos</span>
       </div>
@@ -465,7 +465,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
             Nenhum conteúdo estruturado gerado ainda.
           </p>
           <p className="text-[11px] text-slate-400 mt-1">
-            Clique em "Gerar Conteúdo Estruturado" para acionar o backend seguro do Gemini com Google Search Grounding.
+            Clique em "Gerar conteúdo estruturado" para iniciar a redação comercial com pesquisa em tempo real do destino.
           </p>
         </div>
       )}
