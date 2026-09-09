@@ -276,12 +276,12 @@ export function validateStructuredContent(
     if (input.hotelName && obj.sobre?.text) {
       // Se houver hotel, verificar coerência básica se aplicável
     }
-    // Preço deve corresponder ao valor comercial soberano
+    // Preço deve corresponder estritamente ao valor comercial soberano (sem tolerância de 1€ ou 1R$)
     if (input.salePrice > 0 && obj.price !== undefined) {
       const priceNum = typeof obj.price === 'number' ? obj.price : parseFloat(obj.price);
-      if (Number.isFinite(priceNum) && Math.abs(priceNum - input.salePrice) > 1.0) {
+      if (Number.isFinite(priceNum) && Math.abs(priceNum - input.salePrice) > 0.001) {
         errors.push(
-          `O preço retornado (${obj.price}) diverge do preço comercial oficial da cotação (${input.salePrice}). A IA não pode alterar dados comerciais.`
+          `O preço retornado (${obj.price}) diverge do preço comercial oficial (${input.salePrice}). A IA não pode alterar dados comerciais.`
         );
       }
     }

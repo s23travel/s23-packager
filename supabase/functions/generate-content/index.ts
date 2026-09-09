@@ -124,7 +124,8 @@ Estrutura JSON obrigatória:
 `;
 
     // 3. Chamada à API do Gemini com Google Search Grounding
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const modelName = input.model || 'gemini-3.6-flash';
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -156,8 +157,8 @@ Estrutura JSON obrigatória:
       return new Response(
         JSON.stringify({
           error: 'GEMINI_API_ERROR',
-          message: `O serviço Gemini retornou erro (${geminiResponse.status}). Verifique a chave configurada ou tente novamente.`,
-          details: geminiResponse.status === 400 || geminiResponse.status === 403 ? 'Chave de API inválida ou sem permissão para Google Search Grounding.' : 'Falha temporária de comunicação com a IA.',
+          message: `O serviço Gemini retornou erro (${geminiResponse.status}).`,
+          details: errText,
         }),
         {
           status: 502,
