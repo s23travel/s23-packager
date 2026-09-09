@@ -126,7 +126,7 @@ export const PackageDetailPage: React.FC = () => {
             onClick={handleCloneToQuotation}
             disabled={cloning}
           >
-            {cloning ? 'Criando Cotação...' : '⚡ Nova Cotação a partir deste Pacote'}
+            {cloning ? 'Criando cotação...' : 'Nova cotação a partir do pacote'}
           </button>
           <Link to={`/pacotes/${pkg.id}/editar`} className="btn btn-secondary">
             Editar

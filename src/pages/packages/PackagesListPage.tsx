@@ -72,7 +72,7 @@ export const PackagesListPage: React.FC = () => {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Pacotes de Viagem</h1>
+          <h1 className="page-title">Pacotes de viagem</h1>
           <p className="page-subtitle">
             Catálogo operacional de pacotes base para geração de cotações personalizadas.
           </p>
@@ -91,16 +91,15 @@ export const PackagesListPage: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: 'var(--text-muted)' }}>Carregando catálogo de pacotes...</p>
+        <div className="card" style={{ textAlign: 'center', padding: '2.5rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Carregando catálogo de pacotes...</p>
         </div>
       ) : packages.length === 0 ? (
         <div className="placeholder-view">
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📦</div>
           <h3>Nenhum pacote cadastrado</h3>
           <p>Cadastre o primeiro pacote base para começar a emitir cotações personalizadas.</p>
           <Link to="/pacotes/novo" className="btn btn-primary">
-            Cadastrar Primeiro Pacote
+            Cadastrar primeiro pacote
           </Link>
         </div>
       ) : (
@@ -108,7 +107,7 @@ export const PackagesListPage: React.FC = () => {
           {/* Barra de Pesquisa e Filtros */}
           <div className="table-toolbar">
             <div className="search-input-wrapper">
-              <span className="search-icon">🔍</span>
+              <span className="search-icon">⚲</span>
               <input
                 type="text"
                 className="search-input"
@@ -117,13 +116,13 @@ export const PackagesListPage: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               Mostrando <strong>{filteredPackages.length}</strong> de {packages.length} pacote(s)
             </div>
           </div>
 
           {filteredPackages.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Nenhum pacote encontrado para "<strong>{searchTerm}</strong>".
             </div>
           ) : (
@@ -132,8 +131,8 @@ export const PackagesListPage: React.FC = () => {
                 <thead>
                   <tr>
                     <th>Referência</th>
-                    <th>Nome do Pacote</th>
-                    <th>Destino / Duração</th>
+                    <th>Nome do pacote</th>
+                    <th>Destino e duração</th>
                     <th>Status</th>
                     <th>Moeda</th>
                     <th style={{ textAlign: 'right' }}>Ações</th>
@@ -156,7 +155,7 @@ export const PackagesListPage: React.FC = () => {
                             {pkg.name}
                           </Link>
                         </td>
-                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                           <span>{destination}</span>
                           {duration && <span style={{ color: 'var(--text-muted)' }}> • {duration}</span>}
                         </td>
@@ -175,7 +174,7 @@ export const PackagesListPage: React.FC = () => {
                               disabled={cloningId === pkg.id}
                               title="Emitir nova cotação a partir deste pacote"
                             >
-                              {cloningId === pkg.id ? 'Criando...' : '⚡ Nova Cotação'}
+                              {cloningId === pkg.id ? 'Criando...' : 'Nova Cotação'}
                             </button>
                             <Link to={`/pacotes/${pkg.id}`} className="btn btn-sm btn-secondary">
                               Ver

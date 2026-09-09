@@ -126,7 +126,6 @@ export const QuoteDetailPage: React.FC = () => {
       {/* Aviso de Origem Discreto */}
       {quote.package_id && (
         <div className="notice-banner" style={{ marginBottom: '1.25rem' }}>
-          <span>📦</span>
           <span style={{ flex: 1 }}>
             Cotação vinculada ao pacote <strong>{quote.origin_package_name || d.originPackageName || 'Base'}</strong>. Os dados estão preservados para esta proposta.
           </span>

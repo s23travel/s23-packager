@@ -39,7 +39,7 @@ export const DashboardPage: React.FC = () => {
     .slice(0, 5);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Topo / Page Header */}
       <div className="page-header" style={{ marginBottom: 0 }}>
         <div>
@@ -48,7 +48,7 @@ export const DashboardPage: React.FC = () => {
             Gerencie pacotes e cotações da S23 em um só lugar.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem' }}>
           <Link to="/pacotes/novo" className="btn btn-secondary">
             + Novo Pacote
           </Link>
@@ -58,25 +58,24 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid de Indicadores Principais */}
+      {/* Grid de Indicadores Principais (Compact Back-office) */}
       <div className="grid-cols-2">
         <div className="kpi-card">
           <div>
             <div className="kpi-header">
-              <span className="kpi-label">Catálogo de Pacotes</span>
-              <div className="kpi-icon">📦</div>
+              <span className="kpi-label">Catálogo de pacotes</span>
             </div>
             <div className="kpi-value">
               {loading ? '—' : packages.length}
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            <p className="kpi-subtitle">
               {loading
-                ? 'Carregando catálogo...'
+                ? 'Carregando...'
                 : `${activePackagesCount} ativo(s) • ${packages.length - activePackagesCount} em rascunho`}
             </p>
           </div>
           <div className="kpi-footer">
-            <Link to="/pacotes" className="table-link-title" style={{ fontSize: '0.85rem' }}>
+            <Link to="/pacotes" className="table-link-title" style={{ fontSize: '13px' }}>
               Ver todos os pacotes &rarr;
             </Link>
             <Link to="/pacotes/novo" className="btn btn-sm btn-secondary">
@@ -88,20 +87,19 @@ export const DashboardPage: React.FC = () => {
         <div className="kpi-card">
           <div>
             <div className="kpi-header">
-              <span className="kpi-label">Cotações Emitidas</span>
-              <div className="kpi-icon">📋</div>
+              <span className="kpi-label">Cotações emitidas</span>
             </div>
             <div className="kpi-value">
               {loading ? '—' : quotes.length}
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            <p className="kpi-subtitle">
               {loading
-                ? 'Carregando cotações...'
-                : `Total de propostas geradas no sistema`}
+                ? 'Carregando...'
+                : 'Total de propostas geradas no sistema'}
             </p>
           </div>
           <div className="kpi-footer">
-            <Link to="/cotacoes" className="table-link-title" style={{ fontSize: '0.85rem' }}>
+            <Link to="/cotacoes" className="table-link-title" style={{ fontSize: '13px' }}>
               Ver todas as cotações &rarr;
             </Link>
             <Link to="/cotacoes/novo" className="btn btn-sm btn-action-primary">
@@ -117,29 +115,27 @@ export const DashboardPage: React.FC = () => {
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div
             style={{
-              padding: '1rem 1.25rem',
+              padding: '0.75rem 1rem',
               borderBottom: '1px solid var(--border-subtle)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
-            <div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Cotações Recentes
-              </h3>
-            </div>
-            <Link to="/cotacoes" style={{ fontSize: '0.8rem', color: 'var(--accent-primary)', fontWeight: 500 }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Cotações recentes
+            </h3>
+            <Link to="/cotacoes" style={{ fontSize: '13px', color: 'var(--accent-primary)', fontWeight: 500 }}>
               Ver todas
             </Link>
           </div>
 
           {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Carregando cotações recentes...
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+              Carregando cotações...
             </div>
           ) : recentQuotes.length === 0 ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Nenhuma cotação registrada ainda.
             </div>
           ) : (
@@ -147,7 +143,7 @@ export const DashboardPage: React.FC = () => {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Ref</th>
+                    <th>Referência</th>
                     <th>Cliente</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'right' }}>Ação</th>
@@ -186,29 +182,27 @@ export const DashboardPage: React.FC = () => {
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div
             style={{
-              padding: '1rem 1.25rem',
+              padding: '0.75rem 1rem',
               borderBottom: '1px solid var(--border-subtle)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
-            <div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Pacotes Base
-              </h3>
-            </div>
-            <Link to="/pacotes" style={{ fontSize: '0.8rem', color: 'var(--accent-primary)', fontWeight: 500 }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Pacotes base
+            </h3>
+            <Link to="/pacotes" style={{ fontSize: '13px', color: 'var(--accent-primary)', fontWeight: 500 }}>
               Ver catálogo
             </Link>
           </div>
 
           {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Carregando pacotes...
             </div>
           ) : recentPackages.length === 0 ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Nenhum pacote cadastrado.
             </div>
           ) : (
@@ -216,8 +210,8 @@ export const DashboardPage: React.FC = () => {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Ref</th>
-                    <th>Nome do Pacote</th>
+                    <th>Referência</th>
+                    <th>Nome do pacote</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'right' }}>Ação</th>
                   </tr>

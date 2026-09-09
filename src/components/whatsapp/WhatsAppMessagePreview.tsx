@@ -21,7 +21,6 @@ export const WhatsAppMessagePreview: React.FC<WhatsAppMessagePreviewProps> = ({ 
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(message);
       } else {
-        // Fallback para navegadores sem Clipboard API nativa disponível
         const textArea = document.createElement('textarea');
         textArea.value = message;
         textArea.style.position = 'fixed';
@@ -40,71 +39,62 @@ export const WhatsAppMessagePreview: React.FC<WhatsAppMessagePreviewProps> = ({ 
   };
 
   return (
-    <div className="card shadow-sm border border-slate-200 rounded-xl overflow-hidden bg-white">
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       {/* Cabeçalho da Seção WhatsApp */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100 bg-slate-50/80">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg">
-            💬
+      <div
+        style={{
+          padding: '0.75rem 1rem',
+          borderBottom: '1px solid var(--border-subtle)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+        }}
+      >
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Mensagem para WhatsApp
+            </h3>
+            <span className="badge badge-success">
+              Template oficial S23
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-slate-800">Mensagem para WhatsApp</h3>
-              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                Template Oficial S23
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Texto comercial preparado a partir dos dados desta cotação.
-            </p>
-          </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            Texto comercial preparado a partir dos dados desta cotação.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm ${
-              copied
-                ? 'bg-emerald-600 text-white shadow-emerald-200 scale-105'
-                : 'bg-emerald-500 hover:bg-emerald-600 text-white active:scale-95'
-            }`}
-          >
-            {copied ? (
-              <>
-                <span>✔</span> Copiado com Sucesso!
-              </>
-            ) : (
-              <>
-                <span>📋</span> Copiar Mensagem
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="btn btn-sm btn-action-primary"
+        >
+          {copied ? 'Copiado com sucesso!' : 'Copiar mensagem'}
+        </button>
       </div>
 
       {copyError && (
-        <div className="p-3 bg-amber-50 border-b border-amber-200 text-xs text-amber-800 font-medium">
-          ⚠️ {copyError}
+        <div style={{ padding: '0.5rem 1rem', background: 'var(--warning-soft)', borderBottom: '1px solid rgba(217, 119, 6, 0.2)', fontSize: '12px', color: 'var(--warning)' }}>
+          {copyError}
         </div>
       )}
 
-      {/* Caixa de Pré-visualização no estilo WhatsApp */}
-      <div className="p-4 sm:p-5 bg-gradient-to-b from-[#efeae2]/50 to-[#efeae2]/20">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg p-4 sm:p-5 shadow-sm border border-slate-200/80 relative">
-            <div className="absolute top-2.5 right-3 text-[10px] font-medium text-slate-400 select-none">
+      {/* Caixa de Pré-visualização */}
+      <div style={{ padding: '1rem', background: 'var(--bg-surface-elevated)' }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+          <div style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '1rem', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: '0.5rem', right: '0.75rem', fontSize: '11px', color: 'var(--text-muted)' }}>
               Pré-visualização
             </div>
-            <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-slate-800 leading-relaxed break-words">
+            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-sans)', fontSize: '13px', lineHeight: '1.6', color: 'var(--text-primary)' }}>
               {message}
             </pre>
           </div>
-          <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-500 px-1">
-            <span>
-              🔒 Custos internos, margens e fornecedores são mantidos 100% confidenciais.
-            </span>
-            <span className="font-mono">{message.length} caracteres</span>
+          <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
+            <span>Custos internos, margens e fornecedores são confidenciais.</span>
+            <span>{message.length} caracteres</span>
           </div>
         </div>
       </div>

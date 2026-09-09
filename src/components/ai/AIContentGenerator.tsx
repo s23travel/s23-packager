@@ -113,49 +113,36 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
   return (
     <div className="card shadow-sm border border-slate-200 rounded-xl overflow-hidden bg-white">
       {/* Cabeçalho da Seção de IA */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100 bg-slate-50/80">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">
-            ✨
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 border-b border-slate-100 bg-slate-50">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-800">Conteúdo para website (IA)</h3>
+            <span className="badge badge-info" style={{ fontSize: '11px' }}>
+              Gemini + Google Search
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-slate-800">Conteúdo para Website (IA)</h3>
-              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                Gemini + Google Search Grounding
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pesquisa factual sobre o destino e redação comercial estruturada baseada no{' '}
-              {source.quotation ? 'snapshot da cotação' : 'pacote base'}.
-            </p>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Pesquisa factual sobre o destino e redação comercial estruturada baseada no{' '}
+            {source.quotation ? 'dados da cotação' : 'pacote base'}.
+          </p>
         </div>
 
         <button
           type="button"
           onClick={handleGenerate}
           disabled={generating}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+          className="btn btn-sm btn-action-primary"
         >
-          {generating ? (
-            <>
-              <span className="inline-block animate-spin">⏳</span> Pesquisando & Gerando...
-            </>
-          ) : (
-            <>
-              <span>✨</span> Gerar Conteúdo Estruturado
-            </>
-          )}
+          {generating ? 'Pesquisando e gerando...' : 'Gerar conteúdo estruturado'}
         </button>
       </div>
 
       {/* Alerta Informativo de Segurança e Soberania dos Dados */}
-      <div className="px-5 py-3 bg-indigo-50/60 border-b border-indigo-100 text-xs text-indigo-900 flex items-center justify-between">
+      <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs text-slate-700 flex items-center justify-between">
         <span>
-          🛡️ <strong>Hierarquia Nível 1:</strong> Preço, datas e hotéis são soberanos e nunca são alterados pela IA. Custos internos nunca são enviados à API.
+          <strong>Hierarquia nível 1:</strong> Preço, datas e hotéis são soberanos e nunca são alterados pela IA. Custos internos nunca são enviados à API.
         </span>
-        <span className="text-[11px] font-semibold text-indigo-700">Dados Comerciais Protegidos</span>
+        <span className="text-[11px] font-medium text-slate-600">Dados comerciais protegidos</span>
       </div>
 
       {/* Mensagem de Erro (caso ocorra ou secret não esteja configurada) */}
@@ -298,25 +285,25 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {content.infoDestino.localizacao && (
                     <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <span className="text-[11px] font-bold text-slate-500">📍 Localização:</span>
+                      <span className="text-[11px] font-semibold text-slate-500">Localização:</span>
                       <p className="mt-1 text-slate-700">{content.infoDestino.localizacao}</p>
                     </div>
                   )}
                   {content.infoDestino.clima && (
                     <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <span className="text-[11px] font-bold text-slate-500">☀️ Clima:</span>
+                      <span className="text-[11px] font-semibold text-slate-500">Clima:</span>
                       <p className="mt-1 text-slate-700">{content.infoDestino.clima}</p>
                     </div>
                   )}
                   {content.infoDestino.idiomaCultura && (
                     <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <span className="text-[11px] font-bold text-slate-500">🗣️ Idioma e Cultura:</span>
+                      <span className="text-[11px] font-semibold text-slate-500">Idioma e cultura:</span>
                       <p className="mt-1 text-slate-700">{content.infoDestino.idiomaCultura}</p>
                     </div>
                   )}
                   {content.infoDestino.documentacao && (
                     <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <span className="text-[11px] font-bold text-slate-500">🛂 Documentação:</span>
+                      <span className="text-[11px] font-semibold text-slate-500">Documentação:</span>
                       <p className="mt-1 text-slate-700">{content.infoDestino.documentacao}</p>
                     </div>
                   )}
@@ -396,7 +383,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
                     onClick={handleGenerateMarkdown}
                     className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                   >
-                    <span>⚡</span> {markdownString ? 'Regerar Markdown' : 'Gerar Markdown'}
+                    {markdownString ? 'Regerar Markdown' : 'Gerar Markdown'}
                   </button>
 
                   {markdownString && (
@@ -404,17 +391,17 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
                       <button
                         type="button"
                         onClick={handleCopyMarkdown}
-                        className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5"
+                        className="btn btn-sm btn-secondary"
                       >
-                        <span>📋</span> {copiedMarkdown ? 'Copiado!' : 'Copiar Markdown'}
+                        {copiedMarkdown ? 'Copiado!' : 'Copiar Markdown'}
                       </button>
 
                       <button
                         type="button"
                         onClick={handleDownloadMarkdown}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                        className="btn btn-sm btn-action-primary"
                       >
-                        <span>⬇️</span> Baixar .md
+                        Baixar .md
                       </button>
                     </>
                   )}
@@ -423,11 +410,11 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
 
               {/* Erros de Validação do Markdown */}
               {markdownErrors.length > 0 && (
-                <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 space-y-1">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <span>⚠️</span> Erros na validação do Markdown gerado:
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded text-rose-800 space-y-1 text-xs">
+                  <div className="font-semibold">
+                    Erros na validação do Markdown gerado:
                   </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-700 mt-1">
+                  <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-700 mt-0.5">
                     {markdownErrors.map((err, idx) => (
                       <li key={idx}>{err}</li>
                     ))}
@@ -435,19 +422,16 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
                 </div>
               )}
 
-              {/* Indicação Oficial para o Manager (Fase 6C - Escopo MVP) */}
+              {/* Indicação Oficial para o Manager */}
               {markdownString && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between text-xs text-emerald-900">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">📁</span>
-                    <div>
-                      <span className="font-bold">Arquivo pronto para publicação no Manager.</span>
-                      <p className="text-[11px] text-emerald-700 mt-0.5">
-                        Baixe o arquivo .md e envie-o manualmente ao Manager.
-                      </p>
-                    </div>
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded flex items-center justify-between text-xs text-emerald-900">
+                  <div>
+                    <span className="font-semibold">Arquivo pronto para publicação no Manager.</span>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                      Baixe o arquivo .md e envie-o ao Manager.
+                    </p>
                   </div>
-                  <span className="font-mono text-[11px] font-semibold bg-white px-2.5 py-1 rounded border border-emerald-300 text-emerald-800">
+                  <span className="font-mono text-[11px] font-medium bg-white px-2 py-0.5 rounded border border-emerald-300 text-emerald-800">
                     content/pacotes/{markdownFileName || `${content.slug}.md`}
                   </span>
                 </div>

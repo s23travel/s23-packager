@@ -59,12 +59,12 @@ export const QuotesListPage: React.FC = () => {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Central de Cotações</h1>
+          <h1 className="page-title">Central de cotações</h1>
           <p className="page-subtitle">
             Cotações comerciais personalizadas derivadas de pacotes ou elaboradas de forma avulsa.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem' }}>
           <Link to="/pacotes" className="btn btn-secondary">
             Ver Catálogo de Pacotes
           </Link>
@@ -83,20 +83,19 @@ export const QuotesListPage: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: 'var(--text-muted)' }}>Carregando cotações...</p>
+        <div className="card" style={{ textAlign: 'center', padding: '2.5rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Carregando cotações...</p>
         </div>
       ) : quotes.length === 0 ? (
         <div className="placeholder-view">
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📋</div>
           <h3>Nenhuma cotação gerada</h3>
           <p>Você pode emitir uma cotação avulsa ou clonar diretamente a partir de um pacote base do catálogo.</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem' }}>
             <Link to="/pacotes" className="btn btn-primary">
-              Escolher Pacote para Cotar
+              Escolher pacote para cotar
             </Link>
             <Link to="/cotacoes/novo" className="btn btn-secondary">
-              Criar Cotação Avulsa
+              Criar cotação avulsa
             </Link>
           </div>
         </div>
@@ -105,22 +104,22 @@ export const QuotesListPage: React.FC = () => {
           {/* Barra de Pesquisa e Filtros */}
           <div className="table-toolbar">
             <div className="search-input-wrapper">
-              <span className="search-icon">🔍</span>
+              <span className="search-icon">⚲</span>
               <input
                 type="text"
                 className="search-input"
-                placeholder="Buscar por cliente, ref, pacote de origem..."
+                placeholder="Buscar por cliente, ref, origem..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               Mostrando <strong>{filteredQuotes.length}</strong> de {quotes.length} cotação(ões)
             </div>
           </div>
 
           {filteredQuotes.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Nenhuma cotação encontrada para "<strong>{searchTerm}</strong>".
             </div>
           ) : (
@@ -154,26 +153,26 @@ export const QuotesListPage: React.FC = () => {
                           </Link>
                         </td>
                         <td>
-                          <span style={{ fontWeight: 600, color: q.client_name ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                          <span style={{ fontWeight: 500, color: q.client_name ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                             {q.client_name || 'Sem cliente definido'}
                           </span>
                         </td>
                         <td>
                           {q.package_id ? (
                             <Link to={`/pacotes/${q.package_id}`} className="table-link-secondary" title="Ver pacote de origem">
-                              📦 {originName || 'Pacote Base'}
+                              {originName || 'Pacote Base'}
                             </Link>
                           ) : (
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Avulsa / Direta</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Avulsa</span>
                           )}
                         </td>
-                        <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                        <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
                           {formattedPrice}
                         </td>
                         <td>
                           <StatusBadge status={q.status} />
                         </td>
-                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                           {new Date(q.created_at).toLocaleDateString('pt-BR')}
                         </td>
                         <td style={{ textAlign: 'right' }}>

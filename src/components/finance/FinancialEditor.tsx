@@ -84,55 +84,48 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Alerta de Câmbio / Conversão pendente */}
       {summary.conversionError && (
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-md shadow-sm">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <span className="text-xl">⚠️</span>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-semibold text-amber-800">
-                Atenção: Conversão Cambial Bloqueada
-              </h3>
-              <p className="mt-1 text-sm text-amber-700">{summary.conversionError}</p>
-              <p className="mt-1 text-xs text-amber-600 font-medium">
-                Regra: Nenhum cálculo financeiro ocorre silenciosamente entre moedas distintas sem uma taxa válida.
-              </p>
-            </div>
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded shadow-sm">
+          <div>
+            <h3 className="text-sm font-medium text-amber-800">
+              Atenção: Conversão cambial pendente
+            </h3>
+            <p className="mt-0.5 text-xs text-amber-700">{summary.conversionError}</p>
+            <p className="mt-0.5 text-xs text-amber-600">
+              Regra: Nenhum cálculo financeiro ocorre silenciosamente entre moedas distintas sem uma taxa válida.
+            </p>
           </div>
         </div>
       )}
 
       {/* Bloco de Configuração de Câmbio Manual */}
       {(hasCurrencyMismatch || exchangeRate !== undefined) && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
+        <div className="bg-slate-50 border border-slate-200 rounded p-3.5">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <span>💱</span> Câmbio Manual (Multi-Moeda)
+              <h4 className="text-sm font-semibold text-slate-800">
+                Câmbio manual (multi-moeda)
               </h4>
               <p className="text-xs text-slate-500">
-                Convenção oficial Packager: <strong>1 EUR = X BRL</strong>
+                Convenção oficial: <strong>1 EUR = X BRL</strong>
               </p>
             </div>
             {hasCurrencyMismatch && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+              <span className="badge badge-info">
                 Moedas mistas detectadas
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Taxa de Câmbio (1 EUR em BRL)
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Taxa de câmbio (1 EUR em BRL)
               </label>
-              <div className="relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">
-                  1 € =
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1 € =</span>
                 <input
                   type="number"
                   step="0.0001"
@@ -145,18 +138,17 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                       onChangeExchangeRate(isNaN(val) ? null : val);
                     }
                   }}
-                  placeholder="Ex: 6.2000"
-                  className="w-full pl-12 pr-12 py-2 text-sm border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 font-mono"
+                  placeholder="Ex: 6.1800"
+                  className="form-input"
+                  style={{ width: '120px' }}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 text-sm font-bold">
-                  BRL
-                </div>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>BRL</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Data de Referência da Cotação
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Data de referência da taxa
               </label>
               <input
                 type="date"
@@ -167,19 +159,30 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                     onChangeExchangeRateDate(e.target.value);
                   }
                 }}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"
+                className="form-input"
+                style={{ width: '160px' }}
               />
             </div>
           </div>
         </div>
       )}
 
-      {/* Lista de Componentes de Custo */}
-      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+      {/* Tabela de Componentes de Custo */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: '0.75rem 1rem',
+            borderBottom: '1px solid var(--border-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
           <div>
-            <h3 className="text-base font-bold text-slate-800">Componentes de Custo</h3>
-            <p className="text-xs text-slate-500">
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Componentes de custo
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
               Discriminação de custos (transporte, hospedagem, taxas, etc.) que formam o custo total.
             </p>
           </div>
@@ -187,53 +190,54 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
             <button
               type="button"
               onClick={handleAddComponent}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-md text-xs font-semibold transition-colors"
+              className="btn btn-sm btn-action-primary"
             >
-              <span>+</span> Adicionar Item de Custo
+              + Adicionar Custo
             </button>
           )}
         </div>
 
         {components.length === 0 ? (
-          <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-lg">
-            <p className="text-sm text-slate-500 font-medium">Nenhum componente de custo cadastrado.</p>
-            <p className="text-xs text-slate-400 mt-1">
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <p style={{ fontSize: '13px', fontWeight: 500 }}>Nenhum componente de custo cadastrado.</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
               Adicione itens como transporte, hospedagem e taxas para alimentar o motor financeiro.
             </p>
             {!readOnly && (
               <button
                 type="button"
                 onClick={handleAddComponent}
-                className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 bg-white text-blue-600 hover:text-blue-800 border border-slate-300 rounded-md text-xs font-semibold shadow-sm"
+                className="btn btn-sm btn-secondary"
+                style={{ marginTop: '0.75rem' }}
               >
-                + Adicionar Primeiro Custo
+                + Adicionar primeiro custo
               </button>
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="py-2.5 px-3 rounded-l">Categoria</th>
-                  <th className="py-2.5 px-3">Descrição</th>
-                  <th className="py-2.5 px-2 w-20 text-center">Qtd</th>
-                  <th className="py-2.5 px-2 w-24">Moeda</th>
-                  <th className="py-2.5 px-3 w-32 text-right">Valor Unit.</th>
-                  <th className="py-2.5 px-3 w-32 text-right">Subtotal</th>
-                  {!readOnly && <th className="py-2.5 px-2 w-12 text-center rounded-r">Ação</th>}
+                  <th>Categoria</th>
+                  <th>Descrição</th>
+                  <th style={{ textAlign: 'center', width: '70px' }}>Qtd</th>
+                  <th style={{ width: '90px' }}>Moeda</th>
+                  <th style={{ textAlign: 'right', width: '120px' }}>Valor unit.</th>
+                  <th style={{ textAlign: 'right', width: '120px' }}>Subtotal</th>
+                  {!readOnly && <th style={{ textAlign: 'center', width: '50px' }}>Ação</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {components.map((comp, idx) => {
                   const qty = comp.quantity && comp.quantity > 0 ? comp.quantity : 1;
                   const itemSubtotal = roundMoney((comp.amount || 0) * qty);
 
                   return (
-                    <tr key={comp.id || idx} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-2 px-3 align-middle">
+                    <tr key={comp.id || idx}>
+                      <td>
                         {readOnly ? (
-                          <span className="font-medium text-slate-800">
+                          <span style={{ fontWeight: 500 }}>
                             {COST_CATEGORY_LABELS[comp.category] || comp.category}
                           </span>
                         ) : (
@@ -242,7 +246,8 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                             onChange={(e) =>
                               handleUpdateComponent(idx, { category: e.target.value as CostCategory })
                             }
-                            className="w-full text-xs py-1.5 px-2 border border-slate-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                            className="form-select"
+                            style={{ padding: '0.3rem 0.5rem', fontSize: '13px' }}
                           >
                             <option value="outbound_transport">Transporte de ida</option>
                             <option value="inbound_transport">Transporte de volta</option>
@@ -253,34 +258,36 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                           </select>
                         )}
                       </td>
-                      <td className="py-2 px-3 align-middle">
+                      <td>
                         {readOnly ? (
                           <div>
-                            <div className="font-semibold text-slate-800">{comp.description || '—'}</div>
-                            {comp.notes && <div className="text-[11px] text-slate-400">{comp.notes}</div>}
+                            <div style={{ fontWeight: 500 }}>{comp.description || '—'}</div>
+                            {comp.notes && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{comp.notes}</div>}
                           </div>
                         ) : (
-                          <div className="space-y-1">
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                             <input
                               type="text"
                               value={comp.description}
                               onChange={(e) => handleUpdateComponent(idx, { description: e.target.value })}
-                              placeholder="Ex: Voo LIS-MAD ou Hotel 4 estrelas"
-                              className="w-full text-xs py-1.5 px-2 border border-slate-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Ex: Voo LIS-MAD ou Hotel"
+                              className="form-input"
+                              style={{ padding: '0.3rem 0.5rem', fontSize: '13px' }}
                             />
                             <input
                               type="text"
                               value={comp.notes || ''}
                               onChange={(e) => handleUpdateComponent(idx, { notes: e.target.value })}
                               placeholder="Observação opcional..."
-                              className="w-full text-[11px] py-1 px-2 text-slate-500 border border-slate-200 rounded focus:ring-blue-500 focus:border-blue-500"
+                              className="form-input"
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '11px', color: 'var(--text-secondary)' }}
                             />
                           </div>
                         )}
                       </td>
-                      <td className="py-2 px-2 align-middle text-center">
+                      <td style={{ textAlign: 'center' }}>
                         {readOnly ? (
-                          <span className="font-mono">{qty}</span>
+                          <span>{qty}</span>
                         ) : (
                           <input
                             type="number"
@@ -292,29 +299,32 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                                 quantity: Math.max(1, parseInt(e.target.value) || 1),
                               })
                             }
-                            className="w-16 text-center text-xs py-1.5 px-1 border border-slate-300 rounded font-mono focus:ring-blue-500 focus:border-blue-500"
+                            className="form-input"
+                            style={{ width: '50px', textAlign: 'center', padding: '0.3rem 0.2rem', fontSize: '13px' }}
                           />
                         )}
                       </td>
-                      <td className="py-2 px-2 align-middle">
+                      <td>
                         {readOnly ? (
-                          <span className="font-bold text-slate-700">{comp.currency}</span>
+                          <span className="badge badge-neutral">{comp.currency}</span>
                         ) : (
                           <select
                             value={comp.currency}
                             onChange={(e) =>
                               handleUpdateComponent(idx, { currency: e.target.value as Currency })
                             }
-                            className="w-20 text-xs py-1.5 px-1.5 border border-slate-300 rounded font-semibold focus:ring-blue-500 focus:border-blue-500"
+                            className="form-select"
+                            style={{ padding: '0.3rem 0.4rem', fontSize: '12px' }}
                           >
                             <option value="EUR">EUR (€)</option>
                             <option value="BRL">BRL (R$)</option>
+                            <option value="USD">USD ($)</option>
                           </select>
                         )}
                       </td>
-                      <td className="py-2 px-3 align-middle text-right font-mono">
+                      <td style={{ textAlign: 'right' }}>
                         {readOnly ? (
-                          formatMoney(comp.amount || 0, comp.currency)
+                          <span>{formatMoney(comp.amount || 0, comp.currency)}</span>
                         ) : (
                           <input
                             type="number"
@@ -327,22 +337,23 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                               })
                             }
                             placeholder="0.00"
-                            className="w-28 text-right text-xs py-1.5 px-2 border border-slate-300 rounded font-mono focus:ring-blue-500 focus:border-blue-500"
+                            className="form-input"
+                            style={{ width: '95px', textAlign: 'right', padding: '0.3rem 0.4rem', fontSize: '13px' }}
                           />
                         )}
                       </td>
-                      <td className="py-2 px-3 align-middle text-right font-mono font-bold text-slate-800">
+                      <td style={{ textAlign: 'right', fontWeight: 500 }}>
                         {formatMoney(itemSubtotal, comp.currency)}
                       </td>
                       {!readOnly && (
-                        <td className="py-2 px-2 align-middle text-center">
+                        <td style={{ textAlign: 'center' }}>
                           <button
                             type="button"
                             onClick={() => handleRemoveComponent(idx)}
+                            className="btn btn-sm btn-danger-outline"
                             title="Remover componente"
-                            className="text-slate-400 hover:text-red-600 transition-colors p-1"
                           >
-                            ✕
+                            ×
                           </button>
                         </td>
                       )}
@@ -355,151 +366,176 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
         )}
       </div>
 
-      {/* Painel Consolidado: Seção "Financeiro" */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-xl p-6 shadow-lg border border-slate-700">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/60 pb-4 mb-6">
+      {/* Painel Consolidado: Resumo Financeiro (Clean Back-office) */}
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold tracking-tight text-white">Resumo Financeiro</h3>
-              <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                Motor Determinístico
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Resumo financeiro
+              </h3>
+              <span className="badge badge-neutral" style={{ fontSize: '11px' }}>
+                Motor determinístico
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Cálculos em tempo real na moeda da cotação ({currency}). Divisor: {payingPassengers} passageiro(s) pagante(s).
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Cálculos na moeda da cotação ({currency}). Divisor: {payingPassengers} passageiro(s) pagante(s).
             </p>
           </div>
 
           {/* Campo de Preço de Venda */}
-          <div className="flex items-center gap-3 bg-slate-800/80 border border-slate-700 rounded-lg px-4 py-2">
-            <label className="text-xs font-semibold text-slate-300">Preço de Venda ({currency}):</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-surface-elevated)', padding: '0.4rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+            <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+              Preço de venda ({currency}):
+            </label>
             {readOnly ? (
-              <span className="text-base font-bold font-mono text-emerald-400">
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {formatMoney(salePrice, currency)}
               </span>
             ) : (
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={salePrice || ''}
-                  onChange={(e) => onChangeSalePrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                  placeholder="0.00"
-                  className="w-36 px-3 py-1.5 text-sm font-mono font-bold bg-slate-900 text-emerald-400 border border-slate-600 rounded focus:ring-emerald-500 focus:border-emerald-500 text-right"
-                />
-              </div>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={salePrice || ''}
+                onChange={(e) => onChangeSalePrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                placeholder="0.00"
+                className="form-input"
+                style={{ width: '110px', textAlign: 'right', fontWeight: 600, fontSize: '14px' }}
+              />
             )}
           </div>
         </div>
 
-        {/* Métricas Calculadas (Visualmente distintas de entradas manuais) */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {/* Custo Total */}
-          <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3.5 flex flex-col justify-between">
+        {/* 6 Métricas Calculadas em Grid Compacto com Nomes em Caixa Baixa */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {/* Custo total */}
+          <div style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '0.65rem 0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
-              <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                <span>Custo Total</span>
-                <span className="text-[9px] bg-slate-700 text-slate-300 px-1 py-0.2 rounded font-sans">AUTO</span>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Custo total</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>auto</span>
               </div>
-              <div className="text-base sm:text-lg font-bold font-mono text-slate-100 mt-1">
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
                 {formatMoney(summary.totalCost, currency)}
               </div>
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 truncate">
-              {components.length} item(ns) de custo
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              {components.length} item(ns)
             </span>
           </div>
 
-          {/* Impostos / Taxas */}
-          <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3.5 flex flex-col justify-between">
+          {/* Impostos e taxas */}
+          <div style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '0.65rem 0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
-              <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                <span>Impostos / Taxas</span>
-                <span className="text-[9px] bg-slate-700 text-slate-300 px-1 py-0.2 rounded font-sans">AUTO</span>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Impostos e taxas</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>auto</span>
               </div>
-              <div className="text-base sm:text-lg font-bold font-mono text-slate-200 mt-1">
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
                 {formatMoney(summary.taxesAndFeesTotal, currency)}
               </div>
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 truncate">Subtotal de taxas</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              Subtotal de taxas
+            </span>
           </div>
 
-          {/* Preço de Venda Total */}
-          <div className="bg-slate-800/60 border border-emerald-500/30 rounded-lg p-3.5 flex flex-col justify-between">
+          {/* Preço de venda */}
+          <div style={{ background: 'var(--bg-surface-elevated)', border: '1px solid rgba(0, 102, 255, 0.25)', borderRadius: 'var(--radius-sm)', padding: '0.65rem 0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
-              <div className="text-[11px] font-medium text-emerald-300 uppercase tracking-wider flex items-center justify-between">
-                <span>Preço Venda Total</span>
+              <div style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: 500 }}>
+                <span>Preço de venda</span>
               </div>
-              <div className="text-base sm:text-lg font-bold font-mono text-emerald-400 mt-1">
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--accent-primary)', marginTop: '0.25rem' }}>
                 {formatMoney(summary.salePrice, currency)}
               </div>
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 truncate">Pacote completo</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              Pacote completo
+            </span>
           </div>
 
-          {/* Preço Por Pessoa */}
-          <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3.5 flex flex-col justify-between">
+          {/* Preço por pessoa */}
+          <div style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '0.65rem 0.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
-              <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                <span>Preço p/ Pessoa</span>
-                <span className="text-[9px] bg-slate-700 text-slate-300 px-1 py-0.2 rounded font-sans">AUTO</span>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Preço por pessoa</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>auto</span>
               </div>
-              <div className="text-base sm:text-lg font-bold font-mono text-cyan-300 mt-1">
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
                 {formatMoney(summary.pricePerPerson, currency)}
               </div>
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 truncate">
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
               {payingPassengers} pagante(s)
             </span>
           </div>
 
-          {/* Lucro Bruto */}
+          {/* Lucro bruto */}
           <div
-            className={`border rounded-lg p-3.5 flex flex-col justify-between ${
-              summary.profit >= 0
-                ? 'bg-emerald-950/30 border-emerald-500/40'
-                : 'bg-rose-950/30 border-rose-500/40'
-            }`}
+            style={{
+              background: summary.profit >= 0 ? 'var(--success-soft)' : 'var(--danger-soft)',
+              border: `1px solid ${summary.profit >= 0 ? 'rgba(5, 150, 105, 0.25)' : 'rgba(220, 38, 38, 0.25)'}`,
+              borderRadius: 'var(--radius-sm)',
+              padding: '0.65rem 0.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+            }}
           >
             <div>
-              <div className="text-[11px] font-medium text-slate-300 uppercase tracking-wider flex items-center justify-between">
-                <span>Lucro Bruto</span>
-                <span className="text-[9px] bg-slate-700 text-slate-300 px-1 py-0.2 rounded font-sans">AUTO</span>
+              <div style={{ fontSize: '12px', color: summary.profit >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Lucro bruto</span>
+                <span style={{ fontSize: '10px', opacity: 0.7 }}>auto</span>
               </div>
               <div
-                className={`text-base sm:text-lg font-bold font-mono mt-1 ${
-                  summary.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                }`}
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: summary.profit >= 0 ? 'var(--success)' : 'var(--danger)',
+                  marginTop: '0.25rem',
+                }}
               >
                 {formatMoney(summary.profit, currency)}
               </div>
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 truncate">Venda − Custos</span>
+            <span style={{ fontSize: '11px', opacity: 0.75, marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+              Venda − custos
+            </span>
           </div>
 
-          {/* Margem % */}
+          {/* Margem de lucro */}
           <div
-            className={`border rounded-lg p-3.5 flex flex-col justify-between ${
-              summary.profitPercent >= 0
-                ? 'bg-indigo-950/30 border-indigo-500/40'
-                : 'bg-rose-950/30 border-rose-500/40'
-            }`}
+            style={{
+              background: summary.profitPercent >= 0 ? 'var(--success-soft)' : 'var(--danger-soft)',
+              border: `1px solid ${summary.profitPercent >= 0 ? 'rgba(5, 150, 105, 0.25)' : 'rgba(220, 38, 38, 0.25)'}`,
+              borderRadius: 'var(--radius-sm)',
+              padding: '0.65rem 0.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+            }}
           >
             <div>
-              <div className="text-[11px] font-medium text-slate-300 uppercase tracking-wider flex items-center justify-between">
-                <span>Margem Lucro</span>
-                <span className="text-[9px] bg-slate-700 text-slate-300 px-1 py-0.2 rounded font-sans">AUTO</span>
+              <div style={{ fontSize: '12px', color: summary.profitPercent >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Margem de lucro</span>
+                <span style={{ fontSize: '10px', opacity: 0.7 }}>auto</span>
               </div>
               <div
-                className={`text-base sm:text-lg font-bold font-mono mt-1 ${
-                  summary.profitPercent >= 0 ? 'text-indigo-300' : 'text-rose-400'
-                }`}
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: summary.profitPercent >= 0 ? 'var(--success)' : 'var(--danger)',
+                  marginTop: '0.25rem',
+                }}
               >
                 {formatPercent(summary.profitPercent)}
               </div>
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 truncate">Lucro / Venda</span>
+            <span style={{ fontSize: '11px', opacity: 0.75, marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+              Lucro / venda
+            </span>
           </div>
         </div>
       </div>
