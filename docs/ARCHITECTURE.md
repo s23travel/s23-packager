@@ -239,3 +239,65 @@ Os campos do modelo `StructuredPackageContent` dividem-se em 3 categorias operac
 - A função pura `validateStructuredContent` inspeciona cada campo do JSON retornado antes de qualquer persistência.
 - Se a IA omitir campos obrigatórios, violar o padrão de slug, omitir o item fixo S23 ou divergir do preço comercial soberano, a resposta é **rejeitada imediatamente** com mensagens de erro acionáveis.
 - Se a secret `GEMINI_API_KEY` não estiver configurada no Supabase, a Edge Function retorna código `GEMINI_API_KEY_MISSING` e a UI orienta claramente o operador sobre onde configurar o secret, sem travar a aplicação nem vazar informações sensíveis.
+
+---
+
+## 8. Geração e Validação Determinística de Markdown para o Website (Fase 6B)
+
+A Fase 6B é responsável por transformar o conteúdo estruturado e validado (`StructuredPackageContent`) em um arquivo Markdown `.md` perfeitamente compatível com o ecossistema estático do website S23 (`content/pacotes/*.md`).
+
+### 8.1 Princípio da Separação: IA vs. Markdown Generator
+- **O Gemini NUNCA gera Markdown**: A inteligência artificial atua exclusivamente na pesquisa factual e redação estruturada (`StructuredPackageContent` em JSON).
+- **Gerador 100% Determinístico**: O código TypeScript puro [`markdownService.ts`](file:///c:/Users/ptmaralvoli/Documents/Antigravity/packager/src/services/markdownService.ts) serializa os dados estruturados de maneira reproduzível e previsível. Dado exatamente o mesmo input, o Markdown gerado é bit-a-bit idêntico.
+
+### 8.2 Estrutura Oficial do Arquivo Markdown
+O arquivo gerado obedece estritamente à documentação de referência (`docs/COMO_ADICIONAR_PACOTE.md`, `docs/ARQUITETURA_MANAGER.md`, `docs/ARQUITETURA_CARDS.md` e `docs/perplexity_space.txt`):
+1. **Delimitadores Frontmatter**: Bloco YAML delimitado por `---` na primeira linha e fechado por `---`.
+2. **Ordem Padronizada dos Campos**:
+   - `title`, `slug`, `category`
+   - `heroImage`, `cardImage`
+   - `price` (número puro ou texto com moeda entre aspas)
+   - `date`, `excerpt`
+   - `published`, `featured`
+   - Campos avançados (`subtitle`, `duracao`, `origem`, `ctaLabel`, `imagemDestaque`)
+   - Blocos estruturados:
+     - `incluso`: lista de itens com `icon`, `title` e `desc`.
+     - `naoIncluso`: lista simples de strings.
+     - `sobre`: bloco de apresentação com `title`, `text` e opcional `image`.
+     - `infoDestino`: metadados de localização, cultura, clima e documentação.
+     - `roteiro`: lista diária de programação real (`title`, `desc`).
+     - `pagamento`: condições comerciais (`valor`, `formas`, `observacao`).
+     - `customInfo`: observações complementares opcionais.
+     - `seoTitle`, `seoDescription`: metadados para motores de busca.
+3. **Corpo do Markdown**: Texto de apresentação posicionado logo abaixo do fechamento do cabeçalho.
+
+### 8.3 Regras Inegociáveis de Negócio da S23
+- **Item Fixo Obrigatório**: O array `incluso` contém obrigatoriamente:
+  ```yaml
+  - icon: "gift"
+    title: "Guia exclusivo S23"
+    desc: "Nossas dicas práticas."
+  ```
+- **Observação Oficial de Pagamento**: O campo `pagamento.observacao` contém obrigatoriamente a frase:
+  `"Valor por pessoa. Consulte-nos sobre personalizações, pagamento parcelado ou em outras moedas."`
+
+### 8.4 Regras de Serialização YAML
+- **Aspas e Escape Seguro**: Valores de texto são formatados com aspas duplas padronizadas (`formatYamlString`), tratando caracteres especiais (`:`, `"`, quebras de linha, emojis e acentuação).
+- **Indentação Estrita**: 2 espaços para objetos e listas, sem uso de caracteres de tabulação (`\t`).
+- **Valores Numéricos e Booleanos**: Booleanos (`true`/`false`) e preços numéricos são serializados sem aspas conforme exigido pelo parser YAML do website. Preços em texto (ex.: `"610 €"`, `"R$ 18.900"`) são serializados entre aspas.
+
+### 8.5 Camada de Validação Especializada do Markdown
+O módulo [`markdownValidationService.ts`](file:///c:/Users/ptmaralvoli/Documents/Antigravity/packager/src/services/markdownValidationService.ts) realiza uma segunda barreira de validação independente:
+- Verifica integridade dos delimitadores `---` e sintaxe YAML.
+- Exige todos os campos obrigatórios para publicação.
+- **Tolerância Zero no Preço**: Compara o `price` do Markdown diretamente com o preço do `StructuredPackageContent`. Diferenças mesmo de €1 ou R$1 rejeitam o arquivo.
+- **Detecção de Dados Confidenciais**: Varredura contra termos internos como `totalCost`, `cost`, `lucro`, `profit`, `margem`, `profitPercent`, `markup`, `supplier` e identificadores UUID internos de banco.
+- **Ausência de Placeholders**: Bloqueia marcadores como `[hotel]`, `[data]`, `undefined`, `null` e `NaN`.
+
+### 8.6 Nomenclatura e Download do Arquivo
+- **Regra de Nomenclatura**: O arquivo é nomeado estritamente como `<slug>.md` derivado do slug aprovado (ex.: `elas-viajam-maiorca-2026.md`).
+- **Download no Navegador**: Disponibilizado via Blob (`text/markdown;charset=utf-8`) com acionamento do download nativo no cliente.
+- **Cópia Instantânea**: Botão com integração à Clipboard API para copiar o conteúdo Markdown completo.
+
+### 8.7 Papel Futuro do Manager (Fase Futura)
+O arquivo `.md` gerado pela Fase 6B é o formato de entrada exato consumido pelo **S23 Manager** (`/manager`) e pelo repositório do website (`content/pacotes/`). A integração direta via GitHub Contents API e publicação automática será tratada na etapa posterior, preservando nesta fase o download manual e a revisão do operador.

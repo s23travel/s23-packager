@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Package, Quotation, StructuredPackageContent } from '../../types';
 import { buildContentGenerationInput } from '../../services/contentValidationService';
 import { generateContentForWebsite } from '../../services/aiContentService';
+import { generatePackageMarkdown, getMarkdownFileName } from '../../services/markdownService';
+import { validatePackageMarkdown } from '../../services/markdownValidationService';
 
 interface AIContentGeneratorProps {
   source: {
@@ -15,13 +17,23 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
   const [content, setContent] = useState<StructuredPackageContent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'geral' | 'sobre' | 'inclusoes' | 'seo' | 'json'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'sobre' | 'inclusoes' | 'seo' | 'json' | 'markdown'>('geral');
+
+  // Estados do Markdown do Website (Fase 6B)
+  const [markdownString, setMarkdownString] = useState<string | null>(null);
+  const [markdownFileName, setMarkdownFileName] = useState<string | null>(null);
+  const [markdownErrors, setMarkdownErrors] = useState<string[]>([]);
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
 
   const handleGenerate = async () => {
     try {
       setGenerating(true);
       setError(null);
       setErrorDetails(null);
+      // Invalida markdown anterior ao gerar novo conteúdo estruturado
+      setMarkdownString(null);
+      setMarkdownFileName(null);
+      setMarkdownErrors([]);
 
       // Constrói input sanitizado garantindo que nenhum custo interno seja enviado
       const input = buildContentGenerationInput(source);
@@ -42,6 +54,60 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleGenerateMarkdown = () => {
+    if (!content) return;
+
+    try {
+      // 1. Geração determinística
+      const md = generatePackageMarkdown(content);
+      const filename = getMarkdownFileName(content);
+
+      // 2. Validação estrita do Markdown gerado
+      const validation = validatePackageMarkdown(md, content);
+
+      if (!validation.valid) {
+        setMarkdownErrors(validation.errors);
+        setMarkdownString(null);
+        setMarkdownFileName(null);
+        return;
+      }
+
+      setMarkdownErrors([]);
+      setMarkdownString(md);
+      setMarkdownFileName(filename);
+      setActiveTab('markdown');
+    } catch (err: any) {
+      setMarkdownErrors([err.message || 'Erro ao gerar arquivo Markdown.']);
+      setMarkdownString(null);
+      setMarkdownFileName(null);
+    }
+  };
+
+  const handleCopyMarkdown = async () => {
+    if (!markdownString) return;
+    try {
+      await navigator.clipboard.writeText(markdownString);
+      setCopiedMarkdown(true);
+      setTimeout(() => setCopiedMarkdown(false), 2000);
+    } catch (err) {
+      console.error('Falha ao copiar:', err);
+    }
+  };
+
+  const handleDownloadMarkdown = () => {
+    if (!markdownString || !markdownFileName) return;
+
+    const blob = new Blob([markdownString], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = markdownFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -164,6 +230,20 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
               }`}
             >
               JSON Estruturado
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('markdown')}
+              className={`pb-2 px-3 transition-colors border-b-2 flex items-center gap-1.5 ${
+                activeTab === 'markdown'
+                  ? 'border-indigo-600 text-indigo-700 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <span>📄</span> Markdown do Website
+              {markdownString && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500" title="Markdown validado e pronto"></span>
+              )}
             </button>
           </div>
 
@@ -290,6 +370,90 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
           {activeTab === 'json' && (
             <div className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-[11px] font-mono leading-relaxed">
               <pre>{JSON.stringify(content, null, 2)}</pre>
+            </div>
+          )}
+
+          {/* Aba: Markdown do Website (Fase 6B) */}
+          {activeTab === 'markdown' && (
+            <div className="space-y-4 text-xs">
+              {/* Barra de Ações do Markdown */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-100/80 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-700">Arquivo:</span>
+                  <span className="font-mono bg-white px-2.5 py-1 rounded border border-slate-200 text-slate-800 font-semibold">
+                    {markdownFileName || `${content.slug}.md`}
+                  </span>
+                  {markdownString && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      ✓ Validado & Compatível com Website S23
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGenerateMarkdown}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                  >
+                    <span>⚡</span> {markdownString ? 'Regerar Markdown' : 'Gerar Markdown'}
+                  </button>
+
+                  {markdownString && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleCopyMarkdown}
+                        className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5"
+                      >
+                        <span>📋</span> {copiedMarkdown ? 'Copiado!' : 'Copiar Markdown'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleDownloadMarkdown}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                      >
+                        <span>⬇️</span> Baixar .md
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Erros de Validação do Markdown */}
+              {markdownErrors.length > 0 && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <span>⚠️</span> Erros na validação do Markdown gerado:
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-700 mt-1">
+                    {markdownErrors.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Preview do Conteúdo Markdown */}
+              {markdownString ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                    <span>Pré-visualização do arquivo Markdown final pronto para commit no repositório:</span>
+                    <span>{markdownString.split('\n').length} linhas • {new Blob([markdownString]).size} bytes</span>
+                  </div>
+                  <div className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-[11px] font-mono leading-relaxed max-h-[500px]">
+                    <pre className="whitespace-pre">{markdownString}</pre>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                  <p className="text-slate-600 font-medium">Nenhum Markdown gerado ainda para este conteúdo.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Clique no botão "Gerar Markdown" acima para transformar este conteúdo estruturado em um arquivo .md compatível com o website S23.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
