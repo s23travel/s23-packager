@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Package, StructuredPackageContent } from '../../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Package, StructuredPackageContent, PackageWebsiteContent } from '../../types';
 import { buildContentGenerationInput, validateStructuredContent } from '../../services/contentValidationService';
 import { generateContentForWebsite } from '../../services/aiContentService';
 import { generatePackageMarkdown, getMarkdownFileName, S23_FIXED_INCLUSO_ITEM } from '../../services/markdownService';
 import { validatePackageMarkdown } from '../../services/markdownValidationService';
+import { packageWebsiteContentService } from '../../services/packageWebsiteContentService';
 import { PackageContentEditor } from './PackageContentEditor';
 import { MarkdownPreviewCard } from './MarkdownPreviewCard';
 
@@ -13,27 +14,89 @@ export interface AIContentGeneratorProps {
   };
 }
 
+function formatDateTime(isoString?: string): string {
+  if (!isoString) return '—';
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return isoString;
+  }
+}
+
 export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }) => {
   const pkg = source.package;
 
+  // Estado de carregamento do conteúdo persistido
+  const [loadingPersisted, setLoadingPersisted] = useState(true);
+  const [savedRecord, setSavedRecord] = useState<PackageWebsiteContent | null>(null);
+
+  // Modo de edição: se true, exibe o editor estruturado
+  const [isEditingContent, setIsEditingContent] = useState(false);
+
+  // Visualização rápida do Markdown na tela de conteúdo salvo
+  const [showMarkdownViewer, setShowMarkdownViewer] = useState(false);
+
+  // Estados de IA e formulário
   const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [content, setContent] = useState<StructuredPackageContent | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Mensagens e erros de geração
+  // Mensagens e erros
   const [genError, setGenError] = useState<string | null>(null);
   const [genErrorDetails, setGenErrorDetails] = useState<string | null>(null);
-
-  // Erros e status de validação / salvamento
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
-  // Estado do Markdown gerado deterministicamente
+  // Estado do Markdown gerado
   const [markdownString, setMarkdownString] = useState<string | null>(null);
   const [markdownFileName, setMarkdownFileName] = useState<string | null>(null);
 
   // Modal de confirmação ao regenerar com alterações pendentes
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+
+  // ----------------------------------------------------
+  // CARREGAR CONTEÚDO SALVO NO MOUNT / MUDANÇA DE PACOTE
+  // ----------------------------------------------------
+  const loadPersistedContent = useCallback(async () => {
+    if (!pkg?.id) {
+      setLoadingPersisted(false);
+      return;
+    }
+
+    try {
+      setLoadingPersisted(true);
+      const record = await packageWebsiteContentService.getPackageWebsiteContent(pkg.id);
+      if (record) {
+        setSavedRecord(record);
+        setContent(record.content);
+        setMarkdownString(record.markdown);
+        setMarkdownFileName(record.filename);
+        setIsEditingContent(false);
+      } else {
+        setSavedRecord(null);
+        setContent(null);
+        setMarkdownString(null);
+        setMarkdownFileName(null);
+        setIsEditingContent(false);
+      }
+    } catch (err: any) {
+      console.error('Erro ao carregar conteúdo persistido do website:', err);
+    } finally {
+      setLoadingPersisted(false);
+    }
+  }, [pkg?.id]);
+
+  useEffect(() => {
+    loadPersistedContent();
+  }, [loadPersistedContent]);
 
   if (!pkg) {
     return (
@@ -61,6 +124,25 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
       : 0;
 
   // ----------------------------------------------------
+  // DOWNLOAD DIRETO DO MARKDOWN SALVO (SEM CHAMAR IA)
+  // ----------------------------------------------------
+  const handleDirectDownload = (md: string, filename: string) => {
+    try {
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Falha ao baixar arquivo Markdown:', err);
+    }
+  };
+
+  // ----------------------------------------------------
   // GERAÇÃO COM IA (GEMINI 2.5 FLASH + GROUNDING)
   // ----------------------------------------------------
   const executeGeneration = async () => {
@@ -69,11 +151,9 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
       setGenError(null);
       setGenErrorDetails(null);
       setValidationErrors([]);
-      setSaveSuccess(false);
-      setMarkdownString(null);
-      setMarkdownFileName(null);
+      setSaveSuccessMessage(null);
 
-      // Constrói payload seguro (sanitizado contra custos internos/lucro/fornecedor)
+      // Constrói payload seguro sanitizado
       const input = buildContentGenerationInput({ package: pkg });
 
       const res = await generateContentForWebsite(input);
@@ -84,14 +164,11 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
         return;
       }
 
-      // Garante a autoridade soberana dos dados comerciais do Pacote Base:
-      // O preço gerado pela IA NUNCA sobrescreve o valor comercial oficial do pacote base.
+      // Aplica dados soberanos do Pacote Base
       const rawGenerated = res.data;
       const enforcedContent: StructuredPackageContent = {
         ...rawGenerated,
-        // Preço soberano do pacote base
         price: sovereignSalePrice > 0 ? sovereignSalePrice : rawGenerated.price,
-        // Garantia do item fixo S23 em inclusões
         incluso: [
           ...(rawGenerated.incluso || []).filter(
             (item) => item.title?.trim() !== S23_FIXED_INCLUSO_ITEM.title
@@ -100,8 +177,10 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
         ],
       };
 
+      // Abre no editor para revisão humana
       setContent(enforcedContent);
-      setIsDirty(false);
+      setIsEditingContent(true);
+      setIsDirty(true);
       setShowRegenerateConfirm(false);
     } catch (err: any) {
       console.error('Erro na geração com IA:', err);
@@ -120,13 +199,14 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
   };
 
   // ----------------------------------------------------
-  // SALVAMENTO & VALIDAÇÃO DETERMINÍSTICA DO MARKDOWN
+  // SALVAMENTO ATÔMICO & PERSISTÊNCIA NO SUPABASE
   // ----------------------------------------------------
-  const handleSaveContent = () => {
+  const handleSaveContent = async () => {
     if (!content) return;
 
     setValidationErrors([]);
-    setSaveSuccess(false);
+    setSaveSuccessMessage(null);
+    setSaving(true);
 
     // 1. Garante que os dados soberanos continuem protegidos
     const finalizedContent: StructuredPackageContent = {
@@ -140,8 +220,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
 
     if (!contentValidation.valid) {
       setValidationErrors(contentValidation.errors);
-      setMarkdownString(null);
-      setMarkdownFileName(null);
+      setSaving(false);
       return;
     }
 
@@ -156,25 +235,53 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
 
       if (!mdValidation.valid) {
         setValidationErrors(mdValidation.errors);
-        setMarkdownString(null);
-        setMarkdownFileName(null);
+        setSaving(false);
         return;
       }
 
-      // Sucesso completo: atualiza estado, reseta dirty e disponibiliza download
+      // 5. Persistência atômica no Supabase (somente se ambas validações passarem)
+      const persistedRecord = await packageWebsiteContentService.savePackageWebsiteContent(
+        pkg.id,
+        validContent,
+        md,
+        filename
+      );
+
+      // Atualiza estado local
+      setSavedRecord(persistedRecord);
       setContent(validContent);
       setMarkdownString(md);
       setMarkdownFileName(filename);
       setIsDirty(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 5000);
+      setSaveSuccessMessage('Conteúdo validado e salvo com sucesso no Pacote Base!');
+      setTimeout(() => setSaveSuccessMessage(null), 5000);
     } catch (err: any) {
-      console.error('Erro ao gerar/validar Markdown:', err);
-      setValidationErrors([err.message || 'Erro inesperado ao gerar arquivo Markdown.']);
-      setMarkdownString(null);
-      setMarkdownFileName(null);
+      console.error('Erro ao salvar/validar Markdown:', err);
+      setValidationErrors([err.message || 'Erro inesperado ao salvar conteúdo no Supabase.']);
+    } finally {
+      setSaving(false);
     }
   };
+
+  // Carregamento inicial em andamento
+  if (loadingPersisted) {
+    return (
+      <div
+        style={{
+          padding: '2rem',
+          textAlign: 'center',
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: '8px',
+          border: '1px solid var(--border-color)',
+          color: 'var(--text-secondary)',
+          fontSize: '0.875rem',
+        }}
+      >
+        <span style={{ display: 'inline-block', marginRight: '0.5rem' }}>⏳</span>
+        Carregando conteúdo do website para o Pacote Base...
+      </div>
+    );
+  }
 
   return (
     <div
@@ -215,13 +322,30 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
               >
                 Pacote Base
               </span>
+              {savedRecord && !isEditingContent && (
+                <span
+                  style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '9999px',
+                    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                    color: '#16a34a',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                  }}
+                >
+                  ✓ Conteúdo salvo
+                </span>
+              )}
             </div>
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
               Crie e revise o conteúdo público deste pacote antes de gerar o arquivo Markdown para publicação no Manager.
             </p>
           </div>
 
-          {!content && (
+          {!savedRecord && !content && (
             <button
               type="button"
               onClick={executeGeneration}
@@ -257,8 +381,146 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
         )}
       </div>
 
-      {/* ESTADO INICIAL (SEM CONTEÚDO AINDA) */}
-      {!content && (
+      {/* ========================================================================= */}
+      {/* CENÁRIO 1: PACOTE BASE COM CONTEÚDO SALVO (VISUALIZAÇÃO / SOBREVIVE AO RELOAD) */}
+      {/* ========================================================================= */}
+      {savedRecord && !isEditingContent && (
+        <div
+          style={{
+            padding: '1.5rem',
+            backgroundColor: 'var(--bg-card)',
+            borderRadius: '8px',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '1.25rem',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '1.125rem' }}>📄</span>
+                <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {savedRecord.filename}
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '9999px',
+                    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                    color: '#16a34a',
+                  }}
+                >
+                  ✓ Validado e salvo
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                <span>
+                  <strong>Título:</strong> {savedRecord.content.title}
+                </span>
+                <span>
+                  <strong>Categoria:</strong> {savedRecord.content.category}
+                </span>
+                <span>
+                  <strong>Última atualização:</strong> {formatDateTime(savedRecord.updated_at)}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setContent(savedRecord.content);
+                  setMarkdownString(savedRecord.markdown);
+                  setMarkdownFileName(savedRecord.filename);
+                  setIsEditingContent(true);
+                  setIsDirty(false);
+                }}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+              >
+                ✏️ Editar conteúdo
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDirectDownload(savedRecord.markdown, savedRecord.filename)}
+                className="btn btn-primary"
+                style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+              >
+                ⬇️ Baixar .md
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMarkdownViewer(!showMarkdownViewer)}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.8125rem', padding: '0.5rem 0.75rem' }}
+              >
+                {showMarkdownViewer ? 'Ocultar Markdown' : '👁️ Ver Markdown'}
+              </button>
+              <button
+                type="button"
+                onClick={executeGeneration}
+                disabled={generating}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.8125rem', padding: '0.5rem 0.75rem', color: 'var(--text-secondary)' }}
+                title="Gera uma nova proposta usando Gemini para revisão"
+              >
+                {generating ? 'Regenerando...' : '🔄 Regenerar com IA'}
+              </button>
+            </div>
+          </div>
+
+          {/* VISUALIZAÇÃO DO MARKDOWN GRAVADO (TOGGLE) */}
+          {showMarkdownViewer && (
+            <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  Conteúdo do arquivo ({savedRecord.filename})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(savedRecord.markdown)}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}
+                >
+                  Copiar
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={savedRecord.markdown}
+                rows={12}
+                style={{
+                  width: '100%',
+                  fontFamily: 'monospace',
+                  fontSize: '0.8125rem',
+                  lineHeight: 1.45,
+                  padding: '0.75rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-main)',
+                  color: 'var(--text-primary)',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* CENÁRIO 2: ESTADO INICIAL (SEM CONTEÚDO SALVO AINDA) */}
+      {/* ========================================================================= */}
+      {!savedRecord && !content && (
         <div
           style={{
             padding: '2.5rem 1.5rem',
@@ -270,7 +532,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
         >
           <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🌐</div>
           <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem', color: 'var(--text-primary)' }}>
-            Nenhum conteúdo editorial gerado ainda
+            Nenhum conteúdo editorial salvo ainda
           </h4>
           <p
             style={{
@@ -281,8 +543,8 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
               lineHeight: 1.5,
             }}
           >
-            Clique no botão abaixo para que o Gemini elabore a proposta comercial de conteúdo público
-            (roteiro, apresentação do destino, inclusões e SEO) baseando-se estritamente nos dados cadastrados
+            Crie e revise o conteúdo público deste pacote antes de gerar o arquivo Markdown.
+            O Gemini elaborará a proposta comercial baseando-se estritamente nos dados cadastrados
             neste Pacote Base.
           </p>
           <button
@@ -297,7 +559,118 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
         </div>
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO PARA REGENERAR QUANDO HOUVER ALTERAÇÕES MANUAIS */}
+      {/* ========================================================================= */}
+      {/* CENÁRIO 3: MODO DE EDIÇÃO DO FORMULÁRIO (PackageContentEditor) */}
+      {/* ========================================================================= */}
+      {content && (isEditingContent || !savedRecord) && (
+        <>
+          {/* BARRA SUPERIOR DE CANCELAR EDIÇÃO SE HOUVER VERSÃO SALVA */}
+          {savedRecord && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                backgroundColor: 'var(--bg-card)',
+                borderRadius: '6px',
+                border: '1px solid var(--border-color)',
+              }}
+            >
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                Editando versão salva em {formatDateTime(savedRecord.updated_at)}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isDirty && !window.confirm('Existem alterações não salvas. Deseja cancelar e voltar à versão salva?')) {
+                    return;
+                  }
+                  setContent(savedRecord.content);
+                  setMarkdownString(savedRecord.markdown);
+                  setMarkdownFileName(savedRecord.filename);
+                  setIsEditingContent(false);
+                  setIsDirty(false);
+                  setValidationErrors([]);
+                }}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.8125rem', padding: '0.35rem 0.75rem' }}
+              >
+                ✕ Cancelar edição e voltar
+              </button>
+            </div>
+          )}
+
+          {/* FEEDBACK DE SUCESSO AO SALVAR */}
+          {saveSuccessMessage && (
+            <div
+              style={{
+                padding: '0.75rem 1rem',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                borderRadius: '6px',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                color: '#16a34a',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginBottom: '1rem',
+              }}
+            >
+              <span>✓</span>
+              <span>{saveSuccessMessage}</span>
+            </div>
+          )}
+
+          {/* FEEDBACK DE ERROS DE VALIDAÇÃO */}
+          {validationErrors.length > 0 && (
+            <div
+              style={{
+                padding: '1rem',
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                borderRadius: '6px',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                marginBottom: '1rem',
+              }}
+            >
+              <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                Não foi possível salvar e validar o conteúdo:
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#ef4444', fontSize: '0.8125rem' }}>
+                {validationErrors.map((err, i) => (
+                  <li key={i} style={{ marginBottom: '0.25rem' }}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <PackageContentEditor
+            content={content}
+            onChange={(updated) => {
+              setContent(updated);
+              setIsDirty(true);
+            }}
+            basePackage={pkg}
+            isDirty={isDirty}
+            onSave={handleSaveContent}
+            onRegenerate={handleRegenerateClick}
+            isSaving={saving}
+            isGenerating={generating}
+          />
+
+          {/* PREVIEW DETERMINÍSTICO DO MARKDOWN (APÓS SALVAMENTO) */}
+          {markdownString && markdownFileName && (
+            <MarkdownPreviewCard
+              fileName={markdownFileName}
+              markdown={markdownString}
+            />
+          )}
+        </>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO PARA REGENERAR COM IA */}
       {showRegenerateConfirm && (
         <div
           style={{
@@ -327,7 +700,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
               Confirmar regeneração com IA?
             </h4>
             <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              Este conteúdo possui alterações manuais. Regenerar substituirá todo o conteúdo atual pelo novo texto da IA. Deseja continuar?
+              Este conteúdo possui alterações manuais. Regenerar substituirá o conteúdo atual em edição por uma nova proposta da IA. Deseja continuar?
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button
@@ -348,76 +721,6 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
             </div>
           </div>
         </div>
-      )}
-
-      {/* FEEDBACK DE SUCESSO AO SALVAR */}
-      {saveSuccess && (
-        <div
-          style={{
-            padding: '0.75rem 1rem',
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-            borderRadius: '6px',
-            border: '1px solid rgba(34, 197, 94, 0.3)',
-            color: '#16a34a',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem',
-          }}
-        >
-          <span>✓</span>
-          <span>Conteúdo salvo e validado com sucesso! Arquivo Markdown gerado determinísticamente abaixo.</span>
-        </div>
-      )}
-
-      {/* FEEDBACK DE ERROS DE VALIDAÇÃO */}
-      {validationErrors.length > 0 && (
-        <div
-          style={{
-            padding: '1rem',
-            backgroundColor: 'rgba(239, 68, 68, 0.08)',
-            borderRadius: '6px',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            marginBottom: '1rem',
-          }}
-        >
-          <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-            Não foi possível salvar e validar o conteúdo:
-          </div>
-          <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#ef4444', fontSize: '0.8125rem' }}>
-            {validationErrors.map((err, i) => (
-              <li key={i} style={{ marginBottom: '0.25rem' }}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* EDITOR ESTRUTURADO CONTÍNUO (SEM ABAS) */}
-      {content && (
-        <>
-          <PackageContentEditor
-            content={content}
-            onChange={(updated) => {
-              setContent(updated);
-              setIsDirty(true);
-            }}
-            basePackage={pkg}
-            isDirty={isDirty}
-            onSave={handleSaveContent}
-            onRegenerate={handleRegenerateClick}
-            isGenerating={generating}
-          />
-
-          {/* PREVIEW DETERMINÍSTICO DO MARKDOWN (APÓS SALVAMENTO BEM-SUCEDIDO) */}
-          {markdownString && markdownFileName && (
-            <MarkdownPreviewCard
-              fileName={markdownFileName}
-              markdown={markdownString}
-            />
-          )}
-        </>
       )}
     </div>
   );

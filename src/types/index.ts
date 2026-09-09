@@ -275,6 +275,20 @@ export interface StructuredPackageContent {
 }
 
 /**
+ * Entidade persistida no Supabase (tabela: package_website_contents)
+ * Armazena a última versão salva e validada do conteúdo editorial e seu respectivo Markdown determinístico.
+ */
+export interface PackageWebsiteContent {
+  id: string;
+  package_id: string;
+  content: StructuredPackageContent;
+  markdown: string;
+  filename: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
  * Input seguro fornecido ao backend de IA (Gemini + Grounding)
  * Protegido contra vazamento de custos internos, lucro, margem ou dados confidenciais de fornecedor.
  */
