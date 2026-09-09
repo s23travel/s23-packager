@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
-import { Currency, QuotationStatus, QuotationData, CostComponent } from '../../types';
+import { Currency, QuotationStatus, QuotationData, CostComponent, ImportedPackageData } from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { calculateFinancialSummary } from '../../services/financeService';
+import { ImageImportModal } from '../../components/import/ImageImportModal';
+
 
 export const QuoteFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -63,6 +65,104 @@ export const QuoteFormPage: React.FC = () => {
       ? { type: 'success', message: (location.state as any).message }
       : null
   );
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const handleImportData = (data: ImportedPackageData) => {
+    if (data.dates.start) setStartDate(data.dates.start);
+    if (data.dates.end) setEndDate(data.dates.end);
+    if (data.passengers.adults !== null) setAdults(data.passengers.adults);
+    if (data.passengers.children && data.passengers.children.length > 0) {
+      setChildren(data.passengers.children.length);
+    }
+
+    if (data.outbound.route) {
+      const parts = [data.outbound.route, data.outbound.company, data.outbound.flight].filter(Boolean);
+      setOutboundRoute(parts.join(' | '));
+    }
+    if (data.outbound.company) setOutboundCarrier(data.outbound.company);
+    if (data.outbound.departureTime) setOutboundDepartureTime(data.outbound.departureTime);
+    if (data.outbound.arrivalTime) setOutboundArrivalTime(data.outbound.arrivalTime);
+
+    if (data.inbound.route) {
+      const parts = [data.inbound.route, data.inbound.company, data.inbound.flight].filter(Boolean);
+      setInboundRoute(parts.join(' | '));
+    }
+    if (data.inbound.company) setInboundCarrier(data.inbound.company);
+    if (data.inbound.departureTime) setInboundDepartureTime(data.inbound.departureTime);
+    if (data.inbound.arrivalTime) setInboundArrivalTime(data.inbound.arrivalTime);
+
+    if (data.lodging.name) setHotelName(data.lodging.name);
+    const dest = [data.lodging.city, data.lodging.country].filter(Boolean).join(', ');
+    if (dest) setHotelDestination(dest);
+    if (data.lodging.mealPlan) setHotelMealPlan(data.lodging.mealPlan);
+
+    if (data.financial.currency === 'BRL' || data.financial.currency === 'EUR') {
+      setCurrency(data.financial.currency);
+    }
+    if (data.financial.total !== null && data.financial.total > 0) {
+      setSalePrice(data.financial.total);
+    }
+
+    // Cria componentes de custo iniciais caso identificados
+    const newComponents: CostComponent[] = [];
+    const itemCurrency = (data.financial.currency === 'BRL' || data.financial.currency === 'EUR')
+      ? data.financial.currency
+      : currency;
+
+    if (data.outbound.route) {
+      newComponents.push({
+        id: `quote-outbound-${Date.now()}`,
+        category: 'outbound_transport',
+        description: [data.outbound.route, data.outbound.company, data.outbound.flight].filter(Boolean).join(' | '),
+        amount: 0,
+        currency: itemCurrency,
+        quantity: 1,
+      });
+    }
+    if (data.inbound.route) {
+      newComponents.push({
+        id: `quote-inbound-${Date.now()}`,
+        category: 'inbound_transport',
+        description: [data.inbound.route, data.inbound.company, data.inbound.flight].filter(Boolean).join(' | '),
+        amount: 0,
+        currency: itemCurrency,
+        quantity: 1,
+      });
+    }
+    if (data.lodging.name) {
+      newComponents.push({
+        id: `quote-lodging-${Date.now()}`,
+        category: 'lodging',
+        description: data.lodging.name,
+        amount: 0,
+        currency: itemCurrency,
+        quantity: 1,
+      });
+    }
+    if (data.additionalServices && data.additionalServices.length > 0) {
+      data.additionalServices.forEach((srv, idx) => {
+        newComponents.push({
+          id: `quote-srv-${Date.now()}-${idx}`,
+          category: 'services',
+          description: srv.name + (srv.description ? ` (${srv.description})` : ''),
+          amount: srv.amount || 0,
+          currency: (srv.currency === 'BRL' || srv.currency === 'EUR') ? srv.currency : itemCurrency,
+          quantity: 1,
+          notes: srv.date ? `Data: ${srv.date}` : undefined,
+        });
+      });
+    }
+
+    if (newComponents.length > 0) {
+      setCostComponents((prev) => [...prev, ...newComponents]);
+    }
+
+    setFeedback({
+      type: 'success',
+      message: 'Dados da imagem importados com sucesso! Revise os campos preenchidos.',
+    });
+  };
+
 
   useEffect(() => {
     if (!id) {
@@ -276,10 +376,29 @@ export const QuoteFormPage: React.FC = () => {
             )}
           </p>
         </div>
-        <Link to="/cotacoes" className="btn btn-secondary">
-          Voltar para Cotações
-        </Link>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="btn btn-secondary"
+            title="Importar dados de imagem de orçamento/cotação"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>📷</span> Importar arquivo
+          </button>
+          <Link to="/cotacoes" className="btn btn-secondary">
+            Voltar para Cotações
+          </Link>
+        </div>
       </div>
+
+      <ImageImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportData}
+        targetType="quote"
+      />
+
 
       {feedback && (
         <FeedbackBanner

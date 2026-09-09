@@ -386,3 +386,70 @@ export interface PackageDraft {
   salePrice: number;
   savedAt: number;
 }
+
+/**
+ * Modelo estruturado de retorno da extração de cotação por imagem via IA multimodal
+ */
+export interface ImportedPackageData {
+  packageName?: string | null;
+
+  dates: {
+    start: string | null;
+    end: string | null;
+  };
+
+  passengers: {
+    adults: number | null;
+    children: Array<{
+      age: number | null;
+    }>;
+  };
+
+  outbound: {
+    route: string | null;
+    company: string | null;
+    flight: string | null;
+    departureTime: string | null;
+    arrivalTime: string | null;
+  };
+
+  inbound: {
+    route: string | null;
+    company: string | null;
+    flight: string | null;
+    departureTime: string | null;
+    arrivalTime: string | null;
+  };
+
+  lodging: {
+    name: string | null;
+    city: string | null;
+    country: string | null;
+    room: string | null;
+    mealPlan: string | null;
+    checkIn: string | null;
+    checkOut: string | null;
+  };
+
+  additionalServices: Array<{
+    name: string;
+    date: string | null;
+    description: string | null;
+    currency: string | null;
+    amount: number | null;
+  }>;
+
+  financial: {
+    currency: string | null;
+    taxesAndFees: number | null;
+    total: number | null;
+  };
+}
+
+export interface ImageImportResponse {
+  success: boolean;
+  data?: ImportedPackageData;
+  error?: string;
+  details?: string;
+}
+

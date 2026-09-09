@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { packagesService } from '../../services/packagesService';
-import { Currency, PackageStatus, PackageData, CostComponent, FavoriteService } from '../../types';
+import { Currency, PackageStatus, PackageData, CostComponent, FavoriteService, ImportedPackageData } from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { calculateFinancialSummary } from '../../services/financeService';
 import { ServiceAutocomplete } from '../../components/common/ServiceAutocomplete';
+import { ImageImportModal } from '../../components/import/ImageImportModal';
+
 import {
   savePackageDraft,
   getPackageDraft,
@@ -58,6 +60,83 @@ export const PackageFormPage: React.FC = () => {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const handleImportData = (data: ImportedPackageData) => {
+    if (data.packageName && !name) {
+      setName(data.packageName);
+    }
+    if (data.dates.start) {
+      setStartDate(data.dates.start);
+    }
+    if (data.dates.end) {
+      setEndDate(data.dates.end);
+    }
+    if (data.passengers.adults !== null) {
+      setAdults(data.passengers.adults);
+    }
+    if (data.passengers.children && data.passengers.children.length > 0) {
+      setChildren(data.passengers.children.length);
+    }
+
+    if (data.outbound.route) {
+      const parts = [
+        data.outbound.route,
+        data.outbound.company,
+        data.outbound.flight,
+      ].filter(Boolean);
+      setOutboundRoute(parts.join(' | '));
+      if (data.outbound.company) setOutboundCarrier(data.outbound.company);
+    }
+
+    if (data.inbound.route) {
+      const parts = [
+        data.inbound.route,
+        data.inbound.company,
+        data.inbound.flight,
+      ].filter(Boolean);
+      setInboundRoute(parts.join(' | '));
+      if (data.inbound.company) setInboundCarrier(data.inbound.company);
+    }
+
+    if (data.lodging.name) {
+      setHotelName(data.lodging.name);
+    }
+    const dest = [data.lodging.city, data.lodging.country].filter(Boolean).join(', ');
+    if (dest) {
+      setHotelDestination(dest);
+    }
+    if (data.lodging.mealPlan) {
+      setHotelMealPlan(data.lodging.mealPlan);
+    }
+
+    if (data.financial.currency === 'BRL' || data.financial.currency === 'EUR') {
+      setBaseCurrency(data.financial.currency);
+    }
+    if (data.financial.total !== null && data.financial.total > 0) {
+      setSalePrice(data.financial.total);
+    }
+
+    if (data.additionalServices && data.additionalServices.length > 0) {
+      const extraComponents: CostComponent[] = data.additionalServices.map((srv, idx) => ({
+        id: `imported-srv-${Date.now()}-${idx}`,
+        category: 'services',
+        description: srv.name + (srv.description ? ` (${srv.description})` : ''),
+        amount: srv.amount || 0,
+        currency:
+          srv.currency === 'BRL' || srv.currency === 'EUR' ? srv.currency : baseCurrency,
+        quantity: 1,
+        notes: srv.date ? `Data: ${srv.date}` : undefined,
+      }));
+      setCostComponents((prev) => [...prev, ...extraComponents]);
+    }
+
+    setFeedback({
+      type: 'success',
+      message: 'Dados da imagem importados com sucesso! Revise os campos preenchidos.',
+    });
+  };
+
 
   // Sincronização automática e determinística Seção 3 → Seção 4
   useEffect(() => {
@@ -391,10 +470,29 @@ export const PackageFormPage: React.FC = () => {
             Configure as bases operacionais, transportes, hotelaria e valores de referência.
           </p>
         </div>
-        <button type="button" onClick={handleCancel} className="btn btn-secondary">
-          Cancelar
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="btn btn-secondary"
+            title="Importar dados de imagem de orçamento/cotação"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>📷</span> Importar arquivo
+          </button>
+          <button type="button" onClick={handleCancel} className="btn btn-secondary">
+            Cancelar
+          </button>
+        </div>
       </div>
+
+      <ImageImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportData}
+        targetType="package"
+      />
+
 
       {feedback && (
         <FeedbackBanner
