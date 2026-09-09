@@ -299,5 +299,98 @@ O módulo [`markdownValidationService.ts`](file:///c:/Users/ptmaralvoli/Document
 - **Download no Navegador**: Disponibilizado via Blob (`text/markdown;charset=utf-8`) com acionamento do download nativo no cliente.
 - **Cópia Instantânea**: Botão com integração à Clipboard API para copiar o conteúdo Markdown completo.
 
-### 8.7 Papel Futuro do Manager (Fase Futura)
-O arquivo `.md` gerado pela Fase 6B é o formato de entrada exato consumido pelo **S23 Manager** (`/manager`) e pelo repositório do website (`content/pacotes/`). A integração direta via GitHub Contents API e publicação automática será tratada na etapa posterior, preservando nesta fase o download manual e a revisão do operador.
+### 8.7 Papel do Manager e Preparação de Publicação
+O arquivo `.md` gerado pela Fase 6B é o formato de entrada exato consumido pelo **S23 Manager** (`/manager`) e pelo repositório do website (`content/pacotes/`).
+
+---
+
+## 9. Integração Final com Website e Manager (Fase 6C)
+
+A Fase 6C conclui o ciclo de vida do Packager conectando o Markdown já validado ao workflow oficial de publicação do website S23.
+
+### 9.1 Fluxo Arquitetural Completo
+```text
+[Package / Quotation]
+         │
+         ▼
+[Gemini + Grounding] ────► [StructuredPackageContent]
+                                    │
+                                    ▼
+                         [contentValidationService]
+                                    │
+                                    ▼
+                         [generatePackageMarkdown]
+                                    │
+                                    ▼
+                         [validatePackageMarkdown]
+                                    │
+                                    ▼
+                         [publishPackageToWebsite]
+                                    │ (dispatch seguro)
+                                    ▼
+                   [Supabase Edge Function: publish-package]
+                                    │ (GitHub Contents API)
+                                    ▼
+                    content/pacotes/[slug].md (Repositório)
+                                    │ (trigger de commit)
+                                    ▼
+                          Cloudflare Pages / Website
+```
+
+### 9.2 Mecanismo Oficial de Publicação
+Conforme documentado em `docs/ARQUITETURA_MANAGER.md` e `docs/ARQUITETURA_CARDS.md`:
+- O website da S23 não possui banco de dados relacional: **o repositório GitHub é o CMS**.
+- Toda publicação de pacote equivale a um commit que cria ou atualiza um arquivo na pasta `content/pacotes/`.
+- O destino canônico é rigorosamente: `content/pacotes/[slug].md`.
+- Cada commit na branch oficial (padrão `main`) dispara automaticamente a esteira de build do Cloudflare Pages, publicando o pacote no ar em `/pacotes/[slug]`.
+
+### 9.3 Arquitetura de Segurança e Autenticação
+- **Isolamento de Credenciais**: O navegador/frontend do Packager **NUNCA** acessa ou recebe tokens do GitHub (`GITHUB_TOKEN`), senhas ou segredos de API.
+- **Supabase Edge Function (`publish-package`)**:
+  - Função serverless de responsabilidade única hospedada no backend Supabase.
+  - Lê as credenciais diretamente do ambiente serverless seguro via `Deno.env.get('GITHUB_TOKEN')`.
+  - Headers padronizados com `Accept: application/vnd.github.v3+json` e `User-Agent: S23-Packager-App`.
+- **Secrets Necessários no Supabase**:
+  - `GITHUB_TOKEN`: Personal Access Token com escopo de escrita em repositório (`contents:write` ou `repo`).
+  - `GITHUB_REPO`: Identificador do repositório no formato `owner/repo` (ex.: `s23-travel/website`).
+  - `GITHUB_BRANCH`: Branch de produção (opcional, padrão `main`).
+
+### 9.4 Idempotência e Criação versus Atualização
+A publicação adota comportamento determinístico e idempotente:
+1. O backend realiza um `GET https://api.github.com/repos/{repo}/contents/content/pacotes/{slug}.md?ref={branch}`:
+   - **Status 200 (Arquivo Existente)**: Extrai o `sha` da versão atual e executa um `PUT` de atualização (`action: 'updated'`).
+     - Mensagem de commit: `chore(pacotes): atualizar pacote [slug] via Packager`.
+     - Resposta ao usuário: `"Pacote atualizado com sucesso."`.
+   - **Status 404 (Arquivo Novo)**: Executa um `PUT` sem `sha` para criação inicial (`action: 'created'`).
+     - Mensagem de commit: `feat(pacotes): adicionar pacote [slug] via Packager`.
+     - Resposta ao usuário: `"Publicado com sucesso."`.
+2. **Prevenção de Duplicidades**: O nome do arquivo é rigidamente fixado em `[slug].md`. Jamais são criados arquivos duplicados ou gerados sufixos artificiais.
+
+### 9.5 Validação Prévia e Barreira de Segurança
+Antes de qualquer comunicação com o GitHub, a Edge Function executa uma re-validação estrita:
+- Sintaxe YAML e delimitadores `---`;
+- Validação regex do slug (`^[a-z0-9]+(-[a-z0-9]+)*$`);
+- Preservação exata do preço comercial validado;
+- Ausência de termos confidenciais internos (`totalCost`, `profit`, `lucro`, `margem`, `profitPercent`, `markup`, `supplier`, `fornecedor`, segredos de API);
+- Ausência de placeholders (`[hotel]`, `[data]`, `undefined`, `null`, `NaN`);
+- Presença obrigatória do item fixo S23 (`Guia exclusivo S23`);
+- Presença obrigatória da observação oficial de pagamento da S23.
+
+### 9.6 Independência de Snapshots (Package x Quotation)
+- Ao publicar a partir de um **Package**, o conteúdo e preço derivam do pacote base.
+- Ao publicar a partir de uma **Quotation**, o conteúdo e preço derivam exclusivamente do snapshot independente da cotação. O pacote de origem jamais é consultado ou alterado.
+
+### 9.7 Tratamento de Erros e Resiliência
+- **Falha de Autenticação (401/403)**: Mensagem clara e acionável para o operador orientando verificar as permissões do token, sem expor strings da chave.
+- **Conflito de Versão Concorrente (409)**: Alerta de concorrência solicitando revisão.
+- **Secret Ausente**: Caso `GITHUB_TOKEN` não esteja configurado no Supabase, a Edge Function retorna código amigável `GITHUB_TOKEN_MISSING`, informando onde configurar e liberando o fluxo de entrega manual.
+- **Integridade de Feedback**: Em nenhum caso de erro é produzida uma mensagem de sucesso falso.
+
+### 9.8 Interface do Usuário e Fallback Manual
+A interface do gerador [`AIContentGenerator.tsx`](file:///c:/Users/ptmaralvoli/Documents/Antigravity/packager/src/components/ai/AIContentGenerator.tsx) incorpora a área **"Publicação"**, exibida exclusivamente após a validação do Markdown:
+- Exibe: Status do Markdown, Nome do arquivo, Slug, Destino e Status da Publicação.
+- **Botão "Publicar no Website"**: Aciona a confirmação `"Publicar este pacote no website?"` antes do envio.
+- **Botões "Copiar Markdown" e "Baixar .md"**: Fallback operacional garantido para copiar para a área `/manager` ou comitar diretamente no repositório.
+- **Indicação Clara**: Exibe o aviso permanente `"Arquivo pronto para publicação no Manager."`.
+- **Controle de Alteração**: Se o operador editar ou regerar o conteúdo estruturado ou Markdown, o status de publicação é automaticamente reiniciado, impedindo a publicação acidental de versões desatualizadas.
+
