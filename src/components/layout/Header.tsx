@@ -4,8 +4,8 @@ import { NavigationItem } from '../../types';
 
 const NAV_ITEMS: NavigationItem[] = [
   { label: 'Dashboard', path: '/' },
-  { label: 'Pacotes', path: '/pacotes', badge: 'Fase 3' },
-  { label: 'Cotações', path: '/cotacoes', badge: 'Fase 4' },
+  { label: 'Pacotes', path: '/pacotes' },
+  { label: 'Cotações', path: '/cotacoes' },
 ];
 
 export const Header: React.FC = () => {
@@ -14,7 +14,7 @@ export const Header: React.FC = () => {
       <div className="brand-section">
         <div className="brand-logo">S23</div>
         <div className="brand-title">Packager</div>
-        <span className="brand-badge">Fundação Técnica</span>
+        <span className="brand-badge">Operacional</span>
       </div>
 
       <nav className="nav-menu" aria-label="Navegação Principal">
@@ -27,16 +27,13 @@ export const Header: React.FC = () => {
             }
           >
             <span>{item.label}</span>
-            {item.badge && (
-              <span className="nav-link-badge">{item.badge}</span>
-            )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="system-status" title="Ambiente Operacional">
+      <div className="system-status" title="Banco de Dados Supabase Conectado">
         <span className="status-indicator"></span>
-        <span>Online (Local)</span>
+        <span>Supabase Conectado</span>
       </div>
     </header>
   );

@@ -2,8 +2,12 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { DashboardPage } from './pages/DashboardPage';
-import { PackagesPage } from './pages/PackagesPage';
-import { QuotesPage } from './pages/QuotesPage';
+import { PackagesListPage } from './pages/packages/PackagesListPage';
+import { PackageFormPage } from './pages/packages/PackageFormPage';
+import { PackageDetailPage } from './pages/packages/PackageDetailPage';
+import { QuotesListPage } from './pages/quotes/QuotesListPage';
+import { QuoteFormPage } from './pages/quotes/QuoteFormPage';
+import { QuoteDetailPage } from './pages/quotes/QuoteDetailPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export const App: React.FC = () => {
@@ -14,8 +18,20 @@ export const App: React.FC = () => {
       <main className="main-content">
         <Routes>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/pacotes" element={<PackagesPage />} />
-          <Route path="/cotacoes" element={<QuotesPage />} />
+          
+          {/* Rotas de Pacotes */}
+          <Route path="/pacotes" element={<PackagesListPage />} />
+          <Route path="/pacotes/novo" element={<PackageFormPage />} />
+          <Route path="/pacotes/:id" element={<PackageDetailPage />} />
+          <Route path="/pacotes/:id/editar" element={<PackageFormPage />} />
+
+          {/* Rotas de Cotações */}
+          <Route path="/cotacoes" element={<QuotesListPage />} />
+          <Route path="/cotacoes/novo" element={<QuoteFormPage />} />
+          <Route path="/cotacoes/:id" element={<QuoteDetailPage />} />
+          <Route path="/cotacoes/:id/editar" element={<QuoteFormPage />} />
+
+          {/* Fallback */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
@@ -25,7 +41,7 @@ export const App: React.FC = () => {
           <strong>Packager</strong> &copy; {new Date().getFullYear()} — Ferramenta Interna de Operações S23
         </div>
         <div>
-          Versão 0.1.0 (Fundação Técnica) • Cloudflare Pages Ready
+          Fase 3: CRUD & Snapshot • Supabase Conectado
         </div>
       </footer>
     </div>
