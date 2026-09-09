@@ -244,7 +244,10 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                           <select
                             value={comp.category}
                             onChange={(e) =>
-                              handleUpdateComponent(idx, { category: e.target.value as CostCategory })
+                              handleUpdateComponent(idx, {
+                                category: e.target.value as CostCategory,
+                                isCustomized: true,
+                              })
                             }
                             className="form-select"
                             style={{ padding: '0.3rem 0.5rem', fontSize: '13px' }}
@@ -269,7 +272,12 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                             <input
                               type="text"
                               value={comp.description}
-                              onChange={(e) => handleUpdateComponent(idx, { description: e.target.value })}
+                              onChange={(e) =>
+                                handleUpdateComponent(idx, {
+                                  description: e.target.value,
+                                  isCustomized: true,
+                                })
+                              }
                               placeholder="Ex: Voo LIS-MAD ou Hotel"
                               className="form-input"
                               style={{ padding: '0.3rem 0.5rem', fontSize: '13px' }}

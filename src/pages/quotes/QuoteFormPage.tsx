@@ -26,10 +26,10 @@ export const QuoteFormPage: React.FC = () => {
   // Datas e passageiros
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [durationDays, setDurationDays] = useState<number>(7);
-  const [adults, setAdults] = useState<number>(2);
-  const [children, setChildren] = useState<number>(0);
-  const [infants, setInfants] = useState<number>(0);
+  const [durationDays, setDurationDays] = useState<number | ''>(0);
+  const [adults, setAdults] = useState<number | ''>(2);
+  const [children, setChildren] = useState<number | ''>(0);
+  const [infants, setInfants] = useState<number | ''>(0);
 
   // Transportes
   const [outboundRoute, setOutboundRoute] = useState('');
@@ -442,7 +442,22 @@ export const QuoteFormPage: React.FC = () => {
                 min="1"
                 className="form-input"
                 value={durationDays}
-                onChange={(e) => setDurationDays(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setDurationDays('');
+                    return;
+                  }
+                  const val = parseInt(raw, 10);
+                  if (!isNaN(val)) {
+                    setDurationDays(val);
+                  }
+                }}
+                onBlur={() => {
+                  if (durationDays === '' || (typeof durationDays === 'number' && durationDays < 1)) {
+                    setDurationDays(1);
+                  }
+                }}
               />
             </div>
 
@@ -456,7 +471,22 @@ export const QuoteFormPage: React.FC = () => {
                 min="1"
                 className="form-input"
                 value={adults}
-                onChange={(e) => setAdults(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setAdults('');
+                    return;
+                  }
+                  const val = parseInt(raw, 10);
+                  if (!isNaN(val)) {
+                    setAdults(val);
+                  }
+                }}
+                onBlur={() => {
+                  if (adults === '' || (typeof adults === 'number' && adults < 1)) {
+                    setAdults(1);
+                  }
+                }}
               />
             </div>
 
@@ -470,7 +500,22 @@ export const QuoteFormPage: React.FC = () => {
                 min="0"
                 className="form-input"
                 value={children}
-                onChange={(e) => setChildren(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setChildren('');
+                    return;
+                  }
+                  const val = parseInt(raw, 10);
+                  if (!isNaN(val)) {
+                    setChildren(val);
+                  }
+                }}
+                onBlur={() => {
+                  if (children === '' || (typeof children === 'number' && children < 0)) {
+                    setChildren(0);
+                  }
+                }}
               />
             </div>
 
@@ -484,7 +529,22 @@ export const QuoteFormPage: React.FC = () => {
                 min="0"
                 className="form-input"
                 value={infants}
-                onChange={(e) => setInfants(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setInfants('');
+                    return;
+                  }
+                  const val = parseInt(raw, 10);
+                  if (!isNaN(val)) {
+                    setInfants(val);
+                  }
+                }}
+                onBlur={() => {
+                  if (infants === '' || (typeof infants === 'number' && infants < 0)) {
+                    setInfants(0);
+                  }
+                }}
               />
             </div>
           </div>

@@ -10,6 +10,8 @@ interface ServiceAutocompleteProps {
   onChange: (value: string) => void;
   /** Callback chamado quando o utilizador seleciona uma sugestão */
   onSelect: (service: FavoriteService) => void;
+  /** Callback opcional chamado ao clicar em cadastrar novo serviço */
+  onAddNewService?: (currentQuery: string) => void;
   /** Filtra sugestões por tipo (padrão: somente hotéis) */
   serviceType?: FavoriteServiceType;
   placeholder?: string;
@@ -30,6 +32,7 @@ export const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
   value,
   onChange,
   onSelect,
+  onAddNewService,
   serviceType = 'hotel',
   placeholder = 'Ex: Four Seasons Safari Lodge',
   id,
@@ -142,75 +145,55 @@ export const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
       )}
 
       {showDropdown && (suggestions.length > 0 || noResults) && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 100,
-            marginTop: '2px',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: '6px',
-            boxShadow: '0 4px 16px var(--shadow)',
-            overflow: 'hidden',
-          }}
-          role="listbox"
-          aria-label="Sugestões de serviços"
-        >
+        <div className="autocomplete-dropdown" role="listbox" aria-label="Sugestões de serviços">
           {suggestions.map((service) => (
             <button
               key={service.id}
               type="button"
+              className="autocomplete-item"
               role="option"
               onMouseDown={(e) => {
                 e.preventDefault(); // evita blur antes do click
                 handleSelect(service);
               }}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '8px 12px',
-                textAlign: 'left',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: '1px solid var(--border-subtle)',
-                cursor: 'pointer',
-                color: 'var(--text-primary)',
-                transition: 'background 0.1s',
-              }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-hover)')
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')
-              }
             >
-              <div style={{ fontSize: '13px', fontWeight: 500 }}>{service.name}</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>
+              <div className="autocomplete-item-title">{service.name}</div>
+              <div className="autocomplete-item-subtitle">
                 {service.city ? `${service.city}, ${service.country}` : service.country}
               </div>
             </button>
           ))}
 
           {noResults && (
-            <div style={{ padding: '10px 12px' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+            <div className="autocomplete-no-results">
+              <div className="autocomplete-no-results-text">
                 Nenhum serviço encontrado.
               </div>
-              <Link
-                to="/servicos/novo"
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--accent)',
-                  textDecoration: 'none',
-                  fontWeight: 500,
-                }}
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                + Cadastrar novo serviço
-              </Link>
+              {onAddNewService ? (
+                <button
+                  type="button"
+                  className="autocomplete-add-link"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onAddNewService(debouncedValue);
+                  }}
+                >
+                  + Cadastrar novo serviço
+                </button>
+              ) : (
+                <Link
+                  to="/servicos/novo"
+                  state={{
+                    returnTo: typeof window !== 'undefined' ? window.location.pathname : '/pacotes/novo',
+                    serviceType,
+                    initialName: debouncedValue,
+                  }}
+                  className="autocomplete-add-link"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  + Cadastrar novo serviço
+                </Link>
+              )}
             </div>
           )}
         </div>

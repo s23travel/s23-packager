@@ -170,7 +170,7 @@ export const PackageDetailPage: React.FC = () => {
             <h3 className="card-title">Datas & Passageiros</h3>
             <div className="detail-rows">
               <div className="detail-row">
-                <span className="detail-label">Datas Previstas:</span>
+                <span className="detail-label">Datas:</span>
                 <span className="detail-value">
                   {d.dates?.startDate ? `${d.dates.startDate} até ${d.dates.endDate || '—'}` : 'Datas flexíveis / A definir'}
                 </span>
@@ -178,7 +178,9 @@ export const PackageDetailPage: React.FC = () => {
               <div className="detail-row">
                 <span className="detail-label">Duração:</span>
                 <span className="detail-value">
-                  {d.dates?.durationDays ? `${d.dates.durationDays} dias` : '—'}
+                  {d.dates?.durationDays
+                    ? `${d.dates.durationDays} dias (${d.dates.durationNights ?? Math.max(0, d.dates.durationDays - 1)} noites)`
+                    : '—'}
                 </span>
               </div>
               <div className="detail-row">

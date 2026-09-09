@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   FavoriteServiceType,
   FAVORITE_SERVICE_TYPE_LABELS,
@@ -15,10 +15,19 @@ const SERVICE_TYPES = Object.entries(FAVORITE_SERVICE_TYPE_LABELS) as [
 export const ServiceFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEditing = Boolean(id);
 
-  const [type, setType] = useState<FavoriteServiceType>('hotel');
-  const [name, setName] = useState('');
+  const navState = location.state as {
+    returnTo?: string;
+    serviceType?: FavoriteServiceType;
+    initialName?: string;
+  } | null;
+
+  const returnTo = navState?.returnTo;
+
+  const [type, setType] = useState<FavoriteServiceType>(navState?.serviceType || 'hotel');
+  const [name, setName] = useState(navState?.initialName || '');
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
   const [notes, setNotes] = useState('');
@@ -87,19 +96,42 @@ export const ServiceFormPage: React.FC = () => {
 
       if (isEditing && id) {
         await favoriteServicesService.updateService(id, input);
-        navigate('/servicos', {
-          state: { message: `Serviço "${name.trim()}" atualizado com sucesso.` },
-        });
+        if (returnTo) {
+          navigate(returnTo, {
+            state: { message: `Serviço "${name.trim()}" atualizado com sucesso.` },
+          });
+        } else {
+          navigate('/servicos', {
+            state: { message: `Serviço "${name.trim()}" atualizado com sucesso.` },
+          });
+        }
       } else {
         const created = await favoriteServicesService.createService(input);
-        navigate('/servicos', {
-          state: { message: `Serviço "${created.name}" cadastrado com sucesso.` },
-        });
+        if (returnTo) {
+          navigate(returnTo, {
+            state: {
+              createdService: created,
+              message: `Serviço "${created.name}" cadastrado com sucesso.`,
+            },
+          });
+        } else {
+          navigate('/servicos', {
+            state: { message: `Serviço "${created.name}" cadastrado com sucesso.` },
+          });
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido.';
       setFeedback({ type: 'error', message: `Erro ao salvar: ${msg}` });
       setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (returnTo) {
+      navigate(returnTo);
+    } else {
+      navigate('/servicos');
     }
   };
 
@@ -124,9 +156,9 @@ export const ServiceFormPage: React.FC = () => {
               : 'Adicione um serviço ao catálogo para reutilização em pacotes.'}
           </p>
         </div>
-        <Link to="/servicos" className="btn btn-secondary">
+        <button type="button" onClick={handleCancel} className="btn btn-secondary">
           Cancelar
-        </Link>
+        </button>
       </div>
 
       {feedback && (
@@ -252,9 +284,9 @@ export const ServiceFormPage: React.FC = () => {
         </div>
 
         <div className="form-actions">
-          <Link to="/servicos" className="btn btn-secondary">
+          <button type="button" onClick={handleCancel} className="btn btn-secondary">
             Cancelar
-          </Link>
+          </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving
               ? 'Salvando...'

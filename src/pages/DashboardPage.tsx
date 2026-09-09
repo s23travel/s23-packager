@@ -111,73 +111,6 @@ export const DashboardPage: React.FC = () => {
 
       {/* Seções de Atividade Recente */}
       <div className="grid-cols-2" style={{ alignItems: 'flex-start' }}>
-        {/* Cotações Recentes */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              borderBottom: '1px solid var(--border-subtle)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Cotações recentes
-            </h3>
-            <Link to="/cotacoes" style={{ fontSize: '13px', color: 'var(--accent-primary)', fontWeight: 500 }}>
-              Ver todas
-            </Link>
-          </div>
-
-          {loading ? (
-            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              Carregando cotações...
-            </div>
-          ) : recentQuotes.length === 0 ? (
-            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              Nenhuma cotação registrada ainda.
-            </div>
-          ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Referência</th>
-                    <th>Cliente</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentQuotes.map((q) => (
-                    <tr key={q.id}>
-                      <td>
-                        <Link to={`/cotacoes/${q.id}`} className="table-link-highlight">
-                          <code>{q.reference}</code>
-                        </Link>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: 500 }}>
-                          {q.client_name || 'Sem cliente'}
-                        </span>
-                      </td>
-                      <td>
-                        <StatusBadge status={q.status} />
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <Link to={`/cotacoes/${q.id}`} className="btn btn-sm btn-secondary">
-                          Abrir
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
         {/* Pacotes Recentes */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div
@@ -235,6 +168,73 @@ export const DashboardPage: React.FC = () => {
                       <td style={{ textAlign: 'right' }}>
                         <Link to={`/pacotes/${pkg.id}`} className="btn btn-sm btn-secondary">
                           Ver
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Cotações Recentes */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div
+            style={{
+              padding: '0.75rem 1rem',
+              borderBottom: '1px solid var(--border-subtle)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Cotações recentes
+            </h3>
+            <Link to="/cotacoes" style={{ fontSize: '13px', color: 'var(--accent-primary)', fontWeight: 500 }}>
+              Ver todas
+            </Link>
+          </div>
+
+          {loading ? (
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+              Carregando cotações...
+            </div>
+          ) : recentQuotes.length === 0 ? (
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+              Nenhuma cotação registrada ainda.
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Referência</th>
+                    <th>Cliente</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentQuotes.map((q) => (
+                    <tr key={q.id}>
+                      <td>
+                        <Link to={`/cotacoes/${q.id}`} className="table-link-highlight">
+                          <code>{q.reference}</code>
+                        </Link>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 500 }}>
+                          {q.client_name || 'Sem cliente'}
+                        </span>
+                      </td>
+                      <td>
+                        <StatusBadge status={q.status} />
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <Link to={`/cotacoes/${q.id}`} className="btn btn-sm btn-secondary">
+                          Abrir
                         </Link>
                       </td>
                     </tr>

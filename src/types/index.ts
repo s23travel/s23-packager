@@ -90,6 +90,9 @@ export interface CostComponent {
   currency: Currency;
   quantity: number;
   notes?: string;
+  sourceField?: 'outboundRoute' | 'inboundRoute' | 'hotelName';
+  inheritedDescription?: string;
+  isCustomized?: boolean;
 }
 
 // Resumo financeiro e cálculos determinísticos do motor financeiro
@@ -354,3 +357,32 @@ export type CreateFavoriteServiceInput = {
 };
 
 export type UpdateFavoriteServiceInput = Partial<CreateFavoriteServiceInput>;
+
+/**
+ * Interface para rascunho de criação de pacote salvo em sessionStorage
+ * Preserva o estado completo do formulário durante navegações contextuais.
+ */
+export interface PackageDraft {
+  reference: string;
+  name: string;
+  status: PackageStatus;
+  baseCurrency: Currency;
+  supplier: string;
+  additionalInfo: string;
+  startDate: string;
+  endDate: string;
+  durationDays: number | '';
+  durationNights: number | '';
+  adults: number | '';
+  children: number | '';
+  outboundRoute: string;
+  outboundCarrier: string;
+  inboundRoute: string;
+  inboundCarrier: string;
+  hotelName: string;
+  hotelDestination: string;
+  hotelMealPlan: string;
+  costComponents: CostComponent[];
+  salePrice: number;
+  savedAt: number;
+}

@@ -1,15 +1,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { packagesService } from '../../services/packagesService';
 import { Currency, PackageStatus, PackageData, CostComponent, FavoriteService } from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { calculateFinancialSummary } from '../../services/financeService';
 import { ServiceAutocomplete } from '../../components/common/ServiceAutocomplete';
+import {
+  savePackageDraft,
+  getPackageDraft,
+  clearPackageDraft,
+} from '../../services/packageDraftService';
+import { syncOperationalWithFinancials } from '../../services/packageFinancialSyncService';
 
 export const PackageFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEditing = Boolean(id);
 
   const [reference, setReference] = useState('');
@@ -28,9 +35,10 @@ export const PackageFormPage: React.FC = () => {
   // Datas e passageiros
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [durationDays, setDurationDays] = useState<number>(7);
-  const [adults, setAdults] = useState<number>(2);
-  const [children, setChildren] = useState<number>(0);
+  const [durationDays, setDurationDays] = useState<number | ''>(0);
+  const [durationNights, setDurationNights] = useState<number | ''>(0);
+  const [adults, setAdults] = useState<number | ''>(2);
+  const [children, setChildren] = useState<number | ''>(0);
 
   // Transportes
   const [outboundRoute, setOutboundRoute] = useState('');
@@ -51,11 +59,88 @@ export const PackageFormPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Sincronização automática e determinística Seção 3 → Seção 4
+  useEffect(() => {
+    if (loading) return;
+
+    setCostComponents((prev) =>
+      syncOperationalWithFinancials(prev, {
+        outboundRoute,
+        inboundRoute,
+        hotelName,
+        baseCurrency,
+      })
+    );
+  }, [outboundRoute, inboundRoute, hotelName, baseCurrency, loading]);
+
+  // Cálculo automático de Duração (Dias) e Duração (Noites) a partir das datas
+  useEffect(() => {
+    if (startDate && endDate) {
+      if (endDate < startDate) {
+        setEndDate(startDate);
+        return;
+      }
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const diffMs = end.getTime() - start.getTime();
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0) {
+          setDurationDays(diffDays + 1);
+          setDurationNights(diffDays);
+        }
+      }
+    }
+  }, [startDate, endDate]);
+
   useEffect(() => {
     if (!id) {
-      // Sugestão de referência padrão para novos pacotes
-      const rand = Math.floor(100 + Math.random() * 900);
-      setReference(`PK-${new Date().getFullYear()}-${rand}`);
+      // 1. Tenta restaurar rascunho anterior de sessionStorage
+      const draft = getPackageDraft();
+      if (draft) {
+        setReference(draft.reference);
+        setName(draft.name);
+        setStatus(draft.status);
+        setBaseCurrency(draft.baseCurrency);
+        setSupplier(draft.supplier || '');
+        setAdditionalInfo(draft.additionalInfo || '');
+        setStartDate(draft.startDate || '');
+        setEndDate(draft.endDate || '');
+        setDurationDays(draft.durationDays);
+        setDurationNights(draft.durationNights);
+        setAdults(draft.adults);
+        setChildren(draft.children);
+        setOutboundRoute(draft.outboundRoute || '');
+        setOutboundCarrier(draft.outboundCarrier || '');
+        setInboundRoute(draft.inboundRoute || '');
+        setInboundCarrier(draft.inboundCarrier || '');
+        setHotelName(draft.hotelName || '');
+        setHotelDestination(draft.hotelDestination || '');
+        setHotelMealPlan(draft.hotelMealPlan || 'Café da Manhã');
+        setCostComponents(draft.costComponents || []);
+        setSalePrice(draft.salePrice || 0);
+      } else {
+        // Sugestão de referência padrão para novos pacotes
+        const rand = Math.floor(100 + Math.random() * 900);
+        setReference(`PK-${new Date().getFullYear()}-${rand}`);
+      }
+
+      // 2. Se retornou de /servicos/novo com um serviço recém-criado, auto-seleciona
+      const navState = location.state as {
+        createdService?: FavoriteService;
+        message?: string;
+      } | null;
+
+      if (navState?.createdService) {
+        const created = navState.createdService;
+        setHotelName(created.name);
+        setHotelDestination([created.city, created.country].filter(Boolean).join(', '));
+      }
+
+      if (navState?.message) {
+        setFeedback({ type: 'success', message: navState.message });
+      }
+
       return;
     }
 
@@ -80,7 +165,10 @@ export const PackageFormPage: React.FC = () => {
         if (d.dates) {
           setStartDate(d.dates.startDate || '');
           setEndDate(d.dates.endDate || '');
-          setDurationDays(d.dates.durationDays || 7);
+          setDurationDays(d.dates.durationDays ?? 0);
+          setDurationNights(
+            d.dates.durationNights ?? (d.dates.durationDays ? Math.max(0, d.dates.durationDays - 1) : 0)
+          );
         }
 
         if (d.passengers) {
@@ -122,7 +210,72 @@ export const PackageFormPage: React.FC = () => {
     };
 
     loadPackage();
-  }, [id]);
+  }, [id, location.state]);
+
+  const handleAddNewService = useCallback(
+    (currentQuery: string) => {
+      savePackageDraft({
+        reference,
+        name,
+        status,
+        baseCurrency,
+        supplier,
+        additionalInfo,
+        startDate,
+        endDate,
+        durationDays,
+        durationNights,
+        adults,
+        children,
+        outboundRoute,
+        outboundCarrier,
+        inboundRoute,
+        inboundCarrier,
+        hotelName: currentQuery || hotelName,
+        hotelDestination,
+        hotelMealPlan,
+        costComponents,
+        salePrice,
+      });
+
+      navigate('/servicos/novo', {
+        state: {
+          returnTo: '/pacotes/novo',
+          serviceType: 'hotel',
+          initialName: currentQuery || hotelName,
+        },
+      });
+    },
+    [
+      reference,
+      name,
+      status,
+      baseCurrency,
+      supplier,
+      additionalInfo,
+      startDate,
+      endDate,
+      durationDays,
+      durationNights,
+      adults,
+      children,
+      outboundRoute,
+      outboundCarrier,
+      inboundRoute,
+      inboundCarrier,
+      hotelName,
+      hotelDestination,
+      hotelMealPlan,
+      costComponents,
+      salePrice,
+      navigate,
+    ]
+  );
+
+  const handleCancel = () => {
+    clearPackageDraft();
+    navigate('/pacotes');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +305,7 @@ export const PackageFormPage: React.FC = () => {
           startDate,
           endDate,
           durationDays: Number(durationDays) || undefined,
+          durationNights: Number(durationNights) ?? undefined,
         },
         outboundTransport: outboundRoute.trim()
           ? {
@@ -197,6 +351,7 @@ export const PackageFormPage: React.FC = () => {
           base_currency: baseCurrency,
           data: packageData,
         });
+        clearPackageDraft();
         navigate(`/pacotes/${id}`, {
           state: { message: 'Pacote atualizado com sucesso.' },
         });
@@ -208,6 +363,7 @@ export const PackageFormPage: React.FC = () => {
           base_currency: baseCurrency,
           data: packageData,
         });
+        clearPackageDraft();
         navigate(`/pacotes/${created.id}`, {
           state: { message: 'Pacote cadastrado com sucesso!' },
         });
@@ -235,9 +391,9 @@ export const PackageFormPage: React.FC = () => {
             Configure as bases operacionais, transportes, hotelaria e valores de referência.
           </p>
         </div>
-        <Link to="/pacotes" className="btn btn-secondary">
+        <button type="button" onClick={handleCancel} className="btn btn-secondary">
           Cancelar
-        </Link>
+        </button>
       </div>
 
       {feedback && (
@@ -335,28 +491,35 @@ export const PackageFormPage: React.FC = () => {
         {/* Seção 2: Datas & Passageiros */}
         <div className="card form-card">
           <h3 className="form-section-title">2. Datas e Passageiros Padrão</h3>
-          <div className="form-grid-4">
+          <div className="form-grid-5">
             <div className="form-group">
               <label className="form-label" htmlFor="startDate">
-                Data Prevista de Início
+                Data de Início
               </label>
               <input
                 id="startDate"
                 type="date"
                 className="form-input"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  const newStart = e.target.value;
+                  setStartDate(newStart);
+                  if (endDate && newStart && endDate < newStart) {
+                    setEndDate(newStart);
+                  }
+                }}
               />
             </div>
 
             <div className="form-group">
               <label className="form-label" htmlFor="endDate">
-                Data Prevista de Retorno
+                Data de Retorno
               </label>
               <input
                 id="endDate"
                 type="date"
                 className="form-input"
+                min={startDate || undefined}
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
@@ -369,16 +532,63 @@ export const PackageFormPage: React.FC = () => {
               <input
                 id="durationDays"
                 type="number"
-                min="1"
+                min="0"
                 className="form-input"
                 value={durationDays}
-                onChange={(e) => setDurationDays(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setDurationDays('');
+                    setDurationNights('');
+                    return;
+                  }
+                  const val = parseInt(raw, 10);
+                  if (!isNaN(val)) {
+                    setDurationDays(val);
+                    setDurationNights(Math.max(0, val - 1));
+                  }
+                }}
+                onBlur={() => {
+                  if (durationDays === '' || (typeof durationDays === 'number' && durationDays < 0)) {
+                    setDurationDays(0);
+                    setDurationNights(0);
+                  }
+                }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="durationNights">
+                Duração (Noites)
+              </label>
+              <input
+                id="durationNights"
+                type="number"
+                min="0"
+                className="form-input"
+                value={durationNights}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setDurationNights('');
+                    return;
+                  }
+                  const val = parseInt(raw, 10);
+                  if (!isNaN(val)) {
+                    setDurationNights(val);
+                  }
+                }}
+                onBlur={() => {
+                  if (durationNights === '' || (typeof durationNights === 'number' && durationNights < 0)) {
+                    setDurationNights(0);
+                  }
+                }}
               />
             </div>
 
             <div className="form-group">
               <label className="form-label" htmlFor="adults">
-                Qtd. Adultos
+                Qtd. Pessoas
               </label>
               <input
                 id="adults"
@@ -386,7 +596,22 @@ export const PackageFormPage: React.FC = () => {
                 min="1"
                 className="form-input"
                 value={adults}
-                onChange={(e) => setAdults(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setAdults('');
+                    return;
+                  }
+                  const val = parseInt(raw, 10);
+                  if (!isNaN(val)) {
+                    setAdults(val);
+                  }
+                }}
+                onBlur={() => {
+                  if (adults === '' || (typeof adults === 'number' && adults < 1)) {
+                    setAdults(1);
+                  }
+                }}
               />
             </div>
           </div>
@@ -436,6 +661,7 @@ export const PackageFormPage: React.FC = () => {
                 value={hotelName}
                 onChange={setHotelName}
                 onSelect={handleHotelSelect}
+                onAddNewService={handleAddNewService}
                 serviceType="hotel"
                 placeholder="Ex: Four Seasons Safari Lodge"
               />
@@ -503,9 +729,9 @@ export const PackageFormPage: React.FC = () => {
         </div>
 
         <div className="form-actions">
-          <Link to="/pacotes" className="btn btn-secondary">
+          <button type="button" onClick={handleCancel} className="btn btn-secondary">
             Cancelar
-          </Link>
+          </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Cadastrar Pacote Base'}
           </button>
