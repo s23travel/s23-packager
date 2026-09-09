@@ -33,7 +33,7 @@ export const favoriteServicesService = {
     if (filters?.search && filters.search.trim().length >= 2) {
       const term = filters.search.trim();
       query = query.or(
-        `name.ilike.%${term}%,region.ilike.%${term}%,country.ilike.%${term}%,city.ilike.%${term}%`
+        `name.ilike.%${term}%,country.ilike.%${term}%,city.ilike.%${term}%`
       );
     }
 
@@ -60,7 +60,7 @@ export const favoriteServicesService = {
       .select('*')
       .eq('active', true)
       .or(
-        `name.ilike.%${term}%,region.ilike.%${term}%,country.ilike.%${term}%,city.ilike.%${term}%`
+        `name.ilike.%${term}%,country.ilike.%${term}%,city.ilike.%${term}%`
       )
       .order('name', { ascending: true })
       .limit(5);
@@ -105,7 +105,6 @@ export const favoriteServicesService = {
     const payload = {
       type: input.type,
       name: input.name.trim(),
-      region: input.region.trim(),
       country: input.country.trim(),
       city: input.city?.trim() || null,
       notes: input.notes?.trim() || null,
@@ -134,7 +133,6 @@ export const favoriteServicesService = {
 
     if (input.type !== undefined) payload.type = input.type;
     if (input.name !== undefined) payload.name = input.name.trim();
-    if (input.region !== undefined) payload.region = input.region.trim();
     if (input.country !== undefined) payload.country = input.country.trim();
     if (input.city !== undefined) payload.city = input.city?.trim() || null;
     if (input.notes !== undefined) payload.notes = input.notes?.trim() || null;

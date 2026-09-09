@@ -336,7 +336,6 @@ export interface FavoriteService {
   id: string;
   type: FavoriteServiceType;
   name: string;
-  region: string;
   country: string;
   city?: string;
   notes?: string;
@@ -348,7 +347,6 @@ export interface FavoriteService {
 export type CreateFavoriteServiceInput = {
   type: FavoriteServiceType;
   name: string;
-  region: string;
   country: string;
   city?: string;
   notes?: string;

@@ -19,7 +19,6 @@ export const ServiceFormPage: React.FC = () => {
 
   const [type, setType] = useState<FavoriteServiceType>('hotel');
   const [name, setName] = useState('');
-  const [region, setRegion] = useState('');
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
   const [notes, setNotes] = useState('');
@@ -45,7 +44,6 @@ export const ServiceFormPage: React.FC = () => {
         }
         setType(service.type);
         setName(service.name);
-        setRegion(service.region);
         setCountry(service.country);
         setCity(service.city || '');
         setNotes(service.notes || '');
@@ -69,10 +67,6 @@ export const ServiceFormPage: React.FC = () => {
       setFeedback({ type: 'error', message: 'O nome do serviço é obrigatório.' });
       return;
     }
-    if (!region.trim()) {
-      setFeedback({ type: 'error', message: 'A região é obrigatória.' });
-      return;
-    }
     if (!country.trim()) {
       setFeedback({ type: 'error', message: 'O país é obrigatório.' });
       return;
@@ -85,7 +79,6 @@ export const ServiceFormPage: React.FC = () => {
       const input = {
         type,
         name: name.trim(),
-        region: region.trim(),
         country: country.trim(),
         city: city.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -186,23 +179,7 @@ export const ServiceFormPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="form-grid-3" style={{ marginTop: '1rem' }}>
-            {/* Região */}
-            <div className="form-group">
-              <label className="form-label" htmlFor="service-region">
-                Região *
-              </label>
-              <input
-                id="service-region"
-                type="text"
-                className="form-input"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                placeholder="Ex: Serengeti"
-                required
-              />
-            </div>
-
+          <div className="form-grid-2" style={{ marginTop: '1rem' }}>
             {/* País */}
             <div className="form-group">
               <label className="form-label" htmlFor="service-country">

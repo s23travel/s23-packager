@@ -3,6 +3,9 @@
  * Testes unitários e de contrato para o serviço de Catálogo de Serviços Favoritos.
  * Todos os testes são determinísticos e não fazem chamadas ao Supabase real.
  * Seguem o padrão dos testes das fases anteriores.
+ * 
+ * Regra: O cadastro de serviços NÃO possui o campo "Região".
+ * Localização: País (obrigatório) e Cidade (opcional).
  */
 
 import assert from 'node:assert';
@@ -41,7 +44,6 @@ function makeService(overrides: Partial<FavoriteService> = {}): FavoriteService 
     id: 'srv-' + Math.random().toString(36).slice(2, 8),
     type: 'hotel',
     name: 'Four Seasons Safari Lodge',
-    region: 'Serengeti',
     country: 'Tanzânia',
     city: 'Arusha',
     notes: undefined,
@@ -59,7 +61,6 @@ function makeService(overrides: Partial<FavoriteService> = {}): FavoriteService 
 function validateCreateInput(input: Partial<CreateFavoriteServiceInput>): string | null {
   if (!input.type) return 'Tipo é obrigatório.';
   if (!input.name || !input.name.trim()) return 'Nome é obrigatório.';
-  if (!input.region || !input.region.trim()) return 'Região é obrigatória.';
   if (!input.country || !input.country.trim()) return 'País é obrigatório.';
   return null;
 }
@@ -80,7 +81,6 @@ function simulateSearch(
     .filter(
       (s) =>
         s.name.toLowerCase().includes(term) ||
-        s.region.toLowerCase().includes(term) ||
         s.country.toLowerCase().includes(term) ||
         (s.city || '').toLowerCase().includes(term)
     )
@@ -90,46 +90,46 @@ function simulateSearch(
 
 /**
  * Simula o comportamento de snapshot ao selecionar um serviço num pacote.
- * O pacote armazena apenas strings de texto \u2014 sem referência ao ID do serviço.
+ * O pacote armazena apenas strings de texto — sem referência ao ID do serviço.
+ * Localização: "Cidade, País" ou apenas "País" se cidade não estiver preenchida.
  */
 function simulateHotelSelection(
   service: FavoriteService
 ): { hotelName: string; hotelDestination: string } {
   return {
     hotelName: service.name,
-    hotelDestination: [service.region, service.country].filter(Boolean).join(', '),
+    hotelDestination: [service.city, service.country].filter(Boolean).join(', '),
   };
 }
 
 // ---------------------------------------------------------------------------
 // 1. Criação de serviço com campos obrigatórios
 // ---------------------------------------------------------------------------
-runTest('1. Criação de serviço com campos obrigatórios', () => {
+runTest('1. Criação de serviço com campos obrigatórios (País obrigatório, Cidade opcional)', () => {
   const input: CreateFavoriteServiceInput = {
     type: 'hotel',
     name: 'Four Seasons Safari Lodge',
-    region: 'Serengeti',
     country: 'Tanzânia',
   };
-  assert.strictEqual(validateCreateInput(input), null, 'Input válido não deve retornar erro');
+  assert.strictEqual(validateCreateInput(input), null, 'Input válido sem cidade não deve retornar erro');
   assert.strictEqual(input.type, 'hotel');
   assert.strictEqual(input.name, 'Four Seasons Safari Lodge');
-  assert.strictEqual(input.region, 'Serengeti');
   assert.strictEqual(input.country, 'Tanzânia');
+  assert.strictEqual(input.city, undefined);
 });
 
 // ---------------------------------------------------------------------------
-// 2. Edição de nome e região
+// 2. Edição de nome e cidade preserva outros campos
 // ---------------------------------------------------------------------------
-runTest('2. Edição de nome e região preserva outros campos', () => {
+runTest('2. Edição de nome e cidade preserva outros campos', () => {
   const original = makeService();
   const update: UpdateFavoriteServiceInput = {
-    name: 'Four Seasons Lodge Serengeti (Updated)',
-    region: 'Serengeti North',
+    name: 'Four Seasons Safari Lodge (Updated)',
+    city: 'Serengeti National Park',
   };
   const updated: FavoriteService = { ...original, ...update };
-  assert.strictEqual(updated.name, 'Four Seasons Lodge Serengeti (Updated)');
-  assert.strictEqual(updated.region, 'Serengeti North');
+  assert.strictEqual(updated.name, 'Four Seasons Safari Lodge (Updated)');
+  assert.strictEqual(updated.city, 'Serengeti National Park');
   assert.strictEqual(updated.country, original.country, 'País não deve ser alterado');
   assert.strictEqual(updated.type, original.type, 'Tipo não deve ser alterado');
 });
@@ -166,16 +166,20 @@ runTest('4. Pesquisa por nome é case-insensitive', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Pesquisa por região
+// 5. Pesquisa por cidade
 // ---------------------------------------------------------------------------
-runTest('5. Pesquisa por região localiza serviços', () => {
+runTest('5. Pesquisa por cidade localiza serviços', () => {
   const catalog = [
-    makeService({ name: 'Lodge A', region: 'Serengeti' }),
-    makeService({ name: 'Hotel B', region: 'Zanzibar' }),
+    makeService({ name: 'Lodge A', country: 'Tanzânia', city: 'Arusha' }),
+    makeService({ name: 'Hotel B', country: 'Tanzânia', city: 'Zanzibar' }),
   ];
-  const results = simulateSearch(catalog, 'seren');
+  const results = simulateSearch(catalog, 'arusha');
   assert.strictEqual(results.length, 1);
   assert.strictEqual(results[0].name, 'Lodge A');
+
+  const results2 = simulateSearch(catalog, 'zanz');
+  assert.strictEqual(results2.length, 1);
+  assert.strictEqual(results2[0].name, 'Hotel B');
 });
 
 // ---------------------------------------------------------------------------
@@ -229,17 +233,28 @@ runTest('8. Serviços inativos não aparecem nas sugestões de autocomplete', ()
 });
 
 // ---------------------------------------------------------------------------
-// 9. Seleção de hotel preenche os campos corretamente
+// 9. Seleção de hotel preenche os campos com Cidade e País
 // ---------------------------------------------------------------------------
-runTest('9. Seleção de hotel preenche hotelName e hotelDestination corretamente', () => {
-  const service = makeService({
+runTest('9. Seleção de hotel preenche hotelName e hotelDestination (Cidade, País ou País)', () => {
+  // Com cidade
+  const serviceWithCity = makeService({
     name: 'Four Seasons Safari Lodge',
-    region: 'Serengeti',
     country: 'Tanzânia',
+    city: 'Arusha',
   });
-  const { hotelName, hotelDestination } = simulateHotelSelection(service);
-  assert.strictEqual(hotelName, 'Four Seasons Safari Lodge');
-  assert.strictEqual(hotelDestination, 'Serengeti, Tanzânia');
+  const res1 = simulateHotelSelection(serviceWithCity);
+  assert.strictEqual(res1.hotelName, 'Four Seasons Safari Lodge');
+  assert.strictEqual(res1.hotelDestination, 'Arusha, Tanzânia');
+
+  // Sem cidade
+  const serviceWithoutCity = makeService({
+    name: 'Palma Bay Resort',
+    country: 'Espanha',
+    city: undefined,
+  });
+  const res2 = simulateHotelSelection(serviceWithoutCity);
+  assert.strictEqual(res2.hotelName, 'Palma Bay Resort');
+  assert.strictEqual(res2.hotelDestination, 'Espanha');
 });
 
 // ---------------------------------------------------------------------------
@@ -248,8 +263,8 @@ runTest('9. Seleção de hotel preenche hotelName e hotelDestination corretament
 runTest('10. Alteração posterior do serviço no catálogo não altera o pacote (snapshot)', () => {
   const serviceOriginal = makeService({
     name: 'Hotel X',
-    region: 'Maiorca',
     country: 'Espanha',
+    city: 'Palma de Maiorca',
   });
 
   // Pacote A seleciona o serviço — apenas strings são copiadas
@@ -259,7 +274,7 @@ runTest('10. Alteração posterior do serviço no catálogo não altera o pacote
   const serviceAltered: FavoriteService = {
     ...serviceOriginal,
     name: 'Hotel X (Renovado)',
-    region: 'Palma de Maiorca',
+    city: 'Palma Centro',
     active: false,
   };
 
@@ -267,7 +282,7 @@ runTest('10. Alteração posterior do serviço no catálogo não altera o pacote
   assert.strictEqual(pacoteA.hotelName, 'Hotel X', 'Pacote A deve manter o nome original');
   assert.strictEqual(
     pacoteA.hotelDestination,
-    'Maiorca, Espanha',
+    'Palma de Maiorca, Espanha',
     'Pacote A deve manter o destino original'
   );
 
@@ -297,37 +312,44 @@ runTest('11. Após desativação, o serviço não aparece em novas pesquisas', (
 // ---------------------------------------------------------------------------
 // 12. Validação de campos obrigatórios
 // ---------------------------------------------------------------------------
-runTest('12. Validação de campos obrigatórios rejeita inputs inválidos', () => {
+runTest('12. Validação de campos obrigatórios rejeita inputs inválidos (País obrigatório, Cidade opcional)', () => {
   // Sem tipo
-  assert.notStrictEqual(validateCreateInput({ name: 'Hotel X', region: 'R', country: 'C' }), null);
+  assert.notStrictEqual(validateCreateInput({ name: 'Hotel X', country: 'C' }), null);
 
   // Sem nome
-  assert.notStrictEqual(validateCreateInput({ type: 'hotel', region: 'R', country: 'C' }), null);
+  assert.notStrictEqual(validateCreateInput({ type: 'hotel', country: 'C' }), null);
 
   // Nome apenas com espaços
   assert.notStrictEqual(
-    validateCreateInput({ type: 'hotel', name: '   ', region: 'R', country: 'C' }),
+    validateCreateInput({ type: 'hotel', name: '   ', country: 'C' }),
     null,
     'Nome em branco deve ser rejeitado'
   );
 
-  // Sem região
-  assert.notStrictEqual(
-    validateCreateInput({ type: 'hotel', name: 'Hotel X', country: 'C' }),
-    null
-  );
-
   // Sem país
   assert.notStrictEqual(
-    validateCreateInput({ type: 'hotel', name: 'Hotel X', region: 'R' }),
+    validateCreateInput({ type: 'hotel', name: 'Hotel X' }),
     null
   );
 
-  // Input completo e válido
+  // País apenas com espaços
+  assert.notStrictEqual(
+    validateCreateInput({ type: 'hotel', name: 'Hotel X', country: '   ' }),
+    null
+  );
+
+  // Válido sem cidade (cidade é opcional)
   assert.strictEqual(
-    validateCreateInput({ type: 'hotel', name: 'Hotel X', region: 'R', country: 'C' }),
+    validateCreateInput({ type: 'hotel', name: 'Hotel X', country: 'Espanha' }),
     null,
-    'Input válido deve retornar null'
+    'Cidade é opcional — deve ser aceito sem cidade'
+  );
+
+  // Válido com cidade
+  assert.strictEqual(
+    validateCreateInput({ type: 'hotel', name: 'Hotel X', country: 'Espanha', city: 'Palma de Maiorca' }),
+    null,
+    'Input completo com cidade deve ser aceito'
   );
 });
 

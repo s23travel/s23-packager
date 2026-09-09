@@ -379,9 +379,8 @@ O catálogo de serviços (`favorite_services`) é uma funcionalidade de produtiv
 | `id` | `UUID` PK | Identificador único imutável |
 | `type` | `TEXT` NOT NULL | Tipo do serviço (`hotel`, `airline`, `transfer`, `tour`, `insurance`, `car_rental`, `additional`, `other`) |
 | `name` | `TEXT` NOT NULL | Nome oficial utilizado pela S23 |
-| `region` | `TEXT` NOT NULL | Região / destino associado |
-| `country` | `TEXT` NOT NULL | País |
-| `city` | `TEXT` NULL | Cidade, quando aplicável |
+| `country` | `TEXT` NOT NULL | País (obrigatório) |
+| `city` | `TEXT` NULL | Cidade, quando aplicável (opcional) |
 | `notes` | `TEXT` NULL | Observações internas opcionais |
 | `active` | `BOOLEAN` NOT NULL | `true` por padrão; serviços inativos não aparecem no autocomplete |
 | `created_at` | `TIMESTAMPTZ` | Timestamp de criação |
@@ -393,7 +392,7 @@ O catálogo de serviços (`favorite_services`) é uma funcionalidade de produtiv
 - Máximo de 5 sugestões ordenadas por nome, somente serviços `active = true`.
 - Ao selecionar uma sugestão:
   - `data.lodging[0].name` ← `service.name`
-  - `data.lodging[0].destination` ← `"${service.region}, ${service.country}"`
+  - `data.lodging[0].destination` ← `"${service.city ? `${service.city}, ${service.country}` : service.country}"`
 - Sem chamadas ao Gemini ou APIs externas. Pesquisa via `ilike` no Supabase.
 
 ### 10.5 Soft Delete (Desativação)

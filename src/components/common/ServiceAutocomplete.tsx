@@ -189,8 +189,7 @@ export const ServiceAutocomplete: React.FC<ServiceAutocompleteProps> = ({
             >
               <div style={{ fontSize: '13px', fontWeight: 500 }}>{service.name}</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                {service.region}
-                {service.country ? ` · ${service.country}` : ''}
+                {service.city ? `${service.city}, ${service.country}` : service.country}
               </div>
             </button>
           ))}

@@ -143,11 +143,10 @@ export const ServicesListPage: React.FC = () => {
       if (searchTerm.trim().length > 0) {
         const term = searchTerm.trim().toLowerCase();
         const inName    = s.name.toLowerCase().includes(term);
-        const inRegion  = s.region.toLowerCase().includes(term);
         const inCountry = s.country.toLowerCase().includes(term);
         const inCity    = (s.city || '').toLowerCase().includes(term);
         const inType    = FAVORITE_SERVICE_TYPE_LABELS[s.type].toLowerCase().includes(term);
-        if (!inName && !inRegion && !inCountry && !inCity && !inType) return false;
+        if (!inName && !inCountry && !inCity && !inType) return false;
       }
 
       return true;
@@ -260,8 +259,8 @@ export const ServicesListPage: React.FC = () => {
                   <tr>
                     <th>Serviço</th>
                     <th>Tipo</th>
-                    <th>Região</th>
                     <th>País</th>
+                    <th>Cidade</th>
                     <th>Estado</th>
                     <th style={{ textAlign: 'right' }}>Ações</th>
                   </tr>
@@ -276,20 +275,15 @@ export const ServicesListPage: React.FC = () => {
                         >
                           {service.name}
                         </Link>
-                        {service.city && (
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                            {service.city}
-                          </div>
-                        )}
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                         {FAVORITE_SERVICE_TYPE_LABELS[service.type]}
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-                        {service.region}
+                        {service.country}
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-                        {service.country}
+                        {service.city || '—'}
                       </td>
                       <td>
                         <span

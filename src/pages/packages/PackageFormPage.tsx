@@ -22,7 +22,7 @@ export const PackageFormPage: React.FC = () => {
   // Callback para autocomplete de hotel — snapshot: copia apenas texto, sem ID do serviço
   const handleHotelSelect = useCallback((service: FavoriteService) => {
     setHotelName(service.name);
-    setHotelDestination([service.region, service.country].filter(Boolean).join(', '));
+    setHotelDestination([service.city, service.country].filter(Boolean).join(', '));
   }, []);
 
   // Datas e passageiros
