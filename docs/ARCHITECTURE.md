@@ -356,4 +356,45 @@ Na aba **"Markdown do Website"** do componente [`AIContentGenerator.tsx`](file:/
   - **Copiar Markdown**: Copia o texto integral para a área de transferência com um clique.
   - **Baixar .md**: Faz o download imediato do arquivo `<slug>.md` no navegador.
 
+---
 
+## 10. Catálogo de Serviços Favoritos
+
+### 10.1 Propósito
+O catálogo de serviços (`favorite_services`) é uma funcionalidade de produtividade que permite à S23 manter uma lista de serviços utilizados com frequência — principalmente hotéis — e reutilizá-los rapidamente durante o cadastro de novos pacotes. O objetivo é reduzir digitação repetitiva, padronizar nomes e acelerar o fluxo operacional.
+
+### 10.2 Princípio Fundamental: Catálogo como Fonte de Preenchimento
+> **O catálogo de serviços é uma fonte de preenchimento. Packages mantêm snapshot próprio.**
+
+- O operador seleciona um serviço do catálogo durante a criação/edição de um pacote.
+- Os dados (nome, região, país) são **copiados como texto** para os campos do pacote.
+- O pacote **não armazena referência ao `id` do serviço** — apenas as strings copiadas.
+- Alterações posteriores no catálogo (nome, região, desativação) **não afetam** pacotes já criados.
+- Esta regra aplica o mesmo princípio de snapshot já utilizado nas relações `packages` → `quotations`.
+
+### 10.3 Tabela `favorite_services`
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | `UUID` PK | Identificador único imutável |
+| `type` | `TEXT` NOT NULL | Tipo do serviço (`hotel`, `airline`, `transfer`, `tour`, `insurance`, `car_rental`, `additional`, `other`) |
+| `name` | `TEXT` NOT NULL | Nome oficial utilizado pela S23 |
+| `region` | `TEXT` NOT NULL | Região / destino associado |
+| `country` | `TEXT` NOT NULL | País |
+| `city` | `TEXT` NULL | Cidade, quando aplicável |
+| `notes` | `TEXT` NULL | Observações internas opcionais |
+| `active` | `BOOLEAN` NOT NULL | `true` por padrão; serviços inativos não aparecem no autocomplete |
+| `created_at` | `TIMESTAMPTZ` | Timestamp de criação |
+| `updated_at` | `TIMESTAMPTZ` | Atualizado automaticamente por trigger |
+
+### 10.4 Comportamento do Autocomplete de Hotel
+- Campo ativado no formulário de criação/edição de pacotes (campo "Hospedagem Principal").
+- Pesquisa iniciada com mínimo de 2 caracteres (debounce 200ms).
+- Máximo de 5 sugestões ordenadas por nome, somente serviços `active = true`.
+- Ao selecionar uma sugestão:
+  - `data.lodging[0].name` ← `service.name`
+  - `data.lodging[0].destination` ← `"${service.region}, ${service.country}"`
+- Sem chamadas ao Gemini ou APIs externas. Pesquisa via `ilike` no Supabase.
+
+### 10.5 Soft Delete (Desativação)
+Não é utilizado `DELETE` físico. Um serviço "removido" passa a `active = false`. Os pacotes já criados com dados desse serviço permanecem inalterados.

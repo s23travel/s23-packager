@@ -297,3 +297,62 @@ export interface ContentGenerationInput {
   localTaxNotes?: string;
   transferService?: string;
 }
+
+// ==========================================
+// CATÁLOGO DE SERVIÇOS (SERVIÇOS FAVORITOS)
+// ==========================================
+
+/**
+ * Tipos de serviço suportados pelo catálogo de serviços favoritos.
+ * Valores internos estáveis em inglês; apresentação em português na UI.
+ */
+export type FavoriteServiceType =
+  | 'hotel'
+  | 'airline'
+  | 'transfer'
+  | 'tour'
+  | 'insurance'
+  | 'car_rental'
+  | 'additional'
+  | 'other';
+
+/** Labels em português para exibição na interface */
+export const FAVORITE_SERVICE_TYPE_LABELS: Record<FavoriteServiceType, string> = {
+  hotel:       'Hotel',
+  airline:     'Companhia aérea',
+  transfer:    'Transfer',
+  tour:        'Passeio / Excursão',
+  insurance:   'Seguro',
+  car_rental:  'Aluguer de carro',
+  additional:  'Serviço adicional',
+  other:       'Outro',
+};
+
+/**
+ * Entidade do catálogo de serviços reutilizáveis (Tabela: favorite_services)
+ * Princípio: o catálogo é fonte de preenchimento. Packages mantêm snapshot próprio.
+ */
+export interface FavoriteService {
+  id: string;
+  type: FavoriteServiceType;
+  name: string;
+  region: string;
+  country: string;
+  city?: string;
+  notes?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CreateFavoriteServiceInput = {
+  type: FavoriteServiceType;
+  name: string;
+  region: string;
+  country: string;
+  city?: string;
+  notes?: string;
+  active?: boolean;
+};
+
+export type UpdateFavoriteServiceInput = Partial<CreateFavoriteServiceInput>;

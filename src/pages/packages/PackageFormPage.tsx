@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { packagesService } from '../../services/packagesService';
-import { Currency, PackageStatus, PackageData, CostComponent } from '../../types';
+import { Currency, PackageStatus, PackageData, CostComponent, FavoriteService } from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { calculateFinancialSummary } from '../../services/financeService';
+import { ServiceAutocomplete } from '../../components/common/ServiceAutocomplete';
 
 export const PackageFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +18,12 @@ export const PackageFormPage: React.FC = () => {
   const [baseCurrency, setBaseCurrency] = useState<Currency>('EUR');
   const [supplier, setSupplier] = useState('');
   const [additionalInfo, setAdditionalInfo] = useState('');
+
+  // Callback para autocomplete de hotel — snapshot: copia apenas texto, sem ID do serviço
+  const handleHotelSelect = useCallback((service: FavoriteService) => {
+    setHotelName(service.name);
+    setHotelDestination([service.region, service.country].filter(Boolean).join(', '));
+  }, []);
 
   // Datas e passageiros
   const [startDate, setStartDate] = useState('');
@@ -423,12 +430,13 @@ export const PackageFormPage: React.FC = () => {
               <label className="form-label" htmlFor="hotelName">
                 Hospedagem Principal
               </label>
-              <input
+              {/* ServiceAutocomplete: copia apenas texto para o state local — sem referência ao ID do serviço (snapshot garantido) */}
+              <ServiceAutocomplete
                 id="hotelName"
-                type="text"
-                className="form-input"
                 value={hotelName}
-                onChange={(e) => setHotelName(e.target.value)}
+                onChange={setHotelName}
+                onSelect={handleHotelSelect}
+                serviceType="hotel"
                 placeholder="Ex: Four Seasons Safari Lodge"
               />
             </div>

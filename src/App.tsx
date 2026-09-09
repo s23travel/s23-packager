@@ -8,6 +8,8 @@ import { PackageDetailPage } from './pages/packages/PackageDetailPage';
 import { QuotesListPage } from './pages/quotes/QuotesListPage';
 import { QuoteFormPage } from './pages/quotes/QuoteFormPage';
 import { QuoteDetailPage } from './pages/quotes/QuoteDetailPage';
+import { ServicesListPage } from './pages/services/ServicesListPage';
+import { ServiceFormPage } from './pages/services/ServiceFormPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export const App: React.FC = () => {
@@ -30,6 +32,11 @@ export const App: React.FC = () => {
           <Route path="/cotacoes/novo" element={<QuoteFormPage />} />
           <Route path="/cotacoes/:id" element={<QuoteDetailPage />} />
           <Route path="/cotacoes/:id/editar" element={<QuoteFormPage />} />
+
+          {/* Rotas de Serviços (Catálogo) */}
+          <Route path="/servicos" element={<ServicesListPage />} />
+          <Route path="/servicos/novo" element={<ServiceFormPage />} />
+          <Route path="/servicos/:id/editar" element={<ServiceFormPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<NotFoundPage />} />

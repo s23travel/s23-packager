@@ -7,6 +7,7 @@ const NAV_ITEMS: NavigationItem[] = [
   { label: 'Visão Geral', path: '/' },
   { label: 'Pacotes', path: '/pacotes' },
   { label: 'Cotações', path: '/cotacoes' },
+  { label: 'Serviços', path: '/servicos' },
 ];
 
 export const Header: React.FC = () => {
