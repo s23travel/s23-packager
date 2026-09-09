@@ -1,473 +1,423 @@
 import React, { useState } from 'react';
-import { Package, Quotation, StructuredPackageContent } from '../../types';
-import { buildContentGenerationInput } from '../../services/contentValidationService';
+import { Package, StructuredPackageContent } from '../../types';
+import { buildContentGenerationInput, validateStructuredContent } from '../../services/contentValidationService';
 import { generateContentForWebsite } from '../../services/aiContentService';
-import { generatePackageMarkdown, getMarkdownFileName } from '../../services/markdownService';
+import { generatePackageMarkdown, getMarkdownFileName, S23_FIXED_INCLUSO_ITEM } from '../../services/markdownService';
 import { validatePackageMarkdown } from '../../services/markdownValidationService';
+import { PackageContentEditor } from './PackageContentEditor';
+import { MarkdownPreviewCard } from './MarkdownPreviewCard';
 
-interface AIContentGeneratorProps {
+export interface AIContentGeneratorProps {
   source: {
     package?: Package;
-    quotation?: Quotation;
   };
 }
 
 export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }) => {
+  const pkg = source.package;
+
   const [generating, setGenerating] = useState(false);
   const [content, setContent] = useState<StructuredPackageContent | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'geral' | 'sobre' | 'inclusoes' | 'seo' | 'json' | 'markdown'>('geral');
+  const [isDirty, setIsDirty] = useState(false);
 
-  // Estados do Markdown do Website (Fase 6B/6C)
+  // Mensagens e erros de geração
+  const [genError, setGenError] = useState<string | null>(null);
+  const [genErrorDetails, setGenErrorDetails] = useState<string | null>(null);
+
+  // Erros e status de validação / salvamento
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Estado do Markdown gerado deterministicamente
   const [markdownString, setMarkdownString] = useState<string | null>(null);
   const [markdownFileName, setMarkdownFileName] = useState<string | null>(null);
-  const [markdownErrors, setMarkdownErrors] = useState<string[]>([]);
-  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
 
-  const handleGenerate = async () => {
+  // Modal de confirmação ao regenerar com alterações pendentes
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+
+  if (!pkg) {
+    return (
+      <div
+        style={{
+          padding: '1rem',
+          borderRadius: '8px',
+          backgroundColor: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          color: '#ef4444',
+          fontSize: '0.875rem',
+        }}
+      >
+        A funcionalidade "Conteúdo para website (IA)" pertence exclusivamente ao Pacote Base.
+      </div>
+    );
+  }
+
+  const pData = pkg.data || {};
+  const sovereignSalePrice =
+    typeof pData.financials?.salePrice === 'number'
+      ? pData.financials.salePrice
+      : typeof pData.financials?.priceTotal?.amount === 'number'
+      ? pData.financials.priceTotal.amount
+      : 0;
+
+  // ----------------------------------------------------
+  // GERAÇÃO COM IA (GEMINI 2.5 FLASH + GROUNDING)
+  // ----------------------------------------------------
+  const executeGeneration = async () => {
     try {
       setGenerating(true);
-      setError(null);
-      setErrorDetails(null);
-      // Invalida markdown anterior ao gerar novo conteúdo estruturado
+      setGenError(null);
+      setGenErrorDetails(null);
+      setValidationErrors([]);
+      setSaveSuccess(false);
       setMarkdownString(null);
       setMarkdownFileName(null);
-      setMarkdownErrors([]);
 
-      // Constrói input sanitizado garantindo que nenhum custo interno seja enviado
-      const input = buildContentGenerationInput(source);
+      // Constrói payload seguro (sanitizado contra custos internos/lucro/fornecedor)
+      const input = buildContentGenerationInput({ package: pkg });
 
-      // Invoca backend seguro
       const res = await generateContentForWebsite(input);
 
       if (!res.success || !res.data) {
-        setError(res.error || 'Falha na geração de conteúdo.');
-        setErrorDetails(res.details || null);
+        setGenError(res.error || 'Falha na geração de conteúdo com IA.');
+        setGenErrorDetails(res.details || null);
         return;
       }
 
-      setContent(res.data);
+      // Garante a autoridade soberana dos dados comerciais do Pacote Base:
+      // O preço gerado pela IA NUNCA sobrescreve o valor comercial oficial do pacote base.
+      const rawGenerated = res.data;
+      const enforcedContent: StructuredPackageContent = {
+        ...rawGenerated,
+        // Preço soberano do pacote base
+        price: sovereignSalePrice > 0 ? sovereignSalePrice : rawGenerated.price,
+        // Garantia do item fixo S23 em inclusões
+        incluso: [
+          ...(rawGenerated.incluso || []).filter(
+            (item) => item.title?.trim() !== S23_FIXED_INCLUSO_ITEM.title
+          ),
+          S23_FIXED_INCLUSO_ITEM,
+        ],
+      };
+
+      setContent(enforcedContent);
+      setIsDirty(false);
+      setShowRegenerateConfirm(false);
     } catch (err: any) {
-      console.error('Erro na geração:', err);
-      setError(err.message || 'Erro inesperado ao gerar conteúdo com IA.');
+      console.error('Erro na geração com IA:', err);
+      setGenError(err.message || 'Erro inesperado ao comunicar com o gerador de conteúdo.');
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleGenerateMarkdown = () => {
+  const handleRegenerateClick = () => {
+    if (isDirty) {
+      setShowRegenerateConfirm(true);
+    } else {
+      executeGeneration();
+    }
+  };
+
+  // ----------------------------------------------------
+  // SALVAMENTO & VALIDAÇÃO DETERMINÍSTICA DO MARKDOWN
+  // ----------------------------------------------------
+  const handleSaveContent = () => {
     if (!content) return;
 
+    setValidationErrors([]);
+    setSaveSuccess(false);
+
+    // 1. Garante que os dados soberanos continuem protegidos
+    const finalizedContent: StructuredPackageContent = {
+      ...content,
+      price: sovereignSalePrice > 0 ? sovereignSalePrice : content.price,
+    };
+
+    // 2. Validação determinística do modelo estruturado
+    const input = buildContentGenerationInput({ package: pkg });
+    const contentValidation = validateStructuredContent(finalizedContent, input);
+
+    if (!contentValidation.valid) {
+      setValidationErrors(contentValidation.errors);
+      setMarkdownString(null);
+      setMarkdownFileName(null);
+      return;
+    }
+
     try {
-      // 1. Geração determinística
-      const md = generatePackageMarkdown(content);
-      const filename = getMarkdownFileName(content);
+      // 3. Geração determinística de Markdown via markdownService
+      const validContent = contentValidation.data || finalizedContent;
+      const md = generatePackageMarkdown(validContent);
+      const filename = getMarkdownFileName(validContent);
 
-      // 2. Validação estrita do Markdown gerado
-      const validation = validatePackageMarkdown(md, content);
+      // 4. Validação estrita do arquivo Markdown via markdownValidationService
+      const mdValidation = validatePackageMarkdown(md, validContent);
 
-      if (!validation.valid) {
-        setMarkdownErrors(validation.errors);
+      if (!mdValidation.valid) {
+        setValidationErrors(mdValidation.errors);
         setMarkdownString(null);
         setMarkdownFileName(null);
         return;
       }
 
-      setMarkdownErrors([]);
+      // Sucesso completo: atualiza estado, reseta dirty e disponibiliza download
+      setContent(validContent);
       setMarkdownString(md);
       setMarkdownFileName(filename);
-      setActiveTab('markdown');
+      setIsDirty(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 5000);
     } catch (err: any) {
-      setMarkdownErrors([err.message || 'Erro ao gerar arquivo Markdown.']);
+      console.error('Erro ao gerar/validar Markdown:', err);
+      setValidationErrors([err.message || 'Erro inesperado ao gerar arquivo Markdown.']);
       setMarkdownString(null);
       setMarkdownFileName(null);
     }
   };
 
-  const handleCopyMarkdown = async () => {
-    if (!markdownString) return;
-    try {
-      await navigator.clipboard.writeText(markdownString);
-      setCopiedMarkdown(true);
-      setTimeout(() => setCopiedMarkdown(false), 2000);
-    } catch (err) {
-      console.error('Falha ao copiar:', err);
-    }
-  };
-
-  const handleDownloadMarkdown = () => {
-    if (!markdownString || !markdownFileName) return;
-
-    const blob = new Blob([markdownString], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = markdownFileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   return (
-    <div className="card shadow-sm border border-slate-200 rounded-xl overflow-hidden bg-white">
-      {/* Cabeçalho da Seção de IA */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 border-b border-slate-100 bg-slate-50">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">Conteúdo para website (IA)</h3>
-            <span className="badge badge-info" style={{ fontSize: '11px' }}>
-              Gemini + Google Search
-            </span>
+    <div
+      className="ai-content-generator-container"
+      style={{
+        backgroundColor: 'var(--bg-main)',
+        borderRadius: '8px',
+        padding: '0.5rem 0',
+      }}
+    >
+      {/* CABEÇALHO DO BLOCO */}
+      <div
+        style={{
+          padding: '1.25rem',
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: '8px',
+          border: '1px solid var(--border-color)',
+          marginBottom: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <span style={{ fontSize: '1.25rem' }}>✨</span>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Conteúdo para website (IA)
+              </h3>
+              <span
+                style={{
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '9999px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                  color: 'var(--primary)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Pacote Base
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Crie e revise o conteúdo público deste pacote antes de gerar o arquivo Markdown para publicação no Manager.
+            </p>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Pesquisa factual sobre o destino e redação comercial estruturada baseada no{' '}
-            {source.quotation ? 'dados da cotação' : 'pacote base'}.
-          </p>
+
+          {!content && (
+            <button
+              type="button"
+              onClick={executeGeneration}
+              disabled={generating}
+              className="btn btn-primary"
+              style={{ padding: '0.6rem 1.25rem', fontWeight: 600 }}
+            >
+              {generating ? '✨ Gerando com IA...' : '✨ Gerar conteúdo estruturado'}
+            </button>
+          )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={generating}
-          className="btn btn-sm btn-action-primary"
+        {/* FEEDBACK DE ERRO NA GERAÇÃO */}
+        {genError && (
+          <div
+            style={{
+              marginTop: '1rem',
+              padding: '0.75rem 1rem',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#ef4444',
+              fontSize: '0.8125rem',
+            }}
+          >
+            <strong>Erro na geração:</strong> {genError}
+            {genErrorDetails && (
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', opacity: 0.9 }}>
+                {genErrorDetails}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ESTADO INICIAL (SEM CONTEÚDO AINDA) */}
+      {!content && (
+        <div
+          style={{
+            padding: '2.5rem 1.5rem',
+            textAlign: 'center',
+            backgroundColor: 'var(--bg-card)',
+            borderRadius: '8px',
+            border: '1px dashed var(--border-color)',
+          }}
         >
-          {generating ? 'Pesquisando e gerando...' : 'Gerar conteúdo estruturado'}
-        </button>
-      </div>
+          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🌐</div>
+          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem', color: 'var(--text-primary)' }}>
+            Nenhum conteúdo editorial gerado ainda
+          </h4>
+          <p
+            style={{
+              maxWidth: '520px',
+              margin: '0 auto 1.5rem auto',
+              fontSize: '0.875rem',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.5,
+            }}
+          >
+            Clique no botão abaixo para que o Gemini elabore a proposta comercial de conteúdo público
+            (roteiro, apresentação do destino, inclusões e SEO) baseando-se estritamente nos dados cadastrados
+            neste Pacote Base.
+          </p>
+          <button
+            type="button"
+            onClick={executeGeneration}
+            disabled={generating}
+            className="btn btn-primary"
+            style={{ padding: '0.65rem 1.5rem', fontSize: '0.9375rem' }}
+          >
+            {generating ? '✨ Gerando conteúdo com IA...' : '✨ Gerar conteúdo estruturado'}
+          </button>
+        </div>
+      )}
 
-      {/* Alerta Informativo de Segurança e Soberania dos Dados */}
-      <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs text-slate-700 flex items-center justify-between">
-        <span>
-          <strong>Hierarquia nível 1:</strong> Preço, datas e hotéis são soberanos e nunca são alterados pela IA. Custos internos são estritamente confidenciais e nunca são transmitidos.
-        </span>
-        <span className="text-[11px] font-medium text-slate-600">Dados comerciais protegidos</span>
-      </div>
-
-      {/* Mensagem de Erro (caso ocorra ou secret não esteja configurada) */}
-      {error && (
-        <div className="p-4 bg-rose-50 border-b border-rose-200 text-xs text-rose-800">
-          <div className="flex items-start gap-2">
-            <span className="text-base">⚠️</span>
-            <div>
-              <p className="font-bold">{error}</p>
-              {errorDetails && <p className="mt-1 text-rose-700">{errorDetails}</p>}
+      {/* MODAL DE CONFIRMAÇÃO PARA REGENERAR QUANDO HOUVER ALTERAÇÕES MANUAIS */}
+      {showRegenerateConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              maxWidth: '480px',
+              width: '100%',
+              padding: '1.5rem',
+            }}
+          >
+            <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem', color: 'var(--text-primary)' }}>
+              Confirmar regeneração com IA?
+            </h4>
+            <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Este conteúdo possui alterações manuais. Regenerar substituirá todo o conteúdo atual pelo novo texto da IA. Deseja continuar?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowRegenerateConfirm(false)}
+                className="btn btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={executeGeneration}
+                className="btn btn-primary"
+                style={{ backgroundColor: '#dc2626' }}
+              >
+                Sim, regenerar conteúdo
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Conteúdo Estruturado Retornado */}
-      {content ? (
-        <div className="p-5 space-y-4">
-          {/* Navegação por Abas */}
-          <div className="flex border-b border-slate-200 gap-2 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setActiveTab('geral')}
-              className={`pb-2 px-3 transition-colors border-b-2 ${
-                activeTab === 'geral'
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Visão Geral
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('sobre')}
-              className={`pb-2 px-3 transition-colors border-b-2 ${
-                activeTab === 'sobre'
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Sobre o Destino & Fatos
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('inclusoes')}
-              className={`pb-2 px-3 transition-colors border-b-2 ${
-                activeTab === 'inclusoes'
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Inclusões & Pagamento
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('seo')}
-              className={`pb-2 px-3 transition-colors border-b-2 ${
-                activeTab === 'seo'
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              SEO
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('json')}
-              className={`pb-2 px-3 transition-colors border-b-2 ${
-                activeTab === 'json'
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              JSON Estruturado
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('markdown')}
-              className={`pb-2 px-3 transition-colors border-b-2 flex items-center gap-1.5 ${
-                activeTab === 'markdown'
-                  ? 'border-indigo-600 text-indigo-700 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span>📄</span> Markdown do Website
-              {markdownString && (
-                <span className="w-2 h-2 rounded-full bg-emerald-500" title="Markdown validado e pronto"></span>
-              )}
-            </button>
+      {/* FEEDBACK DE SUCESSO AO SALVAR */}
+      {saveSuccess && (
+        <div
+          style={{
+            padding: '0.75rem 1rem',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            borderRadius: '6px',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            color: '#16a34a',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <span>✓</span>
+          <span>Conteúdo salvo e validado com sucesso! Arquivo Markdown gerado determinísticamente abaixo.</span>
+        </div>
+      )}
+
+      {/* FEEDBACK DE ERROS DE VALIDAÇÃO */}
+      {validationErrors.length > 0 && (
+        <div
+          style={{
+            padding: '1rem',
+            backgroundColor: 'rgba(239, 68, 68, 0.08)',
+            borderRadius: '6px',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            marginBottom: '1rem',
+          }}
+        >
+          <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+            Não foi possível salvar e validar o conteúdo:
           </div>
-
-          {/* Aba: Visão Geral */}
-          {activeTab === 'geral' && (
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
-                  Título Comercial
-                </div>
-                <div className="text-base font-bold text-slate-800 mt-0.5">{content.title}</div>
-                {content.subtitle && (
-                  <div className="text-xs text-slate-600 italic mt-1">{content.subtitle}</div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                  <span className="text-[11px] text-slate-400 font-semibold uppercase">Categoria</span>
-                  <div className="font-bold text-slate-800 mt-1">{content.category}</div>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                  <span className="text-[11px] text-slate-400 font-semibold uppercase">Slug Oficial</span>
-                  <div className="font-mono text-slate-800 mt-1">{content.slug}</div>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                  <span className="text-[11px] text-slate-400 font-semibold uppercase">Preço Comercial</span>
-                  <div className="font-bold text-emerald-700 mt-1">{content.price}</div>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
-                  Excerpt (Resumo do Card)
-                </div>
-                <div className="text-slate-700 mt-1 leading-relaxed">{content.excerpt}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Aba: Sobre */}
-          {activeTab === 'sobre' && (
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="font-bold text-slate-800 text-sm">{content.sobre.title}</div>
-                <p className="mt-2 text-slate-700 leading-relaxed whitespace-pre-wrap">
-                  {content.sobre.text}
-                </p>
-              </div>
-
-              {content.infoDestino && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {content.infoDestino.localizacao && (
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <span className="text-[11px] font-semibold text-slate-500">Localização:</span>
-                      <p className="mt-1 text-slate-700">{content.infoDestino.localizacao}</p>
-                    </div>
-                  )}
-                  {content.infoDestino.clima && (
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <span className="text-[11px] font-semibold text-slate-500">Clima:</span>
-                      <p className="mt-1 text-slate-700">{content.infoDestino.clima}</p>
-                    </div>
-                  )}
-                  {content.infoDestino.idiomaCultura && (
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <span className="text-[11px] font-semibold text-slate-500">Idioma e cultura:</span>
-                      <p className="mt-1 text-slate-700">{content.infoDestino.idiomaCultura}</p>
-                    </div>
-                  )}
-                  {content.infoDestino.documentacao && (
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <span className="text-[11px] font-semibold text-slate-500">Documentação:</span>
-                      <p className="mt-1 text-slate-700">{content.infoDestino.documentacao}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Aba: Inclusões */}
-          {activeTab === 'inclusoes' && (
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="font-bold text-slate-800 mb-2">Itens Inclusos</div>
-                <ul className="space-y-2">
-                  {content.incluso.map((inc, i) => (
-                    <li key={i} className="flex items-start gap-2 bg-white p-2 rounded border border-slate-100">
-                      <span className="text-base">{inc.icon === 'gift' ? '🎁' : inc.icon === 'plane' ? '✈️' : inc.icon === 'bed' ? '🏨' : '✔'}</span>
-                      <div>
-                        <div className="font-semibold text-slate-800">{inc.title}</div>
-                        {inc.desc && <div className="text-slate-500 text-[11px]">{inc.desc}</div>}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div className="font-bold text-slate-800 mb-1">Regra de Pagamento Obrigatória</div>
-                <div className="p-2 bg-white rounded border border-slate-100 text-slate-700 font-medium italic">
-                  "{content.pagamento.observacao}"
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Aba: SEO */}
-          {activeTab === 'seo' && (
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <span className="text-[11px] text-slate-400 font-semibold uppercase">SEO Title ({content.seoTitle.length}/60 carac.)</span>
-                <div className="text-sm font-bold text-slate-800 mt-1">{content.seoTitle}</div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <span className="text-[11px] text-slate-400 font-semibold uppercase">SEO Description ({content.seoDescription.length}/160 carac.)</span>
-                <div className="text-slate-700 mt-1 leading-relaxed">{content.seoDescription}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Aba: JSON */}
-          {activeTab === 'json' && (
-            <div className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-[11px] font-mono leading-relaxed">
-              <pre>{JSON.stringify(content, null, 2)}</pre>
-            </div>
-          )}
-
-          {/* Aba: Markdown do Website (Fase 6B) */}
-          {activeTab === 'markdown' && (
-            <div className="space-y-4 text-xs">
-              {/* Barra de Ações do Markdown */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-100/80 rounded-lg border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-700">Arquivo:</span>
-                  <span className="font-mono bg-white px-2.5 py-1 rounded border border-slate-200 text-slate-800 font-semibold">
-                    {markdownFileName || `${content.slug}.md`}
-                  </span>
-                  {markdownString && (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      ✓ Validado & Compatível com Website S23
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleGenerateMarkdown}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
-                  >
-                    {markdownString ? 'Regerar Markdown' : 'Gerar Markdown'}
-                  </button>
-
-                  {markdownString && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleCopyMarkdown}
-                        className="btn btn-sm btn-secondary"
-                      >
-                        {copiedMarkdown ? 'Copiado!' : 'Copiar Markdown'}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleDownloadMarkdown}
-                        className="btn btn-sm btn-action-primary"
-                      >
-                        Baixar .md
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Erros de Validação do Markdown */}
-              {markdownErrors.length > 0 && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded text-rose-800 space-y-1 text-xs">
-                  <div className="font-semibold">
-                    Erros na validação do Markdown gerado:
-                  </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-700 mt-0.5">
-                    {markdownErrors.map((err, idx) => (
-                      <li key={idx}>{err}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Indicação Oficial para o Manager */}
-              {markdownString && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded flex items-center justify-between text-xs text-emerald-900">
-                  <div>
-                    <span className="font-semibold">Arquivo pronto para publicação no Manager.</span>
-                    <p className="text-[11px] text-emerald-700 mt-0.5">
-                      Baixe o arquivo .md e envie-o ao Manager.
-                    </p>
-                  </div>
-                  <span className="font-mono text-[11px] font-medium bg-white px-2 py-0.5 rounded border border-emerald-300 text-emerald-800">
-                    content/pacotes/{markdownFileName || `${content.slug}.md`}
-                  </span>
-                </div>
-              )}
-
-              {/* Preview do Conteúdo Markdown */}
-              {markdownString ? (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-                    <span>Pré-visualização do arquivo Markdown final pronto para commit no repositório:</span>
-                    <span>{markdownString.split('\n').length} linhas • {new Blob([markdownString]).size} bytes</span>
-                  </div>
-                  <div className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-[11px] font-mono leading-relaxed max-h-[500px]">
-                    <pre className="whitespace-pre">{markdownString}</pre>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 text-center bg-slate-50 rounded-lg border border-dashed border-slate-300">
-                  <p className="text-slate-600 font-medium">Nenhum Markdown gerado ainda para este conteúdo.</p>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Clique no botão "Gerar Markdown" acima para transformar este conteúdo estruturado em um arquivo .md compatível com o website S23.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+          <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#ef4444', fontSize: '0.8125rem' }}>
+            {validationErrors.map((err, i) => (
+              <li key={i} style={{ marginBottom: '0.25rem' }}>{err}</li>
+            ))}
+          </ul>
         </div>
-      ) : (
-        <div className="p-8 text-center bg-slate-50/50">
-          <p className="text-xs text-slate-500 font-medium">
-            Nenhum conteúdo estruturado gerado ainda.
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Clique em "Gerar conteúdo estruturado" para iniciar a redação comercial com pesquisa em tempo real do destino.
-          </p>
-        </div>
+      )}
+
+      {/* EDITOR ESTRUTURADO CONTÍNUO (SEM ABAS) */}
+      {content && (
+        <>
+          <PackageContentEditor
+            content={content}
+            onChange={(updated) => {
+              setContent(updated);
+              setIsDirty(true);
+            }}
+            basePackage={pkg}
+            isDirty={isDirty}
+            onSave={handleSaveContent}
+            onRegenerate={handleRegenerateClick}
+            isGenerating={generating}
+          />
+
+          {/* PREVIEW DETERMINÍSTICO DO MARKDOWN (APÓS SALVAMENTO BEM-SUCEDIDO) */}
+          {markdownString && markdownFileName && (
+            <MarkdownPreviewCard
+              fileName={markdownFileName}
+              markdown={markdownString}
+            />
+          )}
+        </>
       )}
     </div>
   );
