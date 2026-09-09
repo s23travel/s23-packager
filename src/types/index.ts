@@ -40,13 +40,14 @@ export interface TravelDates {
   durationNights?: number;
 }
 
-// Detalhes de transporte (aéreo, trem, transfer, etc.)
 export interface TransportDetails {
   type: 'flight' | 'train' | 'bus' | 'boat' | 'transfer' | 'other';
   carrier?: string;
   route?: string;
   departureDate?: string;
   arrivalDate?: string;
+  departureTime?: string; // HH:MM
+  arrivalTime?: string;   // HH:MM
   notes?: string;
 }
 
@@ -121,6 +122,10 @@ export interface PackageData {
   financials?: FinancialSummary;
   supplier?: string;
   additionalInfo?: string;
+  transferService?: string;
+  paymentConditions?: string;
+  localTaxNotes?: string;
+  extraServicesNotes?: string;
   [key: string]: unknown;
 }
 

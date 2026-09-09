@@ -29,15 +29,28 @@ export const QuoteFormPage: React.FC = () => {
   const [durationDays, setDurationDays] = useState<number>(7);
   const [adults, setAdults] = useState<number>(2);
   const [children, setChildren] = useState<number>(0);
+  const [infants, setInfants] = useState<number>(0);
 
   // Transportes
   const [outboundRoute, setOutboundRoute] = useState('');
+  const [outboundCarrier, setOutboundCarrier] = useState('');
+  const [outboundDepartureTime, setOutboundDepartureTime] = useState('');
+  const [outboundArrivalTime, setOutboundArrivalTime] = useState('');
   const [inboundRoute, setInboundRoute] = useState('');
+  const [inboundCarrier, setInboundCarrier] = useState('');
+  const [inboundDepartureTime, setInboundDepartureTime] = useState('');
+  const [inboundArrivalTime, setInboundArrivalTime] = useState('');
+  const [transferService, setTransferService] = useState('');
 
   // Hotelaria
   const [hotelName, setHotelName] = useState('');
   const [hotelDestination, setHotelDestination] = useState('');
   const [hotelMealPlan, setHotelMealPlan] = useState('');
+
+  // Condições comerciais WhatsApp
+  const [paymentConditions, setPaymentConditions] = useState('');
+  const [localTaxNotes, setLocalTaxNotes] = useState('');
+  const [extraServicesNotes, setExtraServicesNotes] = useState('');
 
   // Componentes e valores financeiros (Fase 4)
   const [costComponents, setCostComponents] = useState<CostComponent[]>([]);
@@ -89,15 +102,27 @@ export const QuoteFormPage: React.FC = () => {
         if (d.passengers) {
           setAdults(d.passengers.adults ?? 2);
           setChildren(d.passengers.children ?? 0);
+          setInfants(d.passengers.infants ?? 0);
         }
 
         if (d.outboundTransport) {
           setOutboundRoute(d.outboundTransport.route || '');
+          setOutboundCarrier(d.outboundTransport.carrier || '');
+          setOutboundDepartureTime(d.outboundTransport.departureTime || '');
+          setOutboundArrivalTime(d.outboundTransport.arrivalTime || '');
         }
 
         if (d.inboundTransport) {
           setInboundRoute(d.inboundTransport.route || '');
+          setInboundCarrier(d.inboundTransport.carrier || '');
+          setInboundDepartureTime(d.inboundTransport.departureTime || '');
+          setInboundArrivalTime(d.inboundTransport.arrivalTime || '');
         }
+
+        setTransferService(d.transferService || '');
+        setPaymentConditions(d.paymentConditions || '');
+        setLocalTaxNotes(d.localTaxNotes || '');
+        setExtraServicesNotes(d.extraServicesNotes || '');
 
         if (d.lodging && d.lodging.length > 0) {
           setHotelName(d.lodging[0].name || '');
@@ -140,18 +165,38 @@ export const QuoteFormPage: React.FC = () => {
       const quotationData: QuotationData = {
         customNotes: customNotes.trim() || undefined,
         originPackageName: originPackageName || undefined,
+        transferService: transferService.trim() || undefined,
+        paymentConditions: paymentConditions.trim() || undefined,
+        localTaxNotes: localTaxNotes.trim() || undefined,
+        extraServicesNotes: extraServicesNotes.trim() || undefined,
         passengers: {
           adults: Number(adults) || 2,
           children: Number(children) || 0,
-          infants: 0,
+          infants: Number(infants) || 0,
         },
         dates: {
           startDate,
           endDate,
           durationDays: Number(durationDays) || undefined,
         },
-        outboundTransport: outboundRoute.trim() ? { type: 'flight', route: outboundRoute.trim() } : undefined,
-        inboundTransport: inboundRoute.trim() ? { type: 'flight', route: inboundRoute.trim() } : undefined,
+        outboundTransport: outboundRoute.trim()
+          ? {
+              type: 'flight',
+              route: outboundRoute.trim(),
+              carrier: outboundCarrier.trim() || undefined,
+              departureTime: outboundDepartureTime.trim() || undefined,
+              arrivalTime: outboundArrivalTime.trim() || undefined,
+            }
+          : undefined,
+        inboundTransport: inboundRoute.trim()
+          ? {
+              type: 'flight',
+              route: inboundRoute.trim(),
+              carrier: inboundCarrier.trim() || undefined,
+              departureTime: inboundDepartureTime.trim() || undefined,
+              arrivalTime: inboundArrivalTime.trim() || undefined,
+            }
+          : undefined,
         lodging: hotelName.trim()
           ? [
               {
@@ -170,7 +215,7 @@ export const QuoteFormPage: React.FC = () => {
           passengers: {
             adults: Number(adults) || 2,
             children: Number(children) || 0,
-            infants: 0,
+            infants: Number(infants) || 0,
           },
         }),
       };
@@ -414,16 +459,44 @@ export const QuoteFormPage: React.FC = () => {
                 onChange={(e) => setAdults(Number(e.target.value))}
               />
             </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="children">
+                Crianças
+              </label>
+              <input
+                id="children"
+                type="number"
+                min="0"
+                className="form-input"
+                value={children}
+                onChange={(e) => setChildren(Number(e.target.value))}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="infants">
+                Bebés (0-2 anos)
+              </label>
+              <input
+                id="infants"
+                type="number"
+                min="0"
+                className="form-input"
+                value={infants}
+                onChange={(e) => setInfants(Number(e.target.value))}
+              />
+            </div>
           </div>
         </div>
 
         {/* Seção 3: Transporte e Hotelaria */}
         <div className="card form-card">
-          <h3 className="form-section-title">3. Transporte e Hospedagem (Snapshot)</h3>
+          <h3 className="form-section-title">3. Transporte, Transfer e Hospedagem (Snapshot)</h3>
           <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label" htmlFor="outboundRoute">
-                Transporte de Ida
+                Transporte de Ida (Rota / Cia)
               </label>
               <input
                 id="outboundRoute"
@@ -431,12 +504,29 @@ export const QuoteFormPage: React.FC = () => {
                 className="form-input"
                 value={outboundRoute}
                 onChange={(e) => setOutboundRoute(e.target.value)}
+                placeholder="Ex: Porto → Maiorca (Ryanair)"
               />
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <input
+                  type="text"
+                  placeholder="Horário Partida (ex: 08:30)"
+                  className="form-input text-xs"
+                  value={outboundDepartureTime}
+                  onChange={(e) => setOutboundDepartureTime(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Horário Chegada (ex: 11:45)"
+                  className="form-input text-xs"
+                  value={outboundArrivalTime}
+                  onChange={(e) => setOutboundArrivalTime(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="form-group">
               <label className="form-label" htmlFor="inboundRoute">
-                Transporte de Volta
+                Transporte de Volta (Rota / Cia)
               </label>
               <input
                 id="inboundRoute"
@@ -444,8 +534,39 @@ export const QuoteFormPage: React.FC = () => {
                 className="form-input"
                 value={inboundRoute}
                 onChange={(e) => setInboundRoute(e.target.value)}
+                placeholder="Ex: Maiorca → Porto (Ryanair)"
               />
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <input
+                  type="text"
+                  placeholder="Horário Partida (ex: 18:20)"
+                  className="form-input text-xs"
+                  value={inboundDepartureTime}
+                  onChange={(e) => setInboundDepartureTime(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Horário Chegada (ex: 19:40)"
+                  className="form-input text-xs"
+                  value={inboundArrivalTime}
+                  onChange={(e) => setInboundArrivalTime(e.target.value)}
+                />
+              </div>
             </div>
+          </div>
+
+          <div className="form-group" style={{ marginTop: '1rem' }}>
+            <label className="form-label" htmlFor="transferService">
+              Serviço de Transfer (se aplicável)
+            </label>
+            <input
+              id="transferService"
+              type="text"
+              className="form-input"
+              value={transferService}
+              onChange={(e) => setTransferService(e.target.value)}
+              placeholder="Ex: Transfer privativo aeroporto / hotel / aeroporto incluído"
+            />
           </div>
 
           <div className="form-grid-3" style={{ marginTop: '1rem' }}>
@@ -506,13 +627,57 @@ export const QuoteFormPage: React.FC = () => {
             passengers={{
               adults: Number(adults) || 2,
               children: Number(children) || 0,
-              infants: 0,
+              infants: Number(infants) || 0,
             }}
           />
 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ marginTop: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="paymentConditions">
+                Condição de Pagamento (Entrada / Saldo)
+              </label>
+              <input
+                id="paymentConditions"
+                type="text"
+                className="form-input"
+                value={paymentConditions}
+                onChange={(e) => setPaymentConditions(e.target.value)}
+                placeholder="Ex: 30% sinal + saldo até 20 dias antes"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="localTaxNotes">
+                Taxa Local na Hospedagem (se aplicável)
+              </label>
+              <input
+                id="localTaxNotes"
+                type="text"
+                className="form-input"
+                value={localTaxNotes}
+                onChange={(e) => setLocalTaxNotes(e.target.value)}
+                placeholder="Ex: 3,30€ p/ pessoa/noite no hotel"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="extraServicesNotes">
+                Serviços Extras / Opcionais (se aplicável)
+              </label>
+              <input
+                id="extraServicesNotes"
+                type="text"
+                className="form-input"
+                value={extraServicesNotes}
+                onChange={(e) => setExtraServicesNotes(e.target.value)}
+                placeholder="Ex: Seguro viagem cancelamento + bagagem"
+              />
+            </div>
+          </div>
+
           <div className="form-group" style={{ marginTop: '1rem' }}>
             <label className="form-label" htmlFor="customNotes">
-              Notas Personalizadas para o Cliente / Condições da Cotação
+              Observações Comerciais para o Cliente / Condições da Cotação
             </label>
             <textarea
               id="customNotes"

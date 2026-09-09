@@ -5,6 +5,7 @@ import { Quotation, QuotationStatus } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
+import { WhatsAppMessagePreview } from '../../components/whatsapp/WhatsAppMessagePreview';
 
 export const QuoteDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -259,6 +260,11 @@ export const QuoteDetailPage: React.FC = () => {
           passengers={d.passengers}
           readOnly={true}
         />
+      </div>
+
+      {/* Seção WhatsApp (Fase 5) */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <WhatsAppMessagePreview quotation={quote} />
       </div>
     </div>
   );

@@ -86,7 +86,7 @@ O modelo relacional do Packager foi desenhado para equilibrar integridade refere
 2. **Fase 2**: Modelagem de dados Supabase e migrations base. *(Concluída)*
 3. **Fase 3**: CRUD de Pacotes e Cotações com Snapshot Independente. *(Concluída)*
 4. **Fase 4**: Motor Financeiro Determinístico + Multi-Moeda. *(Concluída)*
-5. **Fase 5**: Exportações (WhatsApp, Markdown, Website, S23 Manager).
+5. **Fase 5**: Geração Determinística de Mensagem para WhatsApp. *(Concluída)*
 6. **Fase 6**: Polimento, automações e deploy em produção.
 
 ---
@@ -150,3 +150,35 @@ $$\text{profitPercent} = \begin{cases} \text{roundPercent}\left(\frac{\text{prof
 - Ao gerar uma cotação a partir de um pacote (`createQuotationFromPackage`), todo o bloco financeiro (`financials`) é clonado em profundidade (`deep-clone`).
 - A cotação preserva seu snapshot de componentes, moeda base, preço de venda, lucro e margem naquele instante.
 - Alterações posteriores nos custos ou preços do pacote base nunca alteram silenciosamente cotações emitidas no passado.
+
+---
+
+## 6. Geração Determinística de Mensagens WhatsApp (Fase 5)
+
+A Fase 5 substitui a redação manual de mensagens para clientes pelo gerador determinístico comercial do WhatsApp (`src/services/whatsappService.ts`).
+
+### 6.1 Princípio da Não Utilização de IA
+- **Geração 100% Determinística**: O texto é montado exclusivamente a partir de funções TypeScript puras e templates padronizados.
+- **Zero Alucinações**: O sistema nunca inventa horários, companhias aéreas, hotéis, condições de pagamento ou taxas que não existam explicitamente na cotação.
+- **Previsibilidade Absoluta**: O mesmo snapshot da cotação sempre gerará exatamente a mesma mensagem.
+
+### 6.2 Fonte Exclusiva dos Dados: Snapshot da Cotação
+- O gerador consome exclusivamente o objeto `Quotation` e seu campo `data` (snapshot).
+- **Sem Recálculo**: O preço e os valores são lidos do snapshot financeiro da cotação, nunca recalculados pelo gerador.
+- **Desacoplamento do Package de Origem**: Alterações posteriores no pacote base jamais afetam a mensagem gerada a partir da cotação existente.
+
+### 6.3 Tratamento Estrito de Campos Opcionais
+- Se uma informação opcional não existir (ex.: hotel, transfer, horários de voo, condições de entrada, taxas locais, serviços extras), a respectiva linha é **completamente omitida**.
+- **Nenhum Placeholder**: É terminantemente proibida a aparição de marcadores como `[hotel]`, `[horário]`, `undefined`, `null` ou `NaN`.
+
+### 6.4 Confidencialidade e Separação de Dados Internos
+A mensagem é destinada ao cliente final. O gerador aplica uma barreira de confidencialidade estrita, impedindo que os seguintes dados sejam expostos:
+- Custos internos e markup;
+- Lucro bruto ou margem percentual;
+- Nome de fornecedores (`supplier`);
+- Taxas de conversão interna ou componentes de custo analíticos;
+- IDs internos ou referências técnicas do banco de dados.
+
+### 6.5 Experiência do Usuário (UI)
+- Componente [`WhatsAppMessagePreview.tsx`](file:///c:/Users/ptmaralvoli/Documents/Antigravity/packager/src/components/whatsapp/WhatsAppMessagePreview.tsx) exibe pré-visualização fidedigna do texto formatado com emojis.
+- Botão integrado "Copiar Mensagem" que utiliza a Clipboard API do navegador com feedback visual instantâneo.
