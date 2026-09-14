@@ -1,6 +1,6 @@
 # Packager
 
-Aplicação web interna para gerenciamento do workflow de criação de pacotes de viagem e cotações da S23.
+Aplicação web interna para gerenciamento do workflow de criação de pacotes de viagem e cotações da agência S23.
 
 > **Aviso**: O projeto está em sua etapa de fundação técnica. Funcionalidades de negócio, persistência com banco de dados, IA, cotações automáticas e integrações serão implementadas de forma estritamente incremental nas próximas fases.
 
