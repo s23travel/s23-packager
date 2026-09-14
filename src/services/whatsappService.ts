@@ -68,24 +68,114 @@ export function formatPriceText(price: number, currency: Currency): string {
   return `💰 Total do pacote: *R$ ${formatted}*`;
 }
 
+function getPackageBaseName(quotation: Quotation): string {
+  if (quotation.origin_package_name?.trim()) {
+    return quotation.origin_package_name.trim();
+  }
+  const d = quotation.data;
+  if (d?.originPackageName?.trim()) {
+    return d.originPackageName.trim();
+  }
+  if (typeof (quotation as any)?.package?.name === 'string' && (quotation as any).package.name.trim()) {
+    return (quotation as any).package.name.trim();
+  }
+  if (typeof (d as any)?.packageName === 'string' && (d as any).packageName.trim()) {
+    return (d as any).packageName.trim();
+  }
+  if (typeof (d as any)?.package_name === 'string' && (d as any).package_name.trim()) {
+    return (d as any).package_name.trim();
+  }
+  return '';
+}
+
+function getClientName(quotation: Quotation): string {
+  if (quotation.client_name?.trim()) {
+    return quotation.client_name.trim();
+  }
+  const d = quotation.data;
+  if (typeof (d as any)?.client_name === 'string' && (d as any).client_name.trim()) {
+    return (d as any).client_name.trim();
+  }
+  if (typeof (d as any)?.clientName === 'string' && (d as any).clientName.trim()) {
+    return (d as any).clientName.trim();
+  }
+  return '';
+}
+
+function getDestination(quotation: Quotation): string {
+  const d = quotation.data;
+  if (!d) return '';
+  const fromLodging = d.lodging?.map((l) => l?.destination?.trim()).find(Boolean);
+  if (fromLodging) return fromLodging;
+  if (typeof (d as any)?.destination === 'string' && (d as any).destination.trim()) {
+    return (d as any).destination.trim();
+  }
+  if (typeof (d as any)?.city === 'string' && (d as any).city.trim()) {
+    return (d as any).city.trim();
+  }
+  return '';
+}
+
 /**
- * Constrói o título comercial do pacote
+ * Constrói o título comercial da mensagem para WhatsApp.
+ *
+ * REGRA DEFINITIVA DE PRIORIDADE:
+ * 1. Cotação vinculada a Pacote Base:
+ *    "✨ Pacote S23 – {Nome Comercial do Pacote Base}"
+ * 2. Cotação avulsa com cliente + destino:
+ *    "✨ {Nome do Cliente} – {Destino/Cidade}"
+ * 3. Sem nome do cliente, mas com destino:
+ *    "✨ {Destino/Cidade}"
+ * 4. Sem destino, mas com nome do cliente:
+ *    "✨ {Nome do Cliente}"
+ * 5. Fallback neutro:
+ *    "✨ Pacote S23"
+ *
+ * NUNCA utilizar informações de transporte (ida, volta, rota, cia aérea, aeroporto/IATA)
+ * como título ou fallback.
+ */
+export function getWhatsAppTitle(quotation: Quotation): string {
+  if (!quotation) return '✨ Pacote S23';
+
+  // 1. Cotação vinculada a Pacote Base
+  const packageBaseName = getPackageBaseName(quotation);
+  if (packageBaseName) {
+    return `✨ Pacote S23 – ${packageBaseName}`;
+  }
+
+  const clientName = getClientName(quotation);
+  const destination = getDestination(quotation);
+
+  // 2. Cotação avulsa com cliente + destino
+  if (clientName && destination) {
+    return `✨ ${clientName} – ${destination}`;
+  }
+
+  // 3. Sem nome do cliente, mas com destino
+  if (destination) {
+    return `✨ ${destination}`;
+  }
+
+  // 4. Sem destino, mas com nome do cliente
+  if (clientName) {
+    return `✨ ${clientName}`;
+  }
+
+  // 5. Fallback neutro
+  return '✨ Pacote S23';
+}
+
+/**
+ * Constrói o título comercial (compatibilidade com chamadas baseadas apenas em QuotationData)
  */
 export function getPackageCommercialTitle(d?: QuotationData): string {
-  const outboundRoute = d?.outboundTransport?.route?.trim();
-  const destination = d?.lodging?.[0]?.destination?.trim();
-  const originPkgName = d?.originPackageName?.trim();
-
-  if (outboundRoute) {
-    return `✨ Pacote S23 – ${outboundRoute}`;
-  }
-  if (destination) {
-    return `✨ Pacote S23 – ${destination}`;
-  }
-  if (originPkgName) {
-    return `✨ Pacote S23 – ${originPkgName}`;
-  }
-  return '✨ Pacote S23';
+  if (!d) return '✨ Pacote S23';
+  const mockQuotation: Partial<Quotation> = {
+    data: d,
+    origin_package_name: d.originPackageName,
+    client_name: (d as any)?.client_name || (d as any)?.clientName || null,
+  };
+  return getWhatsAppTitle(mockQuotation as Quotation);
 }
 
 /**
@@ -100,8 +190,8 @@ export function generateWhatsAppMessage(quotation: Quotation): string {
 
   const sections: string[] = [];
 
-  // 1. Título do Pacote
-  const title = getPackageCommercialTitle(d);
+  // 1. Título do Pacote / Cotação
+  const title = getWhatsAppTitle(quotation);
   sections.push(title);
 
   // 2. Datas da viagem (omitido se não houver datas)

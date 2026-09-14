@@ -5,6 +5,7 @@ import {
   formatPassengersText,
   formatPriceText,
   getPackageCommercialTitle,
+  getWhatsAppTitle,
 } from '../src/services/whatsappService';
 import { Quotation, Package } from '../src/types';
 
@@ -30,6 +31,7 @@ runTest('1. Quotation completa com todos os dados comerciais', () => {
   const quote: Quotation = {
     id: 'quote-101',
     package_id: 'pkg-1',
+    origin_package_name: 'Maiorca Verão 2026',
     reference: 'COT-2026-001',
     client_name: 'Dra. Maria Clara',
     status: 'sent',
@@ -39,6 +41,7 @@ runTest('1. Quotation completa com todos os dados comerciais', () => {
     created_at: '2026-09-09T00:00:00Z',
     updated_at: '2026-09-09T00:00:00Z',
     data: {
+      originPackageName: 'Maiorca Verão 2026',
       dates: { startDate: '2026-07-15', endDate: '2026-07-22', durationDays: 8 },
       passengers: { adults: 2, children: 1, infants: 1 },
       outboundTransport: {
@@ -87,7 +90,8 @@ runTest('1. Quotation completa com todos os dados comerciais', () => {
   const msg = generateWhatsAppMessage(quote);
 
   // Verificações
-  assert(msg.includes('✨ Pacote S23 – Porto → Maiorca'));
+  assert(msg.includes('✨ Pacote S23 – Maiorca Verão 2026'));
+  assert(!msg.includes('✨ Pacote S23 – Porto → Maiorca'));
   assert(msg.includes('📅 15/07/2026 a 22/07/2026'));
   assert(msg.includes('✈️ O que está incluído para 2 adultos, 1 criança e 1 bebé:'));
   assert(msg.includes('🛫 15/07/2026 – TAP Air Portugal Porto → Maiorca'));
@@ -489,9 +493,316 @@ runTest('15. Teste Explícito de Isolamento de Snapshot Workflow', () => {
   assert(!message.includes('3.500,00'));
 });
 
+console.log('\n=== TESTES ESPECÍFICOS: TÍTULO DA MENSAGEM WHATSAPP (SEM TRANSPORTE) ===\n');
+
+// 16. Cotação vinculada a Pacote Base com transporte
+runTest('16. Cotação vinculada a Pacote Base: usa nome comercial do Pacote Base e ignora transporte Easyjet (OPO)', () => {
+  const quote: Quotation = {
+    id: 'quote-test-1',
+    package_id: 'pkg-paris-1',
+    origin_package_name: 'Paris Réveillon 2027',
+    reference: 'COT-2026-T1',
+    client_name: 'Liliana',
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      originPackageName: 'Paris Réveillon 2027',
+      outboundTransport: {
+        type: 'flight',
+        carrier: 'Easyjet',
+        route: 'Easyjet (OPO)',
+      },
+      lodging: [{ id: 'h1', name: 'Hotel Paris', destination: 'Paris' }],
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert.strictEqual(title, '✨ Pacote S23 – Paris Réveillon 2027');
+  assert(!title.includes('Easyjet'));
+  assert(!title.includes('OPO'));
+
+  const msg = generateWhatsAppMessage(quote);
+  assert(msg.startsWith('✨ Pacote S23 – Paris Réveillon 2027'));
+  assert(!msg.includes('✨ Pacote S23 – Easyjet (OPO)'));
+});
+
+// 17. Cotação vinculada a Pacote Base com transporte diferente
+runTest('17. Cotação vinculada a Pacote Base com transporte diferente continua usando nome do Pacote Base', () => {
+  const quote: Quotation = {
+    id: 'quote-test-2',
+    package_id: 'pkg-paris-1',
+    origin_package_name: 'Paris Réveillon 2027',
+    reference: 'COT-2026-T2',
+    client_name: 'Carlos',
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      originPackageName: 'Paris Réveillon 2027',
+      outboundTransport: {
+        type: 'flight',
+        carrier: 'TAP Air Portugal',
+        route: 'Lisboa → Paris CDG (TP432)',
+      },
+      lodging: [{ id: 'h1', name: 'Hotel Paris', destination: 'Paris' }],
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert.strictEqual(title, '✨ Pacote S23 – Paris Réveillon 2027');
+});
+
+// 18. Cotação avulsa com cliente + destino
+runTest('18. Cotação avulsa com cliente + destino: usa "✨ {Cliente} – {Destino}"', () => {
+  const quote: Quotation = {
+    id: 'quote-test-3',
+    package_id: null,
+    reference: 'COT-2026-T3',
+    client_name: 'Liliana',
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      lodging: [{ id: 'h1', name: 'Hotel Louvre', destination: 'Paris' }],
+      outboundTransport: { type: 'flight', route: 'Ryanair FR1001' },
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert.strictEqual(title, '✨ Liliana – Paris');
+  assert(!title.includes('Ryanair'));
+
+  const msg = generateWhatsAppMessage(quote);
+  assert(msg.startsWith('✨ Liliana – Paris'));
+  assert(!msg.includes('✨ Liliana – Ryanair'));
+});
+
+// 19. Cotação avulsa sem cliente
+runTest('19. Cotação avulsa sem cliente: usa somente "✨ {Destino}"', () => {
+  const quote: Quotation = {
+    id: 'quote-test-4',
+    package_id: null,
+    reference: 'COT-2026-T4',
+    client_name: null,
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      lodging: [{ id: 'h1', name: 'Hotel Louvre', destination: 'Paris' }],
+      outboundTransport: { type: 'flight', route: 'Easyjet (OPO)' },
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert.strictEqual(title, '✨ Paris');
+  assert(!title.includes('Easyjet'));
+  assert(!title.includes('OPO'));
+
+  const msg = generateWhatsAppMessage(quote);
+  assert(msg.startsWith('✨ Paris'));
+});
+
+// 20. Transporte de ida preenchido, mas sem destino: NÃO usar transporte como título
+runTest('20. Transporte de ida preenchido, mas sem destino: NÃO usar transporte como título', () => {
+  const quote: Quotation = {
+    id: 'quote-test-5',
+    package_id: null,
+    reference: 'COT-2026-T5',
+    client_name: null,
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      outboundTransport: { type: 'flight', route: 'Porto → Paris', carrier: 'Transavia' },
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert(!title.includes('Porto → Paris'));
+  assert(!title.includes('Transavia'));
+  assert.strictEqual(title, '✨ Pacote S23');
+});
+
+// 21. Transporte de volta preenchido: NÃO usar transporte como título
+runTest('21. Transporte de volta preenchido: NÃO usar transporte como título', () => {
+  const quote: Quotation = {
+    id: 'quote-test-6',
+    package_id: null,
+    reference: 'COT-2026-T6',
+    client_name: null,
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      inboundTransport: { type: 'flight', route: 'Paris → Porto', carrier: 'Air France' },
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert(!title.includes('Paris → Porto'));
+  assert(!title.includes('Air France'));
+  assert.strictEqual(title, '✨ Pacote S23');
+});
+
+// 22. Companhia aérea preenchida: NÃO usar companhia aérea no título
+runTest('22. Companhia aérea preenchida: NÃO usar companhia aérea no título', () => {
+  const quote: Quotation = {
+    id: 'quote-test-7',
+    package_id: null,
+    reference: 'COT-2026-T7',
+    client_name: 'Liliana',
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      outboundTransport: { type: 'flight', carrier: 'Ryanair' },
+      inboundTransport: { type: 'flight', carrier: 'Ryanair' },
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert(!title.includes('Ryanair'));
+  assert.strictEqual(title, '✨ Liliana');
+});
+
+// 23. Aeroporto / IATA preenchido: NÃO usar aeroporto/IATA no título
+runTest('23. Aeroporto / IATA preenchido: NÃO usar aeroporto/IATA no título', () => {
+  const quote: Quotation = {
+    id: 'quote-test-8',
+    package_id: null,
+    reference: 'COT-2026-T8',
+    client_name: null,
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      outboundTransport: { type: 'flight', route: 'OPO' },
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert(!title.includes('OPO'));
+  assert.strictEqual(title, '✨ Pacote S23');
+});
+
+// 24. Alterar transporte não altera o título de cotação vinculada a Pacote Base
+runTest('24. Alterar o transporte NÃO altera o título de uma cotação vinculada a Pacote Base', () => {
+  const quote: Quotation = {
+    id: 'quote-test-9',
+    package_id: 'pkg-roma',
+    origin_package_name: 'Roma Histórica',
+    reference: 'COT-2026-T9',
+    client_name: 'Marcos',
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      originPackageName: 'Roma Histórica',
+      outboundTransport: { type: 'flight', route: 'Lisboa → Fiumicino' },
+      lodging: [{ id: 'h1', name: 'Hotel Colosseum', destination: 'Roma' }],
+    },
+  };
+
+  const title1 = getWhatsAppTitle(quote);
+  assert.strictEqual(title1, '✨ Pacote S23 – Roma Histórica');
+
+  // Altera transporte para outro completamente diferente
+  if (quote.data.outboundTransport) {
+    quote.data.outboundTransport.route = 'Easyjet (OPO) - Voo Cancelado/Alterado';
+    quote.data.outboundTransport.carrier = 'Wizz Air';
+  }
+
+  const title2 = getWhatsAppTitle(quote);
+  assert.strictEqual(title2, '✨ Pacote S23 – Roma Histórica');
+  assert.strictEqual(title1, title2);
+});
+
+// 25. Restante da mensagem WhatsApp permanece inalterado
+runTest('25. O restante da mensagem WhatsApp permanece inalterado', () => {
+  const quote: Quotation = {
+    id: 'quote-test-10',
+    package_id: 'pkg-paris-1',
+    origin_package_name: 'Paris Réveillon 2027',
+    reference: 'COT-2026-T10',
+    client_name: 'Liliana',
+    status: 'sent',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      dates: { startDate: '2026-12-28', endDate: '2027-01-02' },
+      passengers: { adults: 2, children: 0, infants: 0 },
+      outboundTransport: {
+        type: 'flight',
+        carrier: 'Easyjet',
+        route: 'Porto → Paris CDG',
+        departureTime: '10:00',
+        arrivalTime: '13:15',
+      },
+      lodging: [{ id: 'h1', name: 'Novotel Paris', destination: 'Paris', nights: 5, mealPlan: 'Café da manhã (BB)' }],
+      transferService: 'Transfer privativo incluído',
+      financials: {
+        totalCost: 1000,
+        salePrice: 1600,
+        currency: 'EUR',
+        components: [],
+        pricePerPerson: 800,
+        profit: 600,
+        profitPercent: 37.5,
+        taxesAndFeesTotal: 0,
+      },
+      paymentConditions: '50% na reserva + 50% 15 dias antes',
+    },
+  };
+
+  const msg = generateWhatsAppMessage(quote);
+  // Título segue a nova regra
+  assert(msg.startsWith('✨ Pacote S23 – Paris Réveillon 2027'));
+  // Restante da mensagem preservado
+  assert(msg.includes('📅 28/12/2026 a 02/01/2027'));
+  assert(msg.includes('✈️ O que está incluído para 2 adultos:'));
+  assert(msg.includes('🛫 28/12/2026 – Easyjet Porto → Paris CDG'));
+  assert(msg.includes('⏰ Partida: 10:00 → 13:15'));
+  assert(msg.includes('🏨 28/12/2026 – 5 noites em Novotel Paris, com Café da manhã (BB).'));
+  assert(msg.includes('🚗 Transfer privativo incluído'));
+  assert(msg.includes('💶 Total do pacote: *€ 1.600,00*'));
+  assert(msg.includes('💳 Entrada: 50% na reserva + 50% 15 dias antes'));
+  assert(msg.includes('Até a data da contratação podem ocorrer alterações sem controle da agência.'));
+});
+
 console.log(`\n=== RESULTADO: ${testsPassed} PASSOU, ${testsFailed} FALHOU ===`);
 if (testsFailed > 0) {
   process.exit(1);
 } else {
-  console.log('🎉 TODOS OS 15 TESTES DO GERADOR WHATSAPP PASSARAM COM SUCESSO!\n');
+  console.log(`🎉 TODOS OS ${testsPassed} TESTES DO GERADOR WHATSAPP PASSARAM COM SUCESSO!\n`);
 }
