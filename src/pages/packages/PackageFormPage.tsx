@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { packagesService } from '../../services/packagesService';
-import { Currency, PackageStatus, PackageData, CostComponent, FavoriteService, ImportedPackageData } from '../../types';
+import { Currency, PackageStatus, PackageData, CostComponent, FavoriteService, ImportedPackageData, MEAL_PLAN_OPTIONS, normalizeMealPlan } from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { calculateFinancialSummary } from '../../services/financeService';
@@ -51,7 +51,7 @@ export const PackageFormPage: React.FC = () => {
   // Hospedagem básica
   const [hotelName, setHotelName] = useState('');
   const [hotelDestination, setHotelDestination] = useState('');
-  const [hotelMealPlan, setHotelMealPlan] = useState('Café da Manhã');
+  const [hotelMealPlan, setHotelMealPlan] = useState('Café da manhã (BB)');
 
   // Componentes e valores financeiros (Fase 4)
   const [costComponents, setCostComponents] = useState<CostComponent[]>([]);
@@ -107,7 +107,7 @@ export const PackageFormPage: React.FC = () => {
       setHotelDestination(dest);
     }
     if (data.lodging.mealPlan) {
-      setHotelMealPlan(data.lodging.mealPlan);
+      setHotelMealPlan(normalizeMealPlan(data.lodging.mealPlan));
     }
 
     if (data.financial.currency === 'BRL' || data.financial.currency === 'EUR') {
@@ -195,7 +195,7 @@ export const PackageFormPage: React.FC = () => {
         setInboundCarrier(draft.inboundCarrier || '');
         setHotelName(draft.hotelName || '');
         setHotelDestination(draft.hotelDestination || '');
-        setHotelMealPlan(draft.hotelMealPlan || 'Café da Manhã');
+        setHotelMealPlan(normalizeMealPlan(draft.hotelMealPlan) || 'Café da manhã (BB)');
         setCostComponents(draft.costComponents || []);
         setSalePrice(draft.salePrice || 0);
       } else {
@@ -268,7 +268,7 @@ export const PackageFormPage: React.FC = () => {
         if (d.lodging && d.lodging.length > 0) {
           setHotelName(d.lodging[0].name || '');
           setHotelDestination(d.lodging[0].destination || '');
-          setHotelMealPlan(d.lodging[0].mealPlan || 'Café da Manhã');
+          setHotelMealPlan(normalizeMealPlan(d.lodging[0].mealPlan) || 'Café da manhã (BB)');
         }
 
         if (d.financials) {
@@ -781,16 +781,24 @@ export const PackageFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="hotelMealPlan">
-                Regime de Alimentação
+                Regime de Acomodação
               </label>
-              <input
+              <select
                 id="hotelMealPlan"
-                type="text"
-                className="form-input"
+                className="form-select"
                 value={hotelMealPlan}
                 onChange={(e) => setHotelMealPlan(e.target.value)}
-                placeholder="Ex: Pensão Completa / All Inclusive"
-              />
+              >
+                <option value="">Selecione um regime...</option>
+                {MEAL_PLAN_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+                {hotelMealPlan && !MEAL_PLAN_OPTIONS.includes(hotelMealPlan as any) && (
+                  <option value={hotelMealPlan}>{hotelMealPlan}</option>
+                )}
+              </select>
             </div>
           </div>
         </div>

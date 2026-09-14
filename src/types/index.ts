@@ -63,6 +63,54 @@ export interface LodgingDetails {
   mealPlan?: string;
 }
 
+// Opções padronizadas de Regime de Acomodação / Alimentação
+export const MEAL_PLAN_OPTIONS = [
+  'Apenas alojamento (RO)',
+  'Café da manhã (BB)',
+  'Meia-pensão (HB)',
+  'Pensão completa (FB)',
+  'Tudo incluído (AI)',
+] as const;
+
+export type MealPlanOption = (typeof MEAL_PLAN_OPTIONS)[number];
+
+export function normalizeMealPlan(value?: string | null): string {
+  if (!value) return '';
+  const trimmed = value.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (
+    lower.includes('apenas') ||
+    lower.includes('alojamento') ||
+    lower === 'ro' ||
+    lower.includes('room only') ||
+    lower.includes('só hospedagem') ||
+    lower.includes('so hospedagem')
+  ) {
+    return 'Apenas alojamento (RO)';
+  }
+  if (
+    lower.includes('café') ||
+    lower.includes('cafe') ||
+    lower === 'bb' ||
+    lower.includes('bed & breakfast') ||
+    lower.includes('breakfast')
+  ) {
+    return 'Café da manhã (BB)';
+  }
+  if (lower.includes('meia') || lower === 'hb' || lower.includes('half board')) {
+    return 'Meia-pensão (HB)';
+  }
+  if (lower.includes('completa') || lower === 'fb' || lower.includes('full board')) {
+    return 'Pensão completa (FB)';
+  }
+  if (lower.includes('tudo') || lower.includes('all inclusive') || lower === 'ai') {
+    return 'Tudo incluído (AI)';
+  }
+
+  return trimmed;
+}
+
 // Serviços adicionais (passeios, seguros, ingressos, etc.)
 export interface AdditionalServiceItem {
   id: string;

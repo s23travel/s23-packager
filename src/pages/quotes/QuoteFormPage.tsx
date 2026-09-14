@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
-import { Currency, QuotationStatus, QuotationData, CostComponent, ImportedPackageData } from '../../types';
+import { Currency, QuotationStatus, QuotationData, CostComponent, ImportedPackageData, MEAL_PLAN_OPTIONS, normalizeMealPlan } from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { calculateFinancialSummary } from '../../services/financeService';
@@ -94,7 +94,7 @@ export const QuoteFormPage: React.FC = () => {
     if (data.lodging.name) setHotelName(data.lodging.name);
     const dest = [data.lodging.city, data.lodging.country].filter(Boolean).join(', ');
     if (dest) setHotelDestination(dest);
-    if (data.lodging.mealPlan) setHotelMealPlan(data.lodging.mealPlan);
+    if (data.lodging.mealPlan) setHotelMealPlan(normalizeMealPlan(data.lodging.mealPlan));
 
     if (data.financial.currency === 'BRL' || data.financial.currency === 'EUR') {
       setCurrency(data.financial.currency);
@@ -227,7 +227,7 @@ export const QuoteFormPage: React.FC = () => {
         if (d.lodging && d.lodging.length > 0) {
           setHotelName(d.lodging[0].name || '');
           setHotelDestination(d.lodging[0].destination || '');
-          setHotelMealPlan(d.lodging[0].mealPlan || '');
+          setHotelMealPlan(normalizeMealPlan(d.lodging[0].mealPlan) || '');
         }
 
         if (d.financials) {
@@ -777,15 +777,24 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="hotelMealPlan">
-                Regime de Alimentação
+                Regime de Acomodação
               </label>
-              <input
+              <select
                 id="hotelMealPlan"
-                type="text"
-                className="form-input"
+                className="form-select"
                 value={hotelMealPlan}
                 onChange={(e) => setHotelMealPlan(e.target.value)}
-              />
+              >
+                <option value="">Selecione um regime...</option>
+                {MEAL_PLAN_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+                {hotelMealPlan && !MEAL_PLAN_OPTIONS.includes(hotelMealPlan as any) && (
+                  <option value={hotelMealPlan}>{hotelMealPlan}</option>
+                )}
+              </select>
             </div>
           </div>
         </div>
