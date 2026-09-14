@@ -199,9 +199,13 @@ export const PackageFormPage: React.FC = () => {
         setCostComponents(draft.costComponents || []);
         setSalePrice(draft.salePrice || 0);
       } else {
-        // Sugestão de referência padrão para novos pacotes
-        const rand = Math.floor(100 + Math.random() * 900);
-        setReference(`PK-${new Date().getFullYear()}-${rand}`);
+        // Sugestão sequencial inteligente para novos pacotes base
+        packagesService.getNextReference().then((nextRef) => {
+          setReference(nextRef);
+        }).catch((err) => {
+          console.error('Erro ao sugerir referência de pacote:', err);
+          setReference(`PK-${new Date().getFullYear()}-001`);
+        });
       }
 
       // 2. Se retornou de /servicos/novo com um serviço recém-criado, auto-seleciona
@@ -371,6 +375,16 @@ export const PackageFormPage: React.FC = () => {
     try {
       setSaving(true);
       setFeedback(null);
+
+      const isAvailable = await packagesService.isReferenceAvailable(reference.trim(), id);
+      if (!isAvailable) {
+        setFeedback({
+          type: 'error',
+          message: 'Esta referência já está em uso. Informe outra referência.',
+        });
+        setSaving(false);
+        return;
+      }
 
       const packageData: PackageData = {
         supplier: supplier.trim() || undefined,

@@ -166,9 +166,12 @@ export const QuoteFormPage: React.FC = () => {
 
   useEffect(() => {
     if (!id) {
-      const year = new Date().getFullYear();
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      setReference(`COT-${year}-${rand}`);
+      quotationsService.getNextReference().then((nextRef) => {
+        setReference(nextRef);
+      }).catch((err) => {
+        console.error('Erro ao sugerir referência de cotação:', err);
+        setReference(`COT-${new Date().getFullYear()}-001`);
+      });
       return;
     }
 
@@ -261,6 +264,16 @@ export const QuoteFormPage: React.FC = () => {
     try {
       setSaving(true);
       setFeedback(null);
+
+      const isAvailable = await quotationsService.isReferenceAvailable(reference.trim(), id);
+      if (!isAvailable) {
+        setFeedback({
+          type: 'error',
+          message: 'Esta referência já está em uso. Informe outra referência.',
+        });
+        setSaving(false);
+        return;
+      }
 
       const quotationData: QuotationData = {
         customNotes: customNotes.trim() || undefined,
@@ -438,6 +451,7 @@ export const QuoteFormPage: React.FC = () => {
                 className="form-input"
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
+                placeholder="Ex: COT-2026-001"
                 required
               />
             </div>

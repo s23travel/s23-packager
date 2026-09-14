@@ -1,16 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Quotation, CreateQuotationInput, UpdateQuotationInput, QuotationData } from '../types';
 import { packagesService } from './packagesService';
-
-/**
- * Gera uma referência amigável e única para cotações
- * Exemplo: COT-2026-8492
- */
-function generateQuotationReference(): string {
-  const year = new Date().getFullYear();
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-  return `COT-${year}-${randomSuffix}`;
-}
+import { getNextSequentialReference } from './referenceService';
 
 export const quotationsService = {
   /**
@@ -45,6 +36,44 @@ export const quotationsService = {
       updated_at: row.updated_at,
       origin_package_name: row.packages?.name || row.data?.originPackageName,
     })) as Quotation[];
+  },
+
+  /**
+   * Calcula a próxima referência sequencial COT-YYYY-NNN para cotações
+   */
+  async getNextReference(year?: number): Promise<string> {
+    const { data, error } = await supabase
+      .from('quotations')
+      .select('reference');
+
+    if (error) {
+      console.error('Erro ao buscar referências de cotações:', error);
+      throw new Error(error.message);
+    }
+
+    const refs = (data || []).map((row: { reference: string }) => row.reference);
+    return getNextSequentialReference('COT', refs, year);
+  },
+
+  /**
+   * Verifica se uma referência de cotação está disponível (não utilizada por outro registro)
+   */
+  async isReferenceAvailable(reference: string, excludeId?: string): Promise<boolean> {
+    const clean = reference.trim();
+    if (!clean) return false;
+
+    let query = supabase.from('quotations').select('id').eq('reference', clean);
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Erro ao verificar disponibilidade da referência da cotação:', error);
+      throw new Error(error.message);
+    }
+
+    return (data || []).length === 0;
   },
 
   /**
@@ -87,9 +116,16 @@ export const quotationsService = {
    * Cria uma cotação manual avulsa
    */
   async createQuotation(input: CreateQuotationInput): Promise<Quotation> {
+    const reference = input.reference ? input.reference.trim() : await this.getNextReference();
+
+    const isAvailable = await this.isReferenceAvailable(reference);
+    if (!isAvailable) {
+      throw new Error('Esta referência já está em uso. Informe outra referência.');
+    }
+
     const payload = {
       package_id: input.package_id || null,
-      reference: (input.reference || generateQuotationReference()).trim(),
+      reference,
       client_name: input.client_name ? input.client_name.trim() : null,
       status: input.status || 'draft',
       data: input.data || {},
@@ -105,6 +141,13 @@ export const quotationsService = {
       .single();
 
     if (error) {
+      if (
+        error.code === '23505' ||
+        error.message?.includes('duplicate key') ||
+        error.message?.includes('violates unique constraint')
+      ) {
+        throw new Error('Esta referência já está em uso. Informe outra referência.');
+      }
       console.error('Erro ao criar cotação:', error);
       throw new Error(error.message);
     }
@@ -141,9 +184,11 @@ export const quotationsService = {
       originPackageReference: pkg.reference,
     };
 
+    const reference = await this.getNextReference();
+
     const payload = {
       package_id: pkg.id,
-      reference: generateQuotationReference(),
+      reference,
       client_name: null,
       status: 'draft' as const,
       data: quotationSnapshot,
@@ -159,6 +204,13 @@ export const quotationsService = {
       .single();
 
     if (error) {
+      if (
+        error.code === '23505' ||
+        error.message?.includes('duplicate key') ||
+        error.message?.includes('violates unique constraint')
+      ) {
+        throw new Error('Esta referência já está em uso. Informe outra referência.');
+      }
       console.error('Erro ao clonar cotação a partir do pacote:', error);
       throw new Error(error.message);
     }
@@ -172,7 +224,14 @@ export const quotationsService = {
   async updateQuotation(id: string, input: UpdateQuotationInput): Promise<Quotation> {
     const payload: Record<string, unknown> = {};
 
-    if (input.reference !== undefined) payload.reference = input.reference.trim();
+    if (input.reference !== undefined) {
+      const reference = input.reference.trim();
+      const isAvailable = await this.isReferenceAvailable(reference, id);
+      if (!isAvailable) {
+        throw new Error('Esta referência já está em uso. Informe outra referência.');
+      }
+      payload.reference = reference;
+    }
     if (input.client_name !== undefined) payload.client_name = input.client_name ? input.client_name.trim() : null;
     if (input.status !== undefined) payload.status = input.status;
     if (input.data !== undefined) payload.data = input.data;
@@ -188,6 +247,13 @@ export const quotationsService = {
       .single();
 
     if (error) {
+      if (
+        error.code === '23505' ||
+        error.message?.includes('duplicate key') ||
+        error.message?.includes('violates unique constraint')
+      ) {
+        throw new Error('Esta referência já está em uso. Informe outra referência.');
+      }
       console.error(`Erro ao atualizar cotação ${id}:`, error);
       throw new Error(error.message);
     }

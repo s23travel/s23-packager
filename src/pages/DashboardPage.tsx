@@ -1,14 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { packagesService } from '../services/packagesService';
 import { quotationsService } from '../services/quotationsService';
 import { Package, Quotation } from '../types';
 import { StatusBadge } from '../components/common/Badge';
+import { Pagination } from '../components/common/Pagination';
+
+const PAGE_SIZE = 8;
 
 export const DashboardPage: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [quotes, setQuotes] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Paginação independente para cada lista
+  const [packagePage, setPackagePage] = useState(1);
+  const [quotePage, setQuotePage] = useState(1);
 
   useEffect(() => {
     async function loadData() {
@@ -30,13 +37,49 @@ export const DashboardPage: React.FC = () => {
   }, []);
 
   const activePackagesCount = packages.filter((p) => p.status === 'active').length;
-  const recentQuotes = [...quotes]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
 
-  const recentPackages = [...packages]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
+  // Manter estritamente a ordenação atual da Home (data de criação decrescente)
+  const sortedPackages = useMemo(() => {
+    return [...packages].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [packages]);
+
+  const sortedQuotes = useMemo(() => {
+    return [...quotes].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [quotes]);
+
+  const totalPackagePages = Math.max(1, Math.ceil(sortedPackages.length / PAGE_SIZE));
+  const totalQuotePages = Math.max(1, Math.ceil(sortedQuotes.length / PAGE_SIZE));
+
+  // Regra 8: em caso de atualização dos dados, garantir que a página atual permaneça válida
+  useEffect(() => {
+    if (packagePage > totalPackagePages) {
+      setPackagePage(totalPackagePages);
+    }
+  }, [packagePage, totalPackagePages]);
+
+  useEffect(() => {
+    if (quotePage > totalQuotePages) {
+      setQuotePage(totalQuotePages);
+    }
+  }, [quotePage, totalQuotePages]);
+
+  const paginatedPackages = useMemo(() => {
+    return sortedPackages.slice(
+      (packagePage - 1) * PAGE_SIZE,
+      packagePage * PAGE_SIZE
+    );
+  }, [sortedPackages, packagePage]);
+
+  const paginatedQuotes = useMemo(() => {
+    return sortedQuotes.slice(
+      (quotePage - 1) * PAGE_SIZE,
+      quotePage * PAGE_SIZE
+    );
+  }, [sortedQuotes, quotePage]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -58,7 +101,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid de Indicadores Principais (Compact Back-office) */}
+      {/* Grid de Indicadores Principais (KPIs continuam representando o total real) */}
       <div className="grid-cols-2">
         <div className="kpi-card">
           <div>
@@ -109,7 +152,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Seções de Atividade Recente */}
+      {/* Seções de Atividade Recente com Paginação Independente */}
       <div className="grid-cols-2" style={{ alignItems: 'flex-start' }}>
         {/* Pacotes Recentes */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -134,47 +177,58 @@ export const DashboardPage: React.FC = () => {
             <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Carregando pacotes...
             </div>
-          ) : recentPackages.length === 0 ? (
+          ) : sortedPackages.length === 0 ? (
             <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Nenhum pacote cadastrado.
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Referência</th>
-                    <th>Nome do pacote</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentPackages.map((pkg) => (
-                    <tr key={pkg.id}>
-                      <td>
-                        <Link to={`/pacotes/${pkg.id}`} className="table-link-highlight">
-                          <code>{pkg.reference}</code>
-                        </Link>
-                      </td>
-                      <td>
-                        <Link to={`/pacotes/${pkg.id}`} className="table-link-title">
-                          {pkg.name}
-                        </Link>
-                      </td>
-                      <td>
-                        <StatusBadge status={pkg.status} />
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <Link to={`/pacotes/${pkg.id}`} className="btn btn-sm btn-secondary">
-                          Ver
-                        </Link>
-                      </td>
+            <>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Referência</th>
+                      <th>Nome do pacote</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'right' }}>Ação</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedPackages.map((pkg) => (
+                      <tr key={pkg.id}>
+                        <td>
+                          <Link to={`/pacotes/${pkg.id}`} className="table-link-highlight">
+                            <code>{pkg.reference}</code>
+                          </Link>
+                        </td>
+                        <td>
+                          <Link to={`/pacotes/${pkg.id}`} className="table-link-title">
+                            {pkg.name}
+                          </Link>
+                        </td>
+                        <td>
+                          <StatusBadge status={pkg.status} />
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <Link to={`/pacotes/${pkg.id}`} className="btn btn-sm btn-secondary">
+                            Ver
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {sortedPackages.length > PAGE_SIZE && (
+                <Pagination
+                  currentPage={packagePage}
+                  totalPages={totalPackagePages}
+                  onPageChange={setPackagePage}
+                  totalItems={sortedPackages.length}
+                  pageSize={PAGE_SIZE}
+                />
+              )}
+            </>
           )}
         </div>
 
@@ -201,50 +255,62 @@ export const DashboardPage: React.FC = () => {
             <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Carregando cotações...
             </div>
-          ) : recentQuotes.length === 0 ? (
+          ) : sortedQuotes.length === 0 ? (
             <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
               Nenhuma cotação registrada ainda.
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Referência</th>
-                    <th>Cliente</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentQuotes.map((q) => (
-                    <tr key={q.id}>
-                      <td>
-                        <Link to={`/cotacoes/${q.id}`} className="table-link-highlight">
-                          <code>{q.reference}</code>
-                        </Link>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: 500 }}>
-                          {q.client_name || 'Sem cliente'}
-                        </span>
-                      </td>
-                      <td>
-                        <StatusBadge status={q.status} />
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <Link to={`/cotacoes/${q.id}`} className="btn btn-sm btn-secondary">
-                          Abrir
-                        </Link>
-                      </td>
+            <>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Referência</th>
+                      <th>Cliente</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'right' }}>Ação</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedQuotes.map((q) => (
+                      <tr key={q.id}>
+                        <td>
+                          <Link to={`/cotacoes/${q.id}`} className="table-link-highlight">
+                            <code>{q.reference}</code>
+                          </Link>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 500 }}>
+                            {q.client_name || 'Sem cliente'}
+                          </span>
+                        </td>
+                        <td>
+                          <StatusBadge status={q.status} />
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <Link to={`/cotacoes/${q.id}`} className="btn btn-sm btn-secondary">
+                            Abrir
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {sortedQuotes.length > PAGE_SIZE && (
+                <Pagination
+                  currentPage={quotePage}
+                  totalPages={totalQuotePages}
+                  onPageChange={setQuotePage}
+                  totalItems={sortedQuotes.length}
+                  pageSize={PAGE_SIZE}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
     </div>
   );
 };
+

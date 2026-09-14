@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Package, CreatePackageInput, UpdatePackageInput } from '../types';
+import { getNextSequentialReference } from './referenceService';
 
 export const packagesService = {
   /**
@@ -17,6 +18,44 @@ export const packagesService = {
     }
 
     return (data || []) as Package[];
+  },
+
+  /**
+   * Calcula a próxima referência sequencial PK-YYYY-NNN para pacotes
+   */
+  async getNextReference(year?: number): Promise<string> {
+    const { data, error } = await supabase
+      .from('packages')
+      .select('reference');
+
+    if (error) {
+      console.error('Erro ao buscar referências de pacotes:', error);
+      throw new Error(error.message);
+    }
+
+    const refs = (data || []).map((row: { reference: string }) => row.reference);
+    return getNextSequentialReference('PK', refs, year);
+  },
+
+  /**
+   * Verifica se uma referência de pacote está disponível (não utilizada por outro registro)
+   */
+  async isReferenceAvailable(reference: string, excludeId?: string): Promise<boolean> {
+    const clean = reference.trim();
+    if (!clean) return false;
+
+    let query = supabase.from('packages').select('id').eq('reference', clean);
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Erro ao verificar disponibilidade da referência do pacote:', error);
+      throw new Error(error.message);
+    }
+
+    return (data || []).length === 0;
   },
 
   /**
@@ -42,8 +81,15 @@ export const packagesService = {
    * Cria um novo pacote base
    */
   async createPackage(input: CreatePackageInput): Promise<Package> {
+    const reference = input.reference ? input.reference.trim() : await this.getNextReference();
+
+    const isAvailable = await this.isReferenceAvailable(reference);
+    if (!isAvailable) {
+      throw new Error('Esta referência já está em uso. Informe outra referência.');
+    }
+
     const payload = {
-      reference: input.reference.trim(),
+      reference,
       name: input.name.trim(),
       status: input.status || 'draft',
       data: input.data || {},
@@ -57,6 +103,13 @@ export const packagesService = {
       .single();
 
     if (error) {
+      if (
+        error.code === '23505' ||
+        error.message?.includes('duplicate key') ||
+        error.message?.includes('violates unique constraint')
+      ) {
+        throw new Error('Esta referência já está em uso. Informe outra referência.');
+      }
       console.error('Erro ao criar pacote:', error);
       throw new Error(error.message);
     }
@@ -70,7 +123,14 @@ export const packagesService = {
   async updatePackage(id: string, input: UpdatePackageInput): Promise<Package> {
     const payload: Record<string, unknown> = {};
 
-    if (input.reference !== undefined) payload.reference = input.reference.trim();
+    if (input.reference !== undefined) {
+      const reference = input.reference.trim();
+      const isAvailable = await this.isReferenceAvailable(reference, id);
+      if (!isAvailable) {
+        throw new Error('Esta referência já está em uso. Informe outra referência.');
+      }
+      payload.reference = reference;
+    }
     if (input.name !== undefined) payload.name = input.name.trim();
     if (input.status !== undefined) payload.status = input.status;
     if (input.data !== undefined) payload.data = input.data;
@@ -84,6 +144,13 @@ export const packagesService = {
       .single();
 
     if (error) {
+      if (
+        error.code === '23505' ||
+        error.message?.includes('duplicate key') ||
+        error.message?.includes('violates unique constraint')
+      ) {
+        throw new Error('Esta referência já está em uso. Informe outra referência.');
+      }
       console.error(`Erro ao atualizar pacote ${id}:`, error);
       throw new Error(error.message);
     }
