@@ -102,24 +102,8 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
 
       {/* Bloco de Configuração de Câmbio Manual */}
       {(hasCurrencyMismatch || exchangeRate !== undefined) && (
-        <div className="bg-slate-50 border border-slate-200 rounded p-3.5">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h4 className="text-sm font-semibold text-slate-800">
-                Câmbio manual (multi-moeda)
-              </h4>
-              <p className="text-xs text-slate-500">
-                Convenção oficial: <strong>1 EUR = X BRL</strong>
-              </p>
-            </div>
-            {hasCurrencyMismatch && (
-              <span className="badge badge-info">
-                Moedas mistas detectadas
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+        <div className="bg-slate-50 border border-slate-200 rounded p-3 mb-3">
+          <div className="flex items-center gap-4 flex-wrap">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Taxa de câmbio (1 EUR em BRL)
@@ -163,6 +147,14 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                 style={{ width: '160px' }}
               />
             </div>
+
+            {hasCurrencyMismatch && (
+              <div style={{ alignSelf: 'center', marginTop: '1rem' }}>
+                <span className="badge badge-info">
+                  Moedas mistas detectadas
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
