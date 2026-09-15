@@ -827,20 +827,6 @@ export const QuoteFormPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="form-group" style={{ marginTop: '1rem' }}>
-            <label className="form-label" htmlFor="transferService">
-              Serviço de Transfer (se aplicável)
-            </label>
-            <input
-              id="transferService"
-              type="text"
-              className="form-input"
-              value={transferService}
-              onChange={(e) => setTransferService(e.target.value)}
-              placeholder="Ex: Transfer privativo aeroporto / hotel / aeroporto incluído"
-            />
-          </div>
-
           <div className="form-grid-3" style={{ marginTop: '1rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="hotelName">
@@ -889,6 +875,20 @@ export const QuoteFormPage: React.FC = () => {
                 )}
               </select>
             </div>
+          </div>
+
+          <div className="form-group" style={{ marginTop: '1rem' }}>
+            <label className="form-label" htmlFor="transferService">
+              Serviços adicionais
+            </label>
+            <input
+              id="transferService"
+              type="text"
+              className="form-input"
+              value={transferService}
+              onChange={(e) => setTransferService(e.target.value)}
+              placeholder="Ex: Transfer privativo, seguro viagem, passeios ou outros serviços incluídos"
+            />
           </div>
         </div>
 
