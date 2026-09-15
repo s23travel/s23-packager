@@ -51,7 +51,19 @@ export const QuotesListPage: React.FC = () => {
       const ref = q.reference?.toLowerCase() || '';
       const origin = (q.origin_package_name || q.data?.originPackageName || '')?.toLowerCase();
       const curr = q.currency?.toLowerCase() || '';
-      return client.includes(term) || ref.includes(term) || origin.includes(term) || curr.includes(term);
+      const dest = (
+        q.data?.lodging?.find((l) => l.destination)?.destination ||
+        q.data?.lodging?.[0]?.destination ||
+        q.data?.lodging?.[0]?.name ||
+        ''
+      )?.toLowerCase();
+      return (
+        client.includes(term) ||
+        ref.includes(term) ||
+        origin.includes(term) ||
+        curr.includes(term) ||
+        dest.includes(term)
+      );
     });
   }, [quotes, searchTerm]);
 
@@ -129,6 +141,7 @@ export const QuotesListPage: React.FC = () => {
                   <tr>
                     <th>Referência</th>
                     <th>Cliente</th>
+                    <th>Destino / Cidade</th>
                     <th>Origem</th>
                     <th>Valor</th>
                     <th>Status</th>
@@ -139,6 +152,11 @@ export const QuotesListPage: React.FC = () => {
                 <tbody>
                   {filteredQuotes.map((q) => {
                     const originName = q.origin_package_name || q.data?.originPackageName;
+                    const destination =
+                      q.data?.lodging?.find((l) => l.destination)?.destination ||
+                      q.data?.lodging?.[0]?.destination ||
+                      q.data?.lodging?.[0]?.name ||
+                      '—';
                     const salePrice = q.data?.financials?.salePrice ?? q.data?.financials?.priceTotal?.amount;
                     const formattedPrice =
                       typeof salePrice === 'number' && salePrice > 0
@@ -156,6 +174,9 @@ export const QuotesListPage: React.FC = () => {
                           <span style={{ fontWeight: 500, color: q.client_name ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                             {q.client_name || 'Sem cliente definido'}
                           </span>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                          {destination}
                         </td>
                         <td>
                           {q.package_id ? (
