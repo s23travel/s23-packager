@@ -28,13 +28,19 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { imageBase64, mimeType } = body || {};
+    let rawImages: Array<{ imageBase64?: string; mimeType?: string; name?: string }> = [];
 
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
+    if (Array.isArray(body?.images) && body.images.length > 0) {
+      rawImages = body.images;
+    } else if (body?.imageBase64) {
+      rawImages = [{ imageBase64: body.imageBase64, mimeType: body.mimeType, name: 'Imagem' }];
+    }
+
+    if (rawImages.length === 0) {
       return new Response(
         JSON.stringify({
           error: 'INVALID_INPUT',
-          message: 'Imagem ausente ou inválida. Envie imageBase64 como string.',
+          message: 'Nenhuma imagem foi informada. Envie um array de imagens.',
         }),
         {
           status: 400,
@@ -43,13 +49,11 @@ serve(async (req) => {
       );
     }
 
-    // Normaliza e valida MIME Type
-    const normalizedMime = (mimeType || '').toLowerCase();
-    if (!ALLOWED_MIME_TYPES.includes(normalizedMime)) {
+    if (rawImages.length > 10) {
       return new Response(
         JSON.stringify({
-          error: 'INVALID_MIME_TYPE',
-          message: 'Formato não suportado. Aceito somente PNG, JPG ou JPEG.',
+          error: 'MAX_IMAGES_EXCEEDED',
+          message: 'Você pode analisar até 10 imagens por vez.',
         }),
         {
           status: 400,
@@ -58,20 +62,49 @@ serve(async (req) => {
       );
     }
 
-    // Limpa prefixo Data URI se fornecido (ex: "data:image/png;base64,")
-    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '').trim();
+    // Valida cada imagem individualmente
+    const validatedImages: Array<{ cleanBase64: string; mimeType: string; name: string }> = [];
+    for (let i = 0; i < rawImages.length; i++) {
+      const img = rawImages[i];
+      const fileName = img.name || `Imagem ${i + 1}`;
 
-    if (cleanBase64.length > MAX_BASE64_LENGTH) {
-      return new Response(
-        JSON.stringify({
-          error: 'FILE_TOO_LARGE',
-          message: 'Arquivo excede o limite máximo permitido de 8MB.',
-        }),
-        {
-          status: 413,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      if (!img.imageBase64 || typeof img.imageBase64 !== 'string') {
+        return new Response(
+          JSON.stringify({
+            error: 'INVALID_INPUT',
+            message: `${fileName}: Imagem ausente ou inválida.`,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const normalizedMime = (img.mimeType || '').toLowerCase();
+      if (!ALLOWED_MIME_TYPES.includes(normalizedMime)) {
+        return new Response(
+          JSON.stringify({
+            error: 'INVALID_MIME_TYPE',
+            message: `${fileName}: Formato não suportado. Aceito somente PNG, JPG ou JPEG.`,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const cleanBase64 = img.imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '').trim();
+      if (cleanBase64.length > MAX_BASE64_LENGTH) {
+        return new Response(
+          JSON.stringify({
+            error: 'FILE_TOO_LARGE',
+            message: `${fileName}: Arquivo excede o limite máximo permitido de 8MB.`,
+          }),
+          { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      validatedImages.push({
+        cleanBase64,
+        mimeType: normalizedMime === 'image/jpg' ? 'image/jpeg' : normalizedMime,
+        name: fileName,
+      });
     }
 
     // 2. Verificação segura da API Key no ambiente do backend
@@ -90,39 +123,39 @@ serve(async (req) => {
       );
     }
 
-    // 3. Montagem do prompt multimodal rigoroso
+    // 3. Montagem do prompt multimodal rigoroso de análise conjunta
     const systemPrompt = `
-Você é um especialista em interpretação e extração estruturada de dados de orçamentos e cotações de viagens da S23 Agência de Viagens.
-Seu objetivo é analisar minuciosamente os pixels da imagem da cotação fornecida e extrair os dados estruturados de viagem.
+Você é um especialista em interpretação, extração estruturada e consolidação de dados de orçamentos e cotações de viagens da S23 Agência de Viagens.
+Você está recebendo ${validatedImages.length} imagem(ns) da mesma cotação/pacote de viagem.
 
-REGRAS INEGOCIÁVEIS:
-1. EXTRAÇÃO ESTRITA: Extraia APENAS o que estiver efetivamente visível e legível na imagem.
-2. PROIBIDO INVENTAR: NUNCA invente preço, data, companhia, aeroporto, hotel, quantidade de passageiros ou taxas.
-3. CAMPOS AUSENTES: Se um dado não estiver na imagem ou você tiver dúvida, retorne OBRIGATORIAMENTE 'null'. NUNCA faça suposições ou inferências.
-4. FINANCEIRO:
-   - Se houver apenas um valor total, coloque em 'total' e NÃO tente deduzir valores individuais dos itens.
-   - Moeda deve ser identificada explicitamente (EUR, BRL, USD, etc). Se não tiver certeza, retorne null.
+DIRETRIZ PRINCIPAL DE ANÁLISE CONJUNTA:
+Estas imagens pertencem à mesma cotação. Analise todas conjuntamente e consolide as informações encontradas em uma única estrutura de dados.
+
+REGRAS INEGOCIÁVEIS DE CONSOLIDAÇÃO:
+1. ANÁLISE CONJUNTA E COMPLEMENTAR:
+   - Se informações complementares aparecerem em imagens diferentes (ex: Imagem 1 tem voos, Imagem 2 tem hotel, Imagem 3 tem transfer), CONSOLIDE tudo no mesmo objeto final.
+   - Se o mesmo campo aparecer em várias imagens com o mesmo valor, mantenha uma única informação limpa.
+2. TRATAMENTO ESTRITO DE CONFLITOS:
+   - Se houver informações conflitantes entre imagens (ex: valores totais diferentes, datas divergentes, nomes de hotéis distintos):
+     NÃO escolha arbitrariamente. NUNCA invente ou adivinhe um valor para resolver o conflito.
+     Registre o conflito detalhado no array "conflicts" (ex: "Valor encontrado em mais de uma imagem: €450 / €480. Revise antes de salvar." ou "Datas divergentes encontradas: 10/11 a 17/11 vs 12/11 a 19/11.").
+     Preencha o campo com a opção principal identificada, mas OBRIGATORIAMENTE registre o aviso em "conflicts".
+3. EXTRAÇÃO ESTRITA E PROIBIÇÃO DE INVENÇÃO:
+   - Extraia APENAS o que estiver visível e legível nas imagens. NUNCA invente preços, taxas, passageiros, companhias, voos ou datas.
+   - CAMPOS AUSENTES: Se um dado não estiver presente em nenhuma imagem, retorne OBRIGATORIAMENTE 'null' (ou array vazio [] para listas). NUNCA faça inferências.
+4. NATUREZA DOS VALORES FINANCEIROS:
+   - Todos os valores identificados em orçamentos de fornecedores devem ser tratados como CUSTOS de referência.
+   - NUNCA interprete automaticamente um valor de fornecedor como preço de venda, lucro ou margem.
+   - Preserve a moeda original identificada (EUR, BRL, USD). NUNCA converta moedas e NUNCA aplique taxas de câmbio arbitrariamente.
    - 'taxesAndFees': valor de taxas/impostos somente se discriminado explicitamente.
-5. FORMATO DE DATAS: Datas no formato ISO YYYY-MM-DD quando identificadas. Se houver apenas dia/mês, interprete com base no ano da cotação caso visível, senão ano corrente.
-6. PASSAGEIROS:
-   - 'adults': número inteiro de adultos identificados (ou null).
-   - 'children': array com objetos { "age": number | null } para cada criança identificada. Se não houver crianças na imagem, retorne array vazio [].
-7. TRANSPORTES:
-   - 'outbound' (Ida) e 'inbound' (Volta): 'route' (ex: "LIS → GIG" ou "Lisboa - Rio de Janeiro"), 'company' (nome da companhia aérea/transporte), 'flight' (código do voo ex: "TP123"), horários 'departureTime' e 'arrivalTime' (HH:MM).
-8. HOSPEDAGEM:
-   - 'name': nome do hotel ou acomodação.
-   - 'city': cidade.
-   - 'country': país.
-   - 'room': tipo de quarto/acomodação.
-   - 'mealPlan': regime (ex: "Café da Manhã", "Meia Pensão", "All Inclusive", "Só Hospedagem").
-   - 'checkIn' / 'checkOut': datas YYYY-MM-DD.
-9. SERVIÇOS ADICIONAIS:
-   - 'additionalServices': array de serviços extras (transfers, passeios, seguros) com { "name", "date", "description", "currency", "amount" }. Se não houver, retorne [].
-10. NOME GERAL:
-   - 'packageName': título ou destino principal em destaque no orçamento (ex: "Santiago & Deserto do Atacama"), ou null.
+   - Se houver valor total geral consolidado, informe em 'total'.
+5. FORMATOS:
+   - Datas no formato ISO YYYY-MM-DD quando identificadas.
+   - Adultos: número inteiro. Crianças: array de { "age": number | null }.
+   - Horários de voo no formato HH:MM quando visíveis.
 
-FORMATO OBRIGATÓRIO DE RETORNO:
-Retorne EXCLUSIVAMENTE um objeto JSON válido, sem texto explicativo e sem formatação markdown em volta:
+FORMATO OBRIGATÓRIO DE RETORNO (JSON estrito):
+Retorne EXCLUSIVAMENTE um objeto JSON válido, sem texto conversacional antes ou depois:
 {
   "packageName": string | null,
   "dates": {
@@ -156,18 +189,36 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido, sem texto explicativo e sem forma
     "checkIn": string | null,
     "checkOut": string | null
   },
-  "additionalServices": [],
+  "additionalServices": [
+    {
+      "name": string,
+      "date": string | null,
+      "description": string | null,
+      "currency": string | null,
+      "amount": number | null
+    }
+  ],
   "financial": {
     "currency": string | null,
     "taxesAndFees": number | null,
     "total": number | null
-  }
+  },
+  "conflicts": [
+    "Descrição de conflito entre imagens, se houver"
+  ]
 }
 `;
 
-    // 4. Chamada à API do Gemini com payload multimodal
+    // 4. Chamada à API do Gemini com payload multimodal consolidado
     const modelName = 'gemini-3.6-flash';
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+    const imageParts = validatedImages.map((img) => ({
+      inlineData: {
+        mimeType: img.mimeType,
+        data: img.cleanBase64,
+      },
+    }));
 
     const geminiPayload = {
       contents: [
@@ -175,12 +226,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido, sem texto explicativo e sem forma
           role: 'user',
           parts: [
             { text: systemPrompt },
-            {
-              inlineData: {
-                mimeType: normalizedMime === 'image/jpg' ? 'image/jpeg' : normalizedMime,
-                data: cleanBase64,
-              },
-            },
+            ...imageParts,
           ],
         },
       ],

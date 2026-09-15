@@ -6,11 +6,18 @@ import { supabase } from '../lib/supabase';
 import { ImportedPackageData, ImageImportResponse } from '../types';
 
 export const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
+export const MAX_IMAGES_PER_ANALYSIS = 10;
 export const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 export const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg'];
 
 export interface FileValidationResult {
   valid: boolean;
+  error?: string;
+}
+
+export interface BatchValidationResult {
+  valid: boolean;
+  validFiles: File[];
   error?: string;
 }
 
@@ -32,7 +39,7 @@ export function validateImageFile(file: File | null | undefined): FileValidation
     const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
     return {
       valid: false,
-      error: `O arquivo tem ${sizeInMB}MB, excedendo o limite máximo de 8MB permitido no MVP.`,
+      error: `O arquivo tem ${sizeInMB}MB, excedendo o limite máximo de 8MB permitido.`,
     };
   }
 
@@ -55,6 +62,41 @@ export function validateImageFile(file: File | null | undefined): FileValidation
   }
 
   return { valid: true };
+}
+
+/**
+ * Valida um lote de arquivos respeitando o limite máximo de imagens e requisitos individuais.
+ */
+export function validateImageFilesBatch(
+  newFiles: File[],
+  currentCount: number = 0
+): BatchValidationResult {
+  if (!newFiles || newFiles.length === 0) {
+    return { valid: false, validFiles: [], error: 'Nenhum arquivo foi selecionado.' };
+  }
+
+  if (currentCount + newFiles.length > MAX_IMAGES_PER_ANALYSIS) {
+    return {
+      valid: false,
+      validFiles: [],
+      error: 'Você pode analisar até 10 imagens por vez.',
+    };
+  }
+
+  const validFiles: File[] = [];
+  for (const file of newFiles) {
+    const res = validateImageFile(file);
+    if (!res.valid) {
+      return {
+        valid: false,
+        validFiles: [],
+        error: `Arquivo "${file.name}": ${res.error}`,
+      };
+    }
+    validFiles.push(file);
+  }
+
+  return { valid: true, validFiles };
 }
 
 /**
@@ -106,7 +148,6 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
     return null;
   };
 
-
   const dates = raw?.dates || {};
   const passengers = raw?.passengers || {};
   const outbound = raw?.outbound || {};
@@ -151,6 +192,16 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
     }
   }
 
+  // Normaliza conflitos se fornecidos
+  const conflictsArray: string[] = [];
+  if (Array.isArray(raw?.conflicts)) {
+    for (const c of raw.conflicts) {
+      if (typeof c === 'string' && c.trim()) {
+        conflictsArray.push(c.trim());
+      }
+    }
+  }
+
   return {
     packageName: safeStringOrNull(raw?.packageName),
     dates: {
@@ -190,30 +241,56 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
       taxesAndFees: safeNumberOrNull(financial.taxesAndFees),
       total: safeNumberOrNull(financial.total),
     },
+    conflicts: conflictsArray.length > 0 ? conflictsArray : undefined,
   };
 }
 
 /**
- * Envia a imagem para a Edge Function 'import-package-image' e retorna
- * os dados devidamente validados e normalizados.
+ * Envia múltiplas imagens para a Edge Function 'import-package-image' em uma
+ * única análise contextual de IA e retorna os dados consolidados.
  */
-export async function importPackageDataFromImage(file: File): Promise<ImageImportResponse> {
-  const val = validateImageFile(file);
-  if (!val.valid) {
+export async function importPackageDataFromImages(files: File[]): Promise<ImageImportResponse> {
+  if (!files || files.length === 0) {
     return {
       success: false,
-      error: val.error,
+      error: 'Nenhuma imagem foi informada para análise.',
     };
   }
 
+  if (files.length > MAX_IMAGES_PER_ANALYSIS) {
+    return {
+      success: false,
+      error: 'Você pode analisar até 10 imagens por vez.',
+    };
+  }
+
+  // Validação prévia de cada arquivo
+  for (const file of files) {
+    const val = validateImageFile(file);
+    if (!val.valid) {
+      return {
+        success: false,
+        error: `Arquivo "${file.name}": ${val.error}`,
+      };
+    }
+  }
+
   try {
-    const base64Data = await fileToBase64(file);
-    const mimeType = file.type || 'image/jpeg';
+    // Conversão das imagens para Base64 em paralelo
+    const imagePayloads = await Promise.all(
+      files.map(async (file) => ({
+        imageBase64: await fileToBase64(file),
+        mimeType: file.type || 'image/jpeg',
+        name: file.name,
+      }))
+    );
 
     const { data, error } = await supabase.functions.invoke('import-package-image', {
       body: {
-        imageBase64: base64Data,
-        mimeType,
+        images: imagePayloads,
+        // Mantém campos legados para máxima retrocompatibilidade
+        imageBase64: imagePayloads[0]?.imageBase64,
+        mimeType: imagePayloads[0]?.mimeType,
       },
     });
 
@@ -247,11 +324,10 @@ export async function importPackageDataFromImage(file: File): Promise<ImageImpor
       };
     }
 
-
     if (!data || !data.success || !data.data) {
       return {
         success: false,
-        error: data?.message || data?.error || 'A IA não conseguiu identificar dados na imagem.',
+        error: data?.message || data?.error || 'A IA não conseguiu identificar dados nas imagens.',
         details: data?.details || '',
       };
     }
@@ -263,11 +339,18 @@ export async function importPackageDataFromImage(file: File): Promise<ImageImpor
       data: normalized,
     };
   } catch (err: any) {
-    console.error('Exceção em importPackageDataFromImage:', err);
+    console.error('Exceção em importPackageDataFromImages:', err);
     return {
       success: false,
-      error: err.message || 'Erro inesperado ao processar a imagem.',
+      error: err.message || 'Não foi possível analisar uma ou mais imagens. Verifique os arquivos e tente novamente.',
       details: 'Verifique sua conexão com o servidor e tente novamente.',
     };
   }
+}
+
+/**
+ * Envia uma imagem para a Edge Function 'import-package-image' (retrocompatibilidade).
+ */
+export async function importPackageDataFromImage(file: File): Promise<ImageImportResponse> {
+  return importPackageDataFromImages([file]);
 }

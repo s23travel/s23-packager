@@ -506,6 +506,12 @@ export interface ImportedPackageData {
     taxesAndFees: number | null;
     total: number | null;
   };
+
+  /**
+   * Avisos de conflitos detectados entre múltiplas imagens analisadas conjuntamente
+   * (ex: "Valor encontrado em mais de uma imagem: €450 / €480. Revise antes de salvar.")
+   */
+  conflicts?: string[];
 }
 
 export interface ImageImportResponse {

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ImportedPackageData } from '../../types';
 import {
-  validateImageFile,
-  importPackageDataFromImage,
+  validateImageFilesBatch,
+  importPackageDataFromImages,
+  MAX_IMAGES_PER_ANALYSIS,
 } from '../../services/imageImportService';
-
 
 interface ImageImportModalProps {
   isOpen: boolean;
@@ -15,6 +15,12 @@ interface ImageImportModalProps {
 
 type Step = 'select' | 'analyzing' | 'review';
 
+interface SelectedImageItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
+
 export const ImageImportModal: React.FC<ImageImportModalProps> = ({
   isOpen,
   onClose,
@@ -22,51 +28,64 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
   targetType = 'package',
 }) => {
   const [step, setStep] = useState<Step>('select');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<SelectedImageItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ImportedPackageData | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Limpa estado ao fechar ou reabrir
+  // Limpa estado ao fechar
   useEffect(() => {
     if (!isOpen) {
       setStep('select');
-      setSelectedFile(null);
+      selectedImages.forEach((img) => {
+        if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
+      });
+      setSelectedImages([]);
       setErrorMsg(null);
       setExtractedData(null);
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-      }
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleFileSelect = (file: File) => {
+  const handleFilesAdd = (filesToAdd: FileList | File[]) => {
     setErrorMsg(null);
-    const validation = validateImageFile(file);
+    const filesArray = Array.from(filesToAdd);
+    if (filesArray.length === 0) return;
+
+    const validation = validateImageFilesBatch(filesArray, selectedImages.length);
     if (!validation.valid) {
-      setErrorMsg(validation.error || 'Arquivo inválido.');
+      setErrorMsg(validation.error || 'Erro na seleção de arquivos.');
       return;
     }
 
-    setSelectedFile(file);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
+    const newItems: SelectedImageItem[] = validation.validFiles.map((file) => ({
+      id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    setSelectedImages((prev) => [...prev, ...newItems]);
+  };
+
+  const handleRemoveImage = (id: string) => {
+    setErrorMsg(null);
+    setSelectedImages((prev) => {
+      const itemToRemove = prev.find((item) => item.id === id);
+      if (itemToRemove?.previewUrl) {
+        URL.revokeObjectURL(itemToRemove.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileSelect(e.dataTransfer.files[0]);
+      handleFilesAdd(e.dataTransfer.files);
     }
   };
 
@@ -81,15 +100,16 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
   };
 
   const handleAnalyze = async () => {
-    if (!selectedFile) return;
+    if (selectedImages.length === 0) return;
 
     setStep('analyzing');
     setErrorMsg(null);
 
-    const result = await importPackageDataFromImage(selectedFile);
+    const files = selectedImages.map((img) => img.file);
+    const result = await importPackageDataFromImages(files);
 
     if (!result.success || !result.data) {
-      setErrorMsg(result.error || 'Falha ao analisar a imagem.');
+      setErrorMsg(result.error || 'Falha ao analisar as imagens.');
       setStep('select');
       return;
     }
@@ -115,7 +135,7 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal-container"
-        style={{ maxWidth: step === 'review' ? '760px' : '560px' }}
+        style={{ maxWidth: step === 'review' ? '780px' : '620px' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabeçalho do Modal */}
@@ -123,13 +143,13 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
           <div>
             <h3 className="modal-title">
               {step === 'review'
-                ? 'Revisão dos Dados Extraídos da Imagem'
-                : 'Importar Dados de Imagem'}
+                ? 'Revisão dos Dados Extraídos das Imagens'
+                : 'Importar Dados de Imagem (Análise Conjunta)'}
             </h3>
             <p className="modal-subtitle">
               {step === 'review'
-                ? 'Confira as informações identificadas antes de aplicar ao formulário.'
-                : `Carregue a cotação de fornecedor para preencher o ${
+                ? 'Confira as informações consolidadas identificadas antes de aplicar ao formulário.'
+                : `Carregue até 10 imagens de cotações para consolidar e preencher o ${
                     targetType === 'package' ? 'Novo Pacote' : 'Nova Cotação'
                   } com IA.`}
             </p>
@@ -153,78 +173,163 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
 
         {/* Conteúdo do Modal conforme o Step */}
         <div className="modal-body">
-          {/* STEP 1: Seleção / Drag and Drop */}
+          {/* STEP 1: Seleção de Múltiplas Imagens */}
           {step === 'select' && (
             <div>
-              <div
-                className={`image-dropzone ${isDragging ? 'dragging' : ''}`}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png, image/jpeg, image/jpg"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      handleFileSelect(e.target.files[0]);
-                    }
-                  }}
-                />
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/png, image/jpeg, image/jpg"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files) {
+                    handleFilesAdd(e.target.files);
+                    e.target.value = '';
+                  }
+                }}
+              />
 
-                {previewUrl ? (
-                  <div className="dropzone-preview">
-                    <img
-                      src={previewUrl}
-                      alt="Prévia da cotação"
-                      className="dropzone-thumbnail"
-                    />
-                    <div className="dropzone-fileinfo">
-                      <strong>{selectedFile?.name}</strong>
-                      <span>{selectedFile && formatFileSize(selectedFile.size)}</span>
-                      <span className="dropzone-change-hint">
-                        Clique ou arraste para substituir
-                      </span>
-                    </div>
-                  </div>
-                ) : (
+              {selectedImages.length === 0 ? (
+                /* Dropzone inicial vazio */
+                <div
+                  className={`image-dropzone ${isDragging ? 'dragging' : ''}`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <div className="dropzone-prompt">
                     <div className="dropzone-icon">📷</div>
-                    <h4>Arraste uma imagem aqui ou clique para selecionar</h4>
-                    <p>Formatos aceitos: PNG, JPG ou JPEG (máximo 8MB)</p>
+                    <h4>Arraste uma ou mais imagens aqui ou clique para selecionar</h4>
+                    <p>Formatos aceitos: PNG, JPG ou JPEG (máximo 8MB por imagem, até 10 imagens)</p>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                /* Galeria com imagens selecionadas */
+                <div className="dropzone-gallery-container">
+                  <div className="dropzone-gallery-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {selectedImages.length === 1
+                          ? '1 imagem selecionada'
+                          : `${selectedImages.length} imagens selecionadas`}
+                      </span>
+                      <span className="badge badge-neutral" style={{ fontSize: '11px' }}>
+                        Limite: {MAX_IMAGES_PER_ANALYSIS}
+                      </span>
+                    </div>
+                    {selectedImages.length < MAX_IMAGES_PER_ANALYSIS && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="btn btn-sm btn-secondary"
+                        style={{ fontSize: '12px', padding: '0.25rem 0.65rem' }}
+                      >
+                        + Adicionar mais imagens
+                      </button>
+                    )}
+                  </div>
 
-              <div className="modal-notice">
+                  <div
+                    className={`dropzone-gallery-wrapper ${isDragging ? 'dragging' : ''}`}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    style={{
+                      border: isDragging
+                        ? '2px dashed var(--accent-primary)'
+                        : '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-lg)',
+                      padding: '0.5rem',
+                      backgroundColor: isDragging
+                        ? 'var(--accent-soft)'
+                        : 'var(--bg-surface-elevated)',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                  >
+                    <div className="dropzone-gallery-grid">
+                      {selectedImages.map((img) => (
+                        <div key={img.id} className="image-preview-card">
+                          <button
+                            type="button"
+                            className="image-card-remove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveImage(img.id);
+                            }}
+                            title="Remover imagem"
+                            aria-label={`Remover ${img.file.name}`}
+                          >
+                            ✕
+                          </button>
+                          <img
+                            src={img.previewUrl}
+                            alt={img.file.name}
+                            className="image-card-thumb"
+                          />
+                          <span className="image-card-name" title={img.file.name}>
+                            {img.file.name}
+                          </span>
+                          <span className="image-card-size">{formatFileSize(img.file.size)}</span>
+                        </div>
+                      ))}
+
+                      {selectedImages.length < MAX_IMAGES_PER_ANALYSIS && (
+                        <div
+                          className="dropzone-add-card"
+                          onClick={() => fileInputRef.current?.click()}
+                          title="Adicionar mais imagens"
+                        >
+                          <span>+</span>
+                          <small>Adicionar</small>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="modal-notice" style={{ marginTop: '0.75rem' }}>
                 <small>
-                  🔒 <strong>Privacidade e Segurança</strong>: A imagem é processada
-                  exclusivamente no servidor para interpretação da cotação e não é armazenada
-                  permanentemente.
+                  🔒 <strong>Privacidade e Segurança</strong>: As imagens são enviadas exclusivamente
+                  ao backend para análise contextual consolidada e não são armazenadas permanentemente.
                 </small>
               </div>
             </div>
           )}
 
-          {/* STEP 2: Processamento com IA */}
+          {/* STEP 2: Processamento Conjunto com IA */}
           {step === 'analyzing' && (
             <div className="modal-loading-container">
               <div className="spinner-large" />
               <h4 style={{ marginTop: '1.25rem', marginBottom: '0.5rem' }}>
-                Analisando cotação com IA...
+                Analisando {selectedImages.length} imagem(ns) com IA...
               </h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                Identificando voos, hospedagem, datas, passageiros e valores na imagem.
+                Consolidando informações de voos, hospedagem, transfers, datas, passageiros e custos em uma análise única.
               </p>
             </div>
           )}
 
-          {/* STEP 3: Tela de Revisão */}
+          {/* STEP 3: Tela de Revisão dos Dados Consolidados */}
           {step === 'review' && extractedData && (
             <div className="review-container">
+              {/* Alerta de Conflitos se identificado entre imagens */}
+              {extractedData.conflicts && extractedData.conflicts.length > 0 && (
+                <div className="review-conflicts-box">
+                  <div className="review-conflicts-header">
+                    <span>⚠️</span>
+                    <span>Avisos de Conflitos Detectados (Revise antes de salvar)</span>
+                  </div>
+                  <ul className="review-conflicts-list">
+                    {extractedData.conflicts.map((conf, idx) => (
+                      <li key={idx}>{conf}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Título do Pacote se identificado */}
               {extractedData.packageName && (
                 <div className="review-section-box highlight">
@@ -360,9 +465,9 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
                 </div>
               )}
 
-              {/* 6. Financeiro */}
+              {/* 6. Financeiro (Tratado estritamente como custo) */}
               <div className="review-section-box" style={{ marginTop: '0.75rem' }}>
-                <span className="review-box-label">💰 Valores Comerciais Identificados</span>
+                <span className="review-box-label">💰 Custos Comerciais Identificados</span>
                 <div className="review-grid-3" style={{ marginTop: '0.25rem' }}>
                   <div>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Moeda</span>
@@ -382,7 +487,7 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
                   </div>
                   <div>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Preço Total
+                      Custo Total Identificado
                     </span>
                     <p style={{ fontWeight: 700, color: 'var(--accent-text)' }}>
                       {extractedData.financial.total !== null
@@ -406,10 +511,10 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={!selectedFile}
+                disabled={selectedImages.length === 0}
                 onClick={handleAnalyze}
               >
-                Analisar Imagem com IA ↗
+                Analisar imagens com IA
               </button>
             </>
           )}
@@ -421,7 +526,7 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
                 className="btn btn-secondary"
                 onClick={() => setStep('select')}
               >
-                ← Trocar Imagem
+                ← Modificar imagens
               </button>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button type="button" className="btn btn-secondary" onClick={onClose}>
