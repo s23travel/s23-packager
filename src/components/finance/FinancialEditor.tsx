@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { CostCategory, CostComponent, Currency, PassengerConfig } from '../../types';
 import {
   calculateFinancialSummary,
@@ -7,6 +7,102 @@ import {
   formatPercent,
   roundMoney,
 } from '../../services/financeService';
+
+interface AmountInputProps {
+  value: number;
+  onChange: (val: number) => void;
+  placeholder?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+/**
+ * Campo numérico para valores monetários.
+ * - Inicia vazio (com placeholder) quando o valor é 0 para evitar que o usuário precise apagar o 0 manualmente.
+ * - Ao clicar ou focar com valor 0, limpa imediatamente para aceitar o novo input.
+ * - Ao focar/clicar com valor existente, seleciona todo o texto para sobrescrita direta.
+ */
+const AmountInput: React.FC<AmountInputProps> = ({
+  value,
+  onChange,
+  placeholder = '0.00',
+  className = 'form-input',
+  style,
+}) => {
+  const [text, setText] = useState<string>(value === 0 ? '' : String(value));
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setText(value === 0 ? '' : String(value));
+    }
+  }, [value, isFocused]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setText(raw);
+    if (raw === '' || raw === '-') {
+      onChange(0);
+      return;
+    }
+    const num = parseFloat(raw);
+    if (!isNaN(num)) {
+      onChange(Math.max(0, num));
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsFocused(true);
+    if (text === '0' || value === 0) {
+      setText('');
+      onChange(0);
+    } else {
+      e.target.select();
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    if (text === '0' || value === 0) {
+      setText('');
+      onChange(0);
+    } else {
+      (e.target as HTMLInputElement).select();
+    }
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    if (text === '' || text === '0') {
+      setText('');
+      onChange(0);
+    } else {
+      const num = parseFloat(text);
+      if (!isNaN(num) && num > 0) {
+        onChange(num);
+        setText(String(num));
+      } else {
+        setText('');
+        onChange(0);
+      }
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      step="0.01"
+      min="0"
+      value={text}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onClick={handleClick}
+      onBlur={handleBlur}
+      placeholder={placeholder}
+      className={className}
+      style={style}
+    />
+  );
+};
 
 interface FinancialEditorProps {
   currency: Currency;
@@ -299,6 +395,8 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                                 quantity: Math.max(1, parseInt(e.target.value) || 1),
                               })
                             }
+                            onFocus={(e) => e.target.select()}
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
                             className="form-input"
                             style={{ width: '50px', textAlign: 'center', padding: '0.3rem 0.2rem', fontSize: '13px' }}
                           />
@@ -326,14 +424,11 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                         {readOnly ? (
                           <span>{formatMoney(comp.amount || 0, comp.currency)}</span>
                         ) : (
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={comp.amount ?? ''}
-                            onChange={(e) =>
+                          <AmountInput
+                            value={comp.amount || 0}
+                            onChange={(val) =>
                               handleUpdateComponent(idx, {
-                                amount: Math.max(0, parseFloat(e.target.value) || 0),
+                                amount: val,
                               })
                             }
                             placeholder="0.00"
@@ -393,12 +488,9 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
                 {formatMoney(salePrice, currency)}
               </span>
             ) : (
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={salePrice || ''}
-                onChange={(e) => onChangeSalePrice(Math.max(0, parseFloat(e.target.value) || 0))}
+              <AmountInput
+                value={salePrice}
+                onChange={onChangeSalePrice}
                 placeholder="0.00"
                 className="form-input"
                 style={{ width: '110px', textAlign: 'right', fontWeight: 600, fontSize: '14px' }}
