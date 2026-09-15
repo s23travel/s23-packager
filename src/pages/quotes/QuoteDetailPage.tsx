@@ -176,6 +176,9 @@ export const QuoteDetailPage: React.FC = () => {
                 <span className="detail-label">Período da Viagem:</span>
                 <span className="detail-value">
                   {d.dates?.startDate ? `${d.dates.startDate} até ${d.dates.endDate || '—'}` : 'A definir'}
+                  {d.dates?.durationDays
+                    ? ` (${d.dates.durationDays} dias, ${d.dates.durationNights ?? Math.max(0, d.dates.durationDays - 1)} noites)`
+                    : ''}
                 </span>
               </div>
               <div className="detail-row">

@@ -6,6 +6,7 @@ import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { calculateFinancialSummary } from '../../services/financeService';
 import { ImageImportModal } from '../../components/import/ImageImportModal';
+import { syncOperationalWithFinancials } from '../../services/packageFinancialSyncService';
 
 
 export const QuoteFormPage: React.FC = () => {
@@ -29,6 +30,7 @@ export const QuoteFormPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [durationDays, setDurationDays] = useState<number | ''>(0);
+  const [durationNights, setDurationNights] = useState<number | ''>(0);
   const [adults, setAdults] = useState<number | ''>(2);
   const [children, setChildren] = useState<number | ''>(0);
   const [infants, setInfants] = useState<number | ''>(0);
@@ -164,6 +166,40 @@ export const QuoteFormPage: React.FC = () => {
   };
 
 
+  // Sincronização automática e determinística Seção 3 → Seção 4
+  useEffect(() => {
+    if (loading) return;
+
+    setCostComponents((prev) =>
+      syncOperationalWithFinancials(prev, {
+        outboundRoute,
+        inboundRoute,
+        hotelName,
+        baseCurrency: currency,
+      })
+    );
+  }, [outboundRoute, inboundRoute, hotelName, currency, loading]);
+
+  // Cálculo automático de Duração (Dias) e Duração (Noites) a partir das datas
+  useEffect(() => {
+    if (startDate && endDate) {
+      if (endDate < startDate) {
+        setEndDate(startDate);
+        return;
+      }
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const diffMs = end.getTime() - start.getTime();
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0) {
+          setDurationDays(diffDays + 1);
+          setDurationNights(diffDays);
+        }
+      }
+    }
+  }, [startDate, endDate]);
+
   useEffect(() => {
     if (!id) {
       quotationsService.getNextReference().then((nextRef) => {
@@ -199,7 +235,10 @@ export const QuoteFormPage: React.FC = () => {
         if (d.dates) {
           setStartDate(d.dates.startDate || '');
           setEndDate(d.dates.endDate || '');
-          setDurationDays(d.dates.durationDays || 7);
+          setDurationDays(d.dates.durationDays ?? 0);
+          setDurationNights(
+            d.dates.durationNights ?? (d.dates.durationDays ? Math.max(0, d.dates.durationDays - 1) : 0)
+          );
         }
 
         if (d.passengers) {
@@ -291,6 +330,7 @@ export const QuoteFormPage: React.FC = () => {
           startDate,
           endDate,
           durationDays: Number(durationDays) || undefined,
+          durationNights: Number(durationNights) ?? undefined,
         },
         outboundTransport: outboundRoute.trim()
           ? {
@@ -310,7 +350,7 @@ export const QuoteFormPage: React.FC = () => {
               arrivalTime: inboundArrivalTime.trim() || undefined,
             }
           : undefined,
-        lodging: hotelName.trim()
+        lodging: (hotelName.trim() || hotelDestination.trim())
           ? [
               {
                 id: 'hotel-quote-1',
@@ -548,7 +588,13 @@ export const QuoteFormPage: React.FC = () => {
                 type="date"
                 className="form-input"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  const newStart = e.target.value;
+                  setStartDate(newStart);
+                  if (endDate && newStart && endDate < newStart) {
+                    setEndDate(newStart);
+                  }
+                }}
               />
             </div>
 
@@ -560,6 +606,7 @@ export const QuoteFormPage: React.FC = () => {
                 id="endDate"
                 type="date"
                 className="form-input"
+                min={startDate || undefined}
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
@@ -572,23 +619,55 @@ export const QuoteFormPage: React.FC = () => {
               <input
                 id="durationDays"
                 type="number"
-                min="1"
+                min="0"
                 className="form-input"
                 value={durationDays}
                 onChange={(e) => {
                   const raw = e.target.value;
                   if (raw === '') {
                     setDurationDays('');
+                    setDurationNights('');
                     return;
                   }
                   const val = parseInt(raw, 10);
                   if (!isNaN(val)) {
                     setDurationDays(val);
+                    setDurationNights(Math.max(0, val - 1));
                   }
                 }}
                 onBlur={() => {
-                  if (durationDays === '' || (typeof durationDays === 'number' && durationDays < 1)) {
-                    setDurationDays(1);
+                  if (durationDays === '' || (typeof durationDays === 'number' && durationDays < 0)) {
+                    setDurationDays(0);
+                    setDurationNights(0);
+                  }
+                }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="durationNights">
+                Duração (Noites)
+              </label>
+              <input
+                id="durationNights"
+                type="number"
+                min="0"
+                className="form-input"
+                value={durationNights}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setDurationNights('');
+                    return;
+                  }
+                  const val = parseInt(raw, 10);
+                  if (!isNaN(val)) {
+                    setDurationNights(val);
+                  }
+                }}
+                onBlur={() => {
+                  if (durationNights === '' || (typeof durationNights === 'number' && durationNights < 0)) {
+                    setDurationNights(0);
                   }
                 }}
               />
