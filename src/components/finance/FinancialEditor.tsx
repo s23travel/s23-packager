@@ -2,6 +2,8 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { CostCategory, CostComponent, Currency, PassengerConfig } from '../../types';
 import {
   calculateFinancialSummary,
+  calculateSuggestedSalePrice,
+  DEFAULT_PROFIT_MARGIN_PERCENT,
   COST_CATEGORY_LABELS,
   formatMoney,
   formatPercent,
@@ -141,6 +143,54 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
       passengers,
     });
   }, [components, salePrice, currency, exchangeRate, passengers]);
+
+  // Preço de venda sugerido automaticamente (soma dos custos + 12%)
+  const autoSuggestedPrice = useMemo(() => {
+    return calculateSuggestedSalePrice(summary.totalCost, DEFAULT_PROFIT_MARGIN_PERCENT);
+  }, [summary.totalCost]);
+
+  // Controle de edição manual do Preço de Venda
+  const [isManualSalePrice, setIsManualSalePrice] = useState<boolean>(() => {
+    if (salePrice > 0) {
+      const autoPrice = calculateSuggestedSalePrice(summary.totalCost, DEFAULT_PROFIT_MARGIN_PERCENT);
+      return Math.abs(salePrice - autoPrice) > 0.01;
+    }
+    return false;
+  });
+
+  // Se o salePrice mudar externamente e for diferente do automático, preserva como manual
+  useEffect(() => {
+    if (salePrice > 0 && Math.abs(salePrice - autoSuggestedPrice) > 0.01) {
+      setIsManualSalePrice(true);
+    }
+  }, [salePrice, autoSuggestedPrice]);
+
+  // Conforme custos são adicionados ou alterados, preenche o preço de venda automaticamente
+  // se o usuário não tiver customizado manualmente
+  useEffect(() => {
+    if (readOnly) return;
+    if (isManualSalePrice) return;
+
+    if (autoSuggestedPrice !== salePrice) {
+      onChangeSalePrice(autoSuggestedPrice);
+    }
+  }, [autoSuggestedPrice, isManualSalePrice, readOnly, salePrice, onChangeSalePrice]);
+
+  const handleManualSalePriceChange = (val: number) => {
+    if (val === 0) {
+      // Se o usuário zerar ou limpar o campo, retorna ao cálculo automático
+      setIsManualSalePrice(false);
+      onChangeSalePrice(autoSuggestedPrice);
+    } else {
+      setIsManualSalePrice(true);
+      onChangeSalePrice(val);
+    }
+  };
+
+  const handleResetToAutoPrice = () => {
+    setIsManualSalePrice(false);
+    onChangeSalePrice(autoSuggestedPrice);
+  };
 
   // Checagem se há moedas mistas
   const hasCurrencyMismatch = useMemo(() => {
@@ -479,10 +529,48 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
           </div>
 
           {/* Campo de Preço de Venda */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-surface-elevated)', padding: '0.4rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
-              Preço de venda ({currency}):
-            </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', background: 'var(--bg-surface-elevated)', padding: '0.4rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                Preço de venda ({currency}):
+              </label>
+              {!readOnly && (
+                isManualSalePrice ? (
+                  <button
+                    type="button"
+                    onClick={handleResetToAutoPrice}
+                    className="badge"
+                    style={{
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      cursor: 'pointer',
+                      border: '1px solid rgba(234, 179, 8, 0.4)',
+                      background: 'rgba(234, 179, 8, 0.12)',
+                      color: '#eab308',
+                      borderRadius: '4px',
+                    }}
+                    title="Preço editado manualmente. Clique para voltar ao cálculo automático: custos + 12% margem"
+                  >
+                    ↺ Manual (redefinir 12%)
+                  </button>
+                ) : (
+                  <span
+                    className="badge"
+                    style={{
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      color: 'var(--accent-primary)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: '4px',
+                    }}
+                    title="Preenchido automaticamente: soma dos custos existentes + 12% de margem"
+                  >
+                    Auto (+12%)
+                  </span>
+                )
+              )}
+            </div>
             {readOnly ? (
               <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {formatMoney(salePrice, currency)}
@@ -490,7 +578,7 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
             ) : (
               <AmountInput
                 value={salePrice}
-                onChange={onChangeSalePrice}
+                onChange={handleManualSalePriceChange}
                 placeholder="0.00"
                 className="form-input"
                 style={{ width: '110px', textAlign: 'right', fontWeight: 600, fontSize: '14px' }}

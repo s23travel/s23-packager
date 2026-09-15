@@ -8,6 +8,8 @@ import {
   calculateProfit,
   calculateProfitPercent,
   calculateFinancialSummary,
+  calculateSuggestedSalePrice,
+  DEFAULT_PROFIT_MARGIN_PERCENT,
 } from '../src/services/financeService';
 import { CostComponent, PackageData, QuotationData } from '../src/types';
 
@@ -254,9 +256,33 @@ runTest('14. Alteração no package base não afeta a cotação existente (indep
   assert.strictEqual(quotationObj.data.financials.profit, 500.00);
 });
 
+// 15. Cálculo automático de Preço de Venda com margem padrão de 12% (custo + 12%)
+runTest('15. Preço de venda sugerido: soma dos custos + 12% de margem de lucro', () => {
+  assert.strictEqual(DEFAULT_PROFIT_MARGIN_PERCENT, 12);
+  
+  // Custo 1000 EUR -> 1000 * 1.12 = 1120.00 EUR
+  const price1 = calculateSuggestedSalePrice(1000);
+  assert.strictEqual(price1, 1120.00);
+
+  // Custo 1200 EUR -> 1200 * 1.12 = 1344.00 EUR
+  const price2 = calculateSuggestedSalePrice(1200);
+  assert.strictEqual(price2, 1344.00);
+
+  // Custo fracionado 350.50 EUR -> 350.50 * 1.12 = 392.56 EUR
+  const price3 = calculateSuggestedSalePrice(350.50);
+  assert.strictEqual(price3, 392.56);
+});
+
+// 16. Proteção contra custos zerados ou inválidos no cálculo do preço sugerido
+runTest('16. Proteção para cálculo sugerido com custo zero ou negativo', () => {
+  assert.strictEqual(calculateSuggestedSalePrice(0), 0);
+  assert.strictEqual(calculateSuggestedSalePrice(-50), 0);
+  assert.strictEqual(calculateSuggestedSalePrice(NaN), 0);
+});
+
 console.log(`\n=== RESULTADO: ${testsPassed} PASSOU, ${testsFailed} FALHOU ===`);
 if (testsFailed > 0) {
   process.exit(1);
 } else {
-  console.log('🎉 TODOS OS 14 TESTES MATEMÁTICOS E DE NEGÓCIO PASSARAM COM SUCESSO!\n');
+  console.log('🎉 TODOS OS 16 TESTES MATEMÁTICOS E DE NEGÓCIO PASSARAM COM SUCESSO!\n');
 }

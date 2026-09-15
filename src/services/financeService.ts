@@ -178,6 +178,25 @@ export function calculateProfitPercent(salePrice: number, totalCost: number): nu
   return roundPercent((profit / safeSalePrice) * 100);
 }
 
+/**
+ * Margem de lucro padrão aplicada automaticamente sobre os custos (12%).
+ */
+export const DEFAULT_PROFIT_MARGIN_PERCENT = 12;
+
+/**
+ * Calcula o preço de venda sugerido automaticamente:
+ * soma dos custos existentes + margem de lucro de 12% (ou customizada).
+ */
+export function calculateSuggestedSalePrice(
+  totalCost: number,
+  marginPercent: number = DEFAULT_PROFIT_MARGIN_PERCENT
+): number {
+  if (typeof totalCost !== 'number' || !Number.isFinite(totalCost) || totalCost <= 0) {
+    return 0;
+  }
+  return roundMoney(totalCost * (1 + marginPercent / 100));
+}
+
 export interface FinancialCalculationInput {
   components: CostComponent[];
   salePrice: number;
