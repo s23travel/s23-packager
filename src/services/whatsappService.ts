@@ -64,9 +64,9 @@ export function formatPriceText(price: number, currency: Currency): string {
   });
 
   if (currency === 'EUR') {
-    return `💶 Total do pacote: *€ ${formatted}*`;
+    return `💶 Preço por pessoa: *€ ${formatted}*`;
   }
-  return `💰 Total do pacote: *R$ ${formatted}*`;
+  return `💰 Preço por pessoa: *R$ ${formatted}*`;
 }
 
 function getPackageBaseName(quotation: Quotation): string {
@@ -407,16 +407,16 @@ export function generateWhatsAppMessage(quotation: Quotation): string {
 
   sections.push(inclusions.join('\n'));
 
-  // 4. Preço de Venda do Pacote
-  const salePrice =
-    typeof d.financials?.salePrice === 'number'
-      ? d.financials.salePrice
-      : typeof d.financials?.priceTotal?.amount === 'number'
-      ? d.financials.priceTotal.amount
+  // 4. Preço por Pessoa do Pacote
+  const pricePerPerson =
+    typeof d.financials?.pricePerPerson === 'number'
+      ? d.financials.pricePerPerson
+      : typeof d.financials?.pricePerPersonAmount?.amount === 'number'
+      ? d.financials.pricePerPersonAmount.amount
       : 0;
 
-  if (salePrice > 0) {
-    sections.push(formatPriceText(salePrice, currency));
+  if (pricePerPerson > 0) {
+    sections.push(formatPriceText(pricePerPerson, currency));
   }
 
   // 5. Condição de Pagamento (Entrada / Parcelamento)
