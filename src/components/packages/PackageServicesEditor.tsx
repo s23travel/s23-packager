@@ -550,14 +550,9 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
           }}
         >
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Resumo Financeiro
-              </h3>
-              <span className="badge badge-neutral" style={{ fontSize: '11px' }}>
-                Fonte única: services[]
-              </span>
-            </div>
+            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Resumo Financeiro
+            </h3>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
               Valores calculados em {baseCurrency}. Divisor comercial: {payingPassengers || 1} passageiro(s) pagante(s).
             </p>

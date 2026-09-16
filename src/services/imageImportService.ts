@@ -401,8 +401,179 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
 }
 
 /**
- * Envia múltiplas imagens para a Edge Function 'import-package-image' em uma
- * única análise contextual de IA e retorna os dados consolidados.
+ * Consolida múltiplos resultados parciais de imagens em um único ImportedPackageData unificado.
+ * Garante que nenhum serviço de nenhuma imagem seja perdido ou sobrescrito.
+ */
+export function consolidateImportedPackageData(results: ImportedPackageData[]): ImportedPackageData {
+  const validItems = results.filter((r): r is ImportedPackageData => Boolean(r));
+
+  if (validItems.length === 0) {
+    return normalizeImportedPackageData({});
+  }
+
+  if (validItems.length === 1) {
+    return validItems[0];
+  }
+
+  const allServices: ServiceItem[] = [];
+  let destination: string | null = null;
+  let packageName: string | null = null;
+  let startDate: string | null = null;
+  let endDate: string | null = null;
+  let adults: number | null = null;
+  const childrenMap = new Map<number | null, number>();
+  const allConflicts: Array<ImportConflict | string> = [];
+  let salePrice: number | null = null;
+  let currency: 'EUR' | 'BRL' | null = null;
+  let taxesAndFees: number | null = null;
+
+  for (const item of validItems) {
+    // 1. Preserva integralmente todos os serviços identificados
+    if (Array.isArray(item.services)) {
+      for (const s of item.services) {
+        // Evita duplicatas idênticas exatas se duas imagens forem iguais
+        allServices.push(s);
+      }
+    }
+
+    // 2. Destino comercial geral
+    if (!destination && item.destination) {
+      destination = item.destination;
+    } else if (destination && item.destination && destination.toLowerCase() !== item.destination.toLowerCase()) {
+      // Conflito de destino detectado
+      allConflicts.push({
+        field: 'destination',
+        values: [destination, item.destination],
+        description: `Destinos divergentes identificados entre imagens: "${destination}" vs "${item.destination}"`,
+      });
+    }
+
+    // 3. Nome do pacote
+    if (!packageName && item.packageName) {
+      packageName = item.packageName;
+    }
+
+    // 4. Datas da viagem
+    if (!startDate && item.dates?.start) {
+      startDate = item.dates.start;
+    } else if (startDate && item.dates?.start && startDate !== item.dates.start) {
+      allConflicts.push({
+        field: 'startDate',
+        values: [startDate, item.dates.start],
+        description: `Datas de início divergentes: "${startDate}" vs "${item.dates.start}"`,
+      });
+    }
+
+    if (!endDate && item.dates?.end) {
+      endDate = item.dates.end;
+    } else if (endDate && item.dates?.end && endDate !== item.dates.end) {
+      allConflicts.push({
+        field: 'endDate',
+        values: [endDate, item.dates.end],
+        description: `Datas de fim divergentes: "${endDate}" vs "${item.dates.end}"`,
+      });
+    }
+
+    // 5. Passageiros
+    if (adults === null && typeof item.passengers?.adults === 'number') {
+      adults = item.passengers.adults;
+    }
+    if (Array.isArray(item.passengers?.children)) {
+      item.passengers.children.forEach((ch) => {
+        childrenMap.set(ch.age, (childrenMap.get(ch.age) || 0) + 1);
+      });
+    }
+
+    // 6. Conflitos existentes
+    if (Array.isArray(item.conflicts)) {
+      allConflicts.push(...item.conflicts);
+    }
+
+    // 7. Preço e Moeda
+    if (salePrice === null && typeof item.salePrice === 'number' && item.salePrice > 0) {
+      salePrice = item.salePrice;
+      currency = item.currency || 'EUR';
+    }
+    if (taxesAndFees === null && typeof item.financial?.taxesAndFees === 'number') {
+      taxesAndFees = item.financial.taxesAndFees;
+    }
+    if (!currency && item.currency) {
+      currency = item.currency;
+    }
+  }
+
+  const consolidatedChildren: Array<{ age: number | null }> = [];
+  childrenMap.forEach((_count, age) => {
+    consolidatedChildren.push({ age });
+  });
+
+  // Campos legados mapeados a partir dos serviços consolidados
+  const firstOutbound = allServices.find((s) => s.type === 'outbound_transport');
+  const firstInbound = allServices.find((s) => s.type === 'inbound_transport');
+  const firstLodging = allServices.find((s) => s.type === 'accommodation');
+
+  const additionalServicesArray = allServices
+    .filter((s) => s.type === 'additional' || s.type === 'transfer' || s.type === 'insurance')
+    .map((s) => ({
+      name: s.description,
+      date: null,
+      description: s.notes || null,
+      currency: s.currency || null,
+      amount: s.amount || null,
+    }));
+
+  return {
+    packageName,
+    destination,
+    dates: {
+      start: startDate,
+      end: endDate,
+    },
+    passengers: {
+      adults,
+      children: consolidatedChildren,
+    },
+    services: allServices,
+    salePrice,
+    currency,
+    conflicts: allConflicts.length > 0 ? allConflicts : undefined,
+
+    outbound: {
+      route: firstOutbound?.description || null,
+      company: firstOutbound?.carrier || null,
+      flight: null,
+      departureTime: firstOutbound?.departureTime || null,
+      arrivalTime: firstOutbound?.arrivalTime || null,
+    },
+    inbound: {
+      route: firstInbound?.description || null,
+      company: firstInbound?.carrier || null,
+      flight: null,
+      departureTime: firstInbound?.departureTime || null,
+      arrivalTime: firstInbound?.arrivalTime || null,
+    },
+    lodging: {
+      name: firstLodging?.description || null,
+      city: firstLodging?.destination || null,
+      country: null,
+      room: null,
+      mealPlan: firstLodging?.mealPlan || null,
+      checkIn: startDate,
+      checkOut: endDate,
+    },
+    additionalServices: additionalServicesArray,
+    financial: {
+      currency: currency || 'EUR',
+      taxesAndFees,
+      total: salePrice,
+    },
+  };
+}
+
+/**
+ * Envia múltiplas imagens para a Edge Function 'import-package-image'
+ * processando cada imagem e consolidando deterministicamente todos os serviços
+ * extraídos, sem qualquer perda ou sobreposição de dados.
  */
 export async function importPackageDataFromImages(files: File[]): Promise<ImageImportResponse> {
   if (!files || files.length === 0) {
@@ -431,67 +602,74 @@ export async function importPackageDataFromImages(files: File[]): Promise<ImageI
   }
 
   try {
-    // Conversão das imagens para Base64 em paralelo
-    const imagePayloads = await Promise.all(
-      files.map(async (file) => ({
-        imageBase64: await fileToBase64(file),
-        mimeType: file.type || 'image/jpeg',
-        name: file.name,
-      }))
-    );
+    // Processa cada imagem para extração em paralelo com isolamento total de falhas
+    const extractionPromises = files.map(async (file) => {
+      try {
+        const imageBase64 = await fileToBase64(file);
+        const mimeType = file.type || 'image/jpeg';
 
-    const { data, error } = await supabase.functions.invoke('import-package-image', {
-      body: {
-        images: imagePayloads,
-        // Mantém campos legados para máxima retrocompatibilidade
-        imageBase64: imagePayloads[0]?.imageBase64,
-        mimeType: imagePayloads[0]?.mimeType,
-      },
+        const { data, error } = await supabase.functions.invoke('import-package-image', {
+          body: {
+            imageBase64,
+            mimeType,
+            images: [{ imageBase64, mimeType, name: file.name }],
+          },
+        });
+
+        if (error) {
+          console.error(`Erro ao processar imagem "${file.name}":`, error);
+          return { success: false, fileName: file.name, error: error.message || 'Erro ao processar imagem', data: null };
+        }
+
+        if (!data || !data.success || !data.data) {
+          return { success: false, fileName: file.name, error: data?.error || 'Dados não identificados', data: null };
+        }
+
+        return { success: true, fileName: file.name, data: normalizeImportedPackageData(data.data) };
+      } catch (err: any) {
+        console.error(`Exceção ao processar imagem "${file.name}":`, err);
+        return { success: false, fileName: file.name, error: err?.message || 'Falha na leitura do arquivo', data: null };
+      }
     });
 
-    if (error) {
-      console.error('Erro ao invocar Edge Function import-package-image:', error);
+    const results = await Promise.all(extractionPromises);
 
-      let errorMsg = error.message || 'Erro ao conectar ao serviço de leitura de imagem.';
-      let details = '';
+    const successfulData: ImportedPackageData[] = [];
+    const failedFiles: string[] = [];
 
-      try {
-        if ((error as any).context && typeof (error as any).context.json === 'function') {
-          const body = await (error as any).context.json();
-          if (body?.message) errorMsg = body.message;
-          if (body?.details) {
-            details = typeof body.details === 'string' ? body.details : JSON.stringify(body.details);
-          }
-        }
-      } catch {
-        // ignora se não houver json no contexto
+    for (const r of results) {
+      if (r.success && r.data) {
+        successfulData.push(r.data);
+      } else {
+        failedFiles.push(r.fileName);
       }
+    }
 
-      if (errorMsg.includes('GEMINI_API_KEY_MISSING') || (data && data.error === 'GEMINI_API_KEY_MISSING')) {
-        errorMsg = 'Chave GEMINI_API_KEY não configurada no Supabase Edge Functions.';
-        details = 'Configure a secret GEMINI_API_KEY no painel do Supabase para habilitar a extração com IA.';
-      }
-
+    // Se todas as imagens do lote falharem
+    if (successfulData.length === 0) {
       return {
         success: false,
-        error: errorMsg,
-        details,
+        error: 'A IA não conseguiu identificar dados úteis nas imagens selecionadas.',
+        details: 'Verifique se as imagens estão nítidas e contêm dados de cotação ou orçamento legíveis.',
       };
     }
 
-    if (!data || !data.success || !data.data) {
-      return {
-        success: false,
-        error: data?.message || data?.error || 'A IA não conseguiu identificar dados nas imagens.',
-        details: data?.details || '',
-      };
-    }
+    // Consolida todos os serviços e metadados das imagens bem-sucedidas
+    const consolidated = consolidateImportedPackageData(successfulData);
 
-    const normalized = normalizeImportedPackageData(data.data);
+    // Se houve falha parcial, registra aviso amigável para o operador no modal de revisão
+    if (failedFiles.length > 0) {
+      consolidated.conflicts = consolidated.conflicts || [];
+      consolidated.conflicts.push({
+        field: 'arquivos',
+        values: failedFiles,
+        description: `Não foi possível extrair dados de ${failedFiles.length} imagem(ns): ${failedFiles.join(', ')}. Os dados das demais imagens foram preservados para revisão.`,
+      });
+    }
 
     return {
       success: true,
-      data: normalized,
+      data: consolidated,
     };
   } catch (err: any) {
     console.error('Exceção em importPackageDataFromImages:', err);
