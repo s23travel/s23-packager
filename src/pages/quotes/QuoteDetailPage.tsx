@@ -224,12 +224,10 @@ export const QuoteDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Serviços Unificados Agrupados por Tipo */}
+      {/* Serviços e Itinerário da Cotação (Tabela Única Consolidada) */}
       <div style={{ marginTop: '1.25rem' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
-          Serviços da Cotação
-        </h3>
         <ServicesDetailView
+          title="Serviços e Itinerário da Cotação"
           services={services}
           currency={quote.currency}
           emptyMessage="Nenhum serviço cadastrado nesta cotação."

@@ -1,13 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { CostCategory, CostComponent, Currency, PassengerConfig } from '../../types';
+import { CostComponent, Currency, PassengerConfig } from '../../types';
 import {
   calculateFinancialSummary,
   calculateSuggestedSalePrice,
   DEFAULT_PROFIT_MARGIN_PERCENT,
-  COST_CATEGORY_LABELS,
   formatMoney,
   formatPercent,
-  roundMoney,
 } from '../../services/financeService';
 
 interface AmountInputProps {
@@ -109,7 +107,7 @@ const AmountInput: React.FC<AmountInputProps> = ({
 interface FinancialEditorProps {
   currency: Currency;
   components: CostComponent[];
-  onChangeComponents: (components: CostComponent[]) => void;
+  onChangeComponents?: (components: CostComponent[]) => void;
   salePrice: number;
   onChangeSalePrice: (val: number) => void;
   exchangeRate?: number | null;
@@ -123,7 +121,6 @@ interface FinancialEditorProps {
 export const FinancialEditor: React.FC<FinancialEditorProps> = ({
   currency,
   components,
-  onChangeComponents,
   salePrice,
   onChangeSalePrice,
   exchangeRate,
@@ -205,30 +202,6 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
     return total > 0 ? total : 1;
   }, [passengers]);
 
-  const handleAddComponent = () => {
-    const newComponent: CostComponent = {
-      id: `cost_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      category: 'services',
-      description: '',
-      amount: 0,
-      currency: currency, // Inicia na moeda padrão
-      quantity: 1,
-      notes: '',
-    };
-    onChangeComponents([...components, newComponent]);
-  };
-
-  const handleUpdateComponent = (index: number, patch: Partial<CostComponent>) => {
-    const updated = [...components];
-    updated[index] = { ...updated[index], ...patch };
-    onChangeComponents(updated);
-  };
-
-  const handleRemoveComponent = (index: number) => {
-    const updated = components.filter((_, i) => i !== index);
-    onChangeComponents(updated);
-  };
-
   return (
     <div className="space-y-4">
       {/* Alerta de Câmbio / Conversão pendente */}
@@ -304,212 +277,6 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
           </div>
         </div>
       )}
-
-      {/* Tabela de Componentes de Custo */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div
-          style={{
-            padding: '0.75rem 1rem',
-            borderBottom: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Componentes de custo
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Discriminação de custos (transporte, hospedagem, taxas, etc.) que formam o custo total.
-            </p>
-          </div>
-          {!readOnly && (
-            <button
-              type="button"
-              onClick={handleAddComponent}
-              className="btn btn-sm btn-action-primary"
-            >
-              + Adicionar Custo
-            </button>
-          )}
-        </div>
-
-        {components.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <p style={{ fontSize: '13px', fontWeight: 500 }}>Nenhum componente de custo cadastrado.</p>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Adicione itens como transporte, hospedagem e taxas para alimentar o motor financeiro.
-            </p>
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={handleAddComponent}
-                className="btn btn-sm btn-secondary"
-                style={{ marginTop: '0.75rem' }}
-              >
-                + Adicionar primeiro custo
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Categoria</th>
-                  <th>Descrição</th>
-                  <th style={{ textAlign: 'center', width: '70px' }}>Qtd</th>
-                  <th style={{ width: '90px' }}>Moeda</th>
-                  <th style={{ textAlign: 'right', width: '120px' }}>Valor unit.</th>
-                  <th style={{ textAlign: 'right', width: '120px' }}>Subtotal</th>
-                  {!readOnly && <th style={{ textAlign: 'center', width: '50px' }}>Ação</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {components.map((comp, idx) => {
-                  const qty = comp.quantity && comp.quantity > 0 ? comp.quantity : 1;
-                  const itemSubtotal = roundMoney((comp.amount || 0) * qty);
-
-                  return (
-                    <tr key={comp.id || idx}>
-                      <td>
-                        {readOnly ? (
-                          <span style={{ fontWeight: 500 }}>
-                            {COST_CATEGORY_LABELS[comp.category] || comp.category}
-                          </span>
-                        ) : (
-                          <select
-                            value={comp.category}
-                            onChange={(e) =>
-                              handleUpdateComponent(idx, {
-                                category: e.target.value as CostCategory,
-                                isCustomized: true,
-                              })
-                            }
-                            className="form-select"
-                            style={{ padding: '0.3rem 0.5rem', fontSize: '13px' }}
-                          >
-                            <option value="outbound_transport">Transporte de ida</option>
-                            <option value="inbound_transport">Transporte de volta</option>
-                            <option value="lodging">Hospedagem</option>
-                            <option value="services">Serviços adicionais</option>
-                            <option value="taxes">Impostos/taxas</option>
-                            <option value="other">Outros custos</option>
-                          </select>
-                        )}
-                      </td>
-                      <td>
-                        {readOnly ? (
-                          <div>
-                            <div style={{ fontWeight: 500 }}>{comp.description || '—'}</div>
-                            {comp.notes && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{comp.notes}</div>}
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <input
-                              type="text"
-                              value={comp.description}
-                              onChange={(e) =>
-                                handleUpdateComponent(idx, {
-                                  description: e.target.value,
-                                  isCustomized: true,
-                                })
-                              }
-                              placeholder="Ex: Voo LIS-MAD ou Hotel"
-                              className="form-input"
-                              style={{ padding: '0.3rem 0.5rem', fontSize: '13px' }}
-                            />
-                            <input
-                              type="text"
-                              value={comp.notes || ''}
-                              onChange={(e) => handleUpdateComponent(idx, { notes: e.target.value })}
-                              placeholder="Observação opcional..."
-                              className="form-input"
-                              style={{ padding: '0.2rem 0.5rem', fontSize: '11px', color: 'var(--text-secondary)' }}
-                            />
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {readOnly ? (
-                          <span>{qty}</span>
-                        ) : (
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={comp.quantity ?? 1}
-                            onChange={(e) =>
-                              handleUpdateComponent(idx, {
-                                quantity: Math.max(1, parseInt(e.target.value) || 1),
-                              })
-                            }
-                            onFocus={(e) => e.target.select()}
-                            onClick={(e) => (e.target as HTMLInputElement).select()}
-                            className="form-input"
-                            style={{ width: '50px', textAlign: 'center', padding: '0.3rem 0.2rem', fontSize: '13px' }}
-                          />
-                        )}
-                      </td>
-                      <td>
-                        {readOnly ? (
-                          <span className="badge badge-neutral">{comp.currency}</span>
-                        ) : (
-                          <select
-                            value={comp.currency}
-                            onChange={(e) =>
-                              handleUpdateComponent(idx, { currency: e.target.value as Currency })
-                            }
-                            className="form-select"
-                            style={{ padding: '0.3rem 0.4rem', fontSize: '12px' }}
-                          >
-                            <option value="EUR">EUR (€)</option>
-                            <option value="BRL">BRL (R$)</option>
-                            <option value="USD">USD ($)</option>
-                          </select>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        {readOnly ? (
-                          <span>{formatMoney(comp.amount || 0, comp.currency)}</span>
-                        ) : (
-                          <AmountInput
-                            value={comp.amount || 0}
-                            onChange={(val) =>
-                              handleUpdateComponent(idx, {
-                                amount: val,
-                              })
-                            }
-                            placeholder="0.00"
-                            className="form-input"
-                            style={{ width: '95px', textAlign: 'right', padding: '0.3rem 0.4rem', fontSize: '13px' }}
-                          />
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 500 }}>
-                        {formatMoney(itemSubtotal, comp.currency)}
-                      </td>
-                      {!readOnly && (
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveComponent(idx)}
-                            className="btn btn-sm btn-danger-outline"
-                            title="Remover componente"
-                          >
-                            ×
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
       {/* Painel Consolidado: Resumo Financeiro (Clean Back-office) */}
       <div className="card" style={{ padding: '1.25rem' }}>

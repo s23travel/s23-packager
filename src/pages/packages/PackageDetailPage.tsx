@@ -220,12 +220,10 @@ export const PackageDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Serviços Unificados Agrupados por Tipo */}
+      {/* Serviços e Itinerário do Pacote (Tabela Única Consolidada) */}
       <div style={{ marginTop: '1.25rem' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
-          Serviços e Itinerário do Pacote
-        </h3>
         <ServicesDetailView
+          title="Serviços e Itinerário do Pacote"
           services={services}
           currency={pkg.base_currency}
           emptyMessage="Nenhum serviço cadastrado neste pacote."
