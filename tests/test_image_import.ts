@@ -11,7 +11,6 @@ import {
   ALLOWED_MIME_TYPES,
 } from '../src/services/imageImportService';
 import { ImportedPackageData } from '../src/types';
-import { syncOperationalWithFinancials } from '../src/services/packageFinancialSyncService';
 
 let passed = 0;
 let failed = 0;
@@ -210,16 +209,11 @@ assert(
 );
 
 // 17. Valores importados são tratados como custos
-// O motor financeiro trata os componentes de custo importados como despesas (CostComponent)
-const componentsFromImport = syncOperationalWithFinancials([], {
-  outboundRoute: `${consolidated.outbound.route} | ${consolidated.outbound.company}`,
-  inboundRoute: `${consolidated.inbound.route} | ${consolidated.inbound.company}`,
-  hotelName: consolidated.lodging.name || '',
-  baseCurrency: consolidated.financial.currency || 'EUR',
-});
+// O motor financeiro trata os itens de serviço importados como custos operacionais
+const servicesFromImport = normalizedBrl.services || [];
 assert(
-  componentsFromImport.every((c) => c.category !== ('sale_price' as any)),
-  '17. Valores importados são tratados estritamente como componentes de custo (CostComponent)'
+  servicesFromImport.every((s) => s.type !== ('sale_price' as any) && (s.amount ?? 0) >= 0),
+  '17. Valores importados são tratados estritamente como componentes de custo (ServiceItem/Cost)'
 );
 
 // 18. Campos ausentes não são inventados

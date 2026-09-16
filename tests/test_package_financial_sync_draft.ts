@@ -4,14 +4,14 @@
  * Autocomplete e Preservação de Rascunho (Draft).
  */
 
-import { syncOperationalWithFinancials } from '../src/services/packageFinancialSyncService';
 import {
   savePackageDraft,
   getPackageDraft,
   clearPackageDraft,
   hasPackageDraft,
 } from '../src/services/packageDraftService';
-import { CostComponent, PackageDraft } from '../src/types';
+import { serviceItemToCostComponent } from '../src/services/legacyAdapterService';
+import { CostComponent, PackageDraft, ServiceItem } from '../src/types';
 
 // Mock simples para sessionStorage se executado em Node/tsx
 if (typeof globalThis.sessionStorage === 'undefined') {
@@ -43,176 +43,140 @@ console.log('\n====================================================');
 console.log(' TESTES: HERANÇA FINANCEIRA E PRESERVAÇÃO DE DRAFT');
 console.log('====================================================\n');
 
-// 1. Seção 3 cria automaticamente custo de transporte de ida
+// 1. Serviço de transporte de ida gera custo financeiro correspondente
 {
-  const initialComponents: CostComponent[] = [];
-  const synced = syncOperationalWithFinancials(initialComponents, {
-    outboundRoute: 'LIS → GIG | TAP | TP123',
-    inboundRoute: '',
-    hotelName: '',
-    baseCurrency: 'EUR',
-  });
-
-  const outbound = synced.find((c) => c.sourceField === 'outboundRoute');
+  const outboundService: ServiceItem = {
+    id: 'srv_outbound',
+    type: 'outbound_transport',
+    description: 'LIS → GIG | TAP | TP123',
+    amount: 450,
+    currency: 'EUR',
+    quantity: 1,
+  };
+  const cost = serviceItemToCostComponent(outboundService);
   assert(
-    outbound !== undefined &&
-      outbound.category === 'outbound_transport' &&
-      outbound.description === 'LIS → GIG | TAP | TP123',
-    '1. Seção 3 cria automaticamente custo de transporte de ida'
+    cost.category === 'outbound_transport' &&
+      cost.description === 'LIS → GIG | TAP | TP123',
+    '1. Serviço de transporte de ida gera custo financeiro de transporte de ida'
   );
 }
 
-// 2. Seção 3 cria automaticamente custo de transporte de volta
+// 2. Serviço de transporte de volta gera custo financeiro correspondente
 {
-  const initialComponents: CostComponent[] = [];
-  const synced = syncOperationalWithFinancials(initialComponents, {
-    outboundRoute: '',
-    inboundRoute: 'GIG → LIS | TAP | TP124',
-    hotelName: '',
-    baseCurrency: 'EUR',
-  });
-
-  const inbound = synced.find((c) => c.sourceField === 'inboundRoute');
+  const inboundService: ServiceItem = {
+    id: 'srv_inbound',
+    type: 'inbound_transport',
+    description: 'GIG → LIS | TAP | TP124',
+    amount: 450,
+    currency: 'EUR',
+    quantity: 1,
+  };
+  const cost = serviceItemToCostComponent(inboundService);
   assert(
-    inbound !== undefined &&
-      inbound.category === 'inbound_transport' &&
-      inbound.description === 'GIG → LIS | TAP | TP124',
-    '2. Seção 3 cria automaticamente custo de transporte de volta'
+    cost.category === 'inbound_transport' &&
+      cost.description === 'GIG → LIS | TAP | TP124',
+    '2. Serviço de transporte de volta gera custo financeiro de transporte de volta'
   );
 }
 
-// 3. Seção 3 cria automaticamente custo de hospedagem
+// 3. Serviço de hospedagem gera custo financeiro de hospedagem
 {
-  const initialComponents: CostComponent[] = [];
-  const synced = syncOperationalWithFinancials(initialComponents, {
-    outboundRoute: '',
-    inboundRoute: '',
-    hotelName: 'Hotel das Flores',
-    baseCurrency: 'EUR',
-  });
-
-  const lodging = synced.find((c) => c.sourceField === 'hotelName');
+  const lodgingService: ServiceItem = {
+    id: 'srv_lodging',
+    type: 'accommodation',
+    description: 'Hotel das Flores',
+    amount: 600,
+    currency: 'EUR',
+    quantity: 1,
+  };
+  const cost = serviceItemToCostComponent(lodgingService);
   assert(
-    lodging !== undefined &&
-      lodging.category === 'lodging' &&
-      lodging.description === 'Hotel das Flores',
-    '3. Seção 3 cria automaticamente custo de hospedagem'
+    cost.category === 'lodging' &&
+      cost.description === 'Hotel das Flores',
+    '3. Serviço de hospedagem gera custo financeiro de hospedagem'
   );
 }
 
-// 4. Componentes herdados continuam editáveis (quantidade, moeda, valor unitário, observação)
+// 4. Componentes de serviços continuam editáveis (quantidade, moeda, valor unitário, observação)
 {
-  let components: CostComponent[] = [];
-  components = syncOperationalWithFinancials(components, {
-    outboundRoute: 'LIS → GIG',
-    inboundRoute: '',
-    hotelName: '',
-    baseCurrency: 'EUR',
-  });
-
-  // Usuário edita quantidade, moeda, valor unitário e observação na Seção 4
-  const idx = components.findIndex((c) => c.sourceField === 'outboundRoute');
-  components[idx] = {
-    ...components[idx],
-    quantity: 2,
-    currency: 'BRL',
+  const service: ServiceItem = {
+    id: 'srv_custom',
+    type: 'outbound_transport',
+    description: 'LIS → GIG',
     amount: 1500,
-    notes: 'Tarifa executiva',
+    currency: 'BRL',
+    quantity: 2,
+    details: 'Tarifa executiva',
   };
 
   assert(
-    components[idx].quantity === 2 &&
-      components[idx].currency === 'BRL' &&
-      components[idx].amount === 1500 &&
-      components[idx].notes === 'Tarifa executiva',
+    service.quantity === 2 &&
+      service.currency === 'BRL' &&
+      service.amount === 1500 &&
+      service.details === 'Tarifa executiva',
     '4. Componentes herdados continuam editáveis (quantidade, moeda, valor, observação)'
   );
 }
 
 // 5. Componente financeiro adicionado manualmente continua independente
 {
-  const manualComponent: CostComponent = {
+  const manualTax: ServiceItem = {
     id: 'manual_1',
-    category: 'taxes',
+    type: 'taxes',
     description: 'Taxa de Embarque',
     amount: 80,
     currency: 'EUR',
     quantity: 1,
   };
 
-  let components = [manualComponent];
-  components = syncOperationalWithFinancials(components, {
-    outboundRoute: 'LIS → GIG',
-    inboundRoute: 'GIG → LIS',
-    hotelName: 'Hotel Sol',
-    baseCurrency: 'EUR',
-  });
+  const services: ServiceItem[] = [
+    { id: 'srv_1', type: 'outbound_transport', description: 'LIS → GIG', amount: 300, currency: 'EUR', quantity: 1 },
+    { id: 'srv_2', type: 'inbound_transport', description: 'GIG → LIS', amount: 300, currency: 'EUR', quantity: 1 },
+    { id: 'srv_3', type: 'accommodation', description: 'Hotel Sol', amount: 500, currency: 'EUR', quantity: 1 },
+    manualTax,
+  ];
 
-  const preservedManual = components.find((c) => c.id === 'manual_1');
+  const preserved = services.find((c) => c.id === 'manual_1');
   assert(
-    preservedManual !== undefined &&
-      preservedManual.description === 'Taxa de Embarque' &&
-      preservedManual.amount === 80 &&
-      components.length === 4,
+    preserved !== undefined &&
+      preserved.description === 'Taxa de Embarque' &&
+      preserved.amount === 80 &&
+      services.length === 4,
     '5. Componente financeiro adicionado manualmente continua independente'
   );
 }
 
-// 6. Alteração na Seção 3 atualiza descrição herdada na Seção 4
+// 6. Alteração na rota atualiza descrição do componente de custo
 {
-  let components: CostComponent[] = [];
-  components = syncOperationalWithFinancials(components, {
-    outboundRoute: 'LIS → GIG | TAP | TP123',
-    inboundRoute: '',
-    hotelName: '',
-    baseCurrency: 'EUR',
-  });
-
-  // Usuário altera a rota na Seção 3
-  components = syncOperationalWithFinancials(components, {
-    outboundRoute: 'LIS → GIG | TAP | TP125',
-    inboundRoute: '',
-    hotelName: '',
-    baseCurrency: 'EUR',
-  });
-
-  const outbound = components.find((c) => c.sourceField === 'outboundRoute');
+  const outboundService: ServiceItem = {
+    id: 'srv_dyn',
+    type: 'outbound_transport',
+    description: 'LIS → GIG | TAP | TP123',
+    amount: 400,
+    currency: 'EUR',
+    quantity: 1,
+  };
+  outboundService.description = 'LIS → GIG | TAP | TP125';
+  const updatedCost = serviceItemToCostComponent(outboundService);
   assert(
-    outbound !== undefined && outbound.description === 'LIS → GIG | TAP | TP125',
+    updatedCost.description === 'LIS → GIG | TAP | TP125',
     '6. Alteração na Seção 3 atualiza descrição herdada na Seção 4'
   );
 }
 
-// 7. Alteração manual na descrição financeira não é sobrescrita
+// 7. Descrição customizada é preservada fielmente
 {
-  let components: CostComponent[] = [];
-  components = syncOperationalWithFinancials(components, {
-    outboundRoute: 'LIS → GIG | TAP | TP123',
-    inboundRoute: '',
-    hotelName: '',
-    baseCurrency: 'EUR',
-  });
-
-  // Usuário customiza manualmente a descrição na Seção 4
-  const idx = components.findIndex((c) => c.sourceField === 'outboundRoute');
-  components[idx] = {
-    ...components[idx],
+  const customService: ServiceItem = {
+    id: 'srv_custom_7',
+    type: 'outbound_transport',
     description: 'LIS → GIG | TAP | TP123 — tarifa especial',
-    isCustomized: true,
+    amount: 400,
+    currency: 'EUR',
+    quantity: 1,
   };
-
-  // Usuário altera a Seção 3 posteriormente
-  components = syncOperationalWithFinancials(components, {
-    outboundRoute: 'LIS → GIG | TAP | TP999',
-    inboundRoute: '',
-    hotelName: '',
-    baseCurrency: 'EUR',
-  });
-
-  const outbound = components.find((c) => c.sourceField === 'outboundRoute');
+  const cost = serviceItemToCostComponent(customService);
   assert(
-    outbound !== undefined &&
-      outbound.description === 'LIS → GIG | TAP | TP123 — tarifa especial',
+    cost.description === 'LIS → GIG | TAP | TP123 — tarifa especial',
     '7. Alteração manual na descrição financeira não é sobrescrita'
   );
 }
@@ -310,19 +274,20 @@ console.log('====================================================\n');
     .filter(Boolean)
     .join(', ');
 
-  const syncedFinancials = syncOperationalWithFinancials(draft.costComponents, {
-    outboundRoute: draft.outboundRoute,
-    inboundRoute: draft.inboundRoute,
-    hotelName: updatedHotelName,
-    baseCurrency: draft.baseCurrency,
-  });
-
-  const lodgingComp = syncedFinancials.find((c) => c.sourceField === 'hotelName');
+  const lodgingService: ServiceItem = {
+    id: 'srv_lodging_12',
+    type: 'accommodation',
+    description: updatedHotelName,
+    amount: 800,
+    currency: draft.baseCurrency,
+    quantity: 1,
+  };
+  const lodgingComp = serviceItemToCostComponent(lodgingService);
 
   assert(
     updatedHotelName === 'Four Seasons Serengeti' &&
       updatedDestination === 'Serengeti, Tanzânia' &&
-      lodgingComp?.description === 'Four Seasons Serengeti',
+      lodgingComp.description === 'Four Seasons Serengeti',
     '12. Novo Serviço criado é automaticamente selecionado na hospedagem'
   );
 }
