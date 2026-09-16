@@ -164,49 +164,6 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
             </button>
           </div>
 
-          {/* Atalhos Rápidos */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={() => handleAddService('outbound_transport')}
-              title="Adicionar Transporte de ida"
-            >
-              🛫 Ida
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={() => handleAddService('inbound_transport')}
-              title="Adicionar Transporte de volta"
-            >
-              🛬 Volta
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={() => handleAddService('accommodation')}
-              title="Adicionar Hospedagem"
-            >
-              🏨 Hotel
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={() => handleAddService('transfer')}
-              title="Adicionar Transfer"
-            >
-              🚐 Transfer
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary"
-              onClick={() => handleAddService('insurance')}
-              title="Adicionar Seguro-viagem"
-            >
-              🛡️ Seguro
-            </button>
-          </div>
         </div>
       )}
 

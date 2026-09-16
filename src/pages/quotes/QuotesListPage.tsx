@@ -52,6 +52,7 @@ export const QuotesListPage: React.FC = () => {
       const origin = (q.origin_package_name || q.data?.originPackageName || '')?.toLowerCase();
       const curr = q.currency?.toLowerCase() || '';
       const dest = (
+        q.data?.destination ||
         q.data?.lodging?.find((l) => l.destination)?.destination ||
         q.data?.lodging?.[0]?.destination ||
         q.data?.lodging?.[0]?.name ||
@@ -153,6 +154,7 @@ export const QuotesListPage: React.FC = () => {
                   {filteredQuotes.map((q) => {
                     const originName = q.origin_package_name || q.data?.originPackageName;
                     const destination =
+                      q.data?.destination ||
                       q.data?.lodging?.find((l) => l.destination)?.destination ||
                       q.data?.lodging?.[0]?.destination ||
                       q.data?.lodging?.[0]?.name ||

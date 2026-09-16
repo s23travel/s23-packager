@@ -286,9 +286,6 @@ export const FinancialEditor: React.FC<FinancialEditorProps> = ({
               <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Resumo financeiro
               </h3>
-              <span className="badge badge-neutral" style={{ fontSize: '11px' }}>
-                Motor determinístico
-              </span>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
               Cálculos na moeda da cotação ({currency}). Divisor: {payingPassengers} passageiro(s) pagante(s).

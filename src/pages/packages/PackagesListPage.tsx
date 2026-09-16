@@ -63,7 +63,7 @@ export const PackagesListPage: React.FC = () => {
       const ref = pkg.reference?.toLowerCase() || '';
       const curr = pkg.base_currency?.toLowerCase() || '';
       const hotel = pkg.data?.lodging?.[0]?.name?.toLowerCase() || '';
-      const dest = pkg.data?.lodging?.[0]?.destination?.toLowerCase() || '';
+      const dest = pkg.data?.destination?.toLowerCase() || pkg.data?.lodging?.[0]?.destination?.toLowerCase() || '';
       return name.includes(term) || ref.includes(term) || curr.includes(term) || dest.includes(term) || hotel.includes(term);
     });
   }, [packages, searchTerm]);
@@ -140,7 +140,7 @@ export const PackagesListPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {filteredPackages.map((pkg) => {
-                    const destination = pkg.data?.lodging?.[0]?.destination || pkg.data?.lodging?.[0]?.name || '—';
+                    const destination = pkg.data?.destination || pkg.data?.lodging?.[0]?.destination || pkg.data?.lodging?.[0]?.name || '—';
                     const duration = pkg.data?.dates?.durationDays ? `${pkg.data.dates.durationDays} dias` : null;
 
                     return (
