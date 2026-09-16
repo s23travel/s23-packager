@@ -1,13 +1,14 @@
-// Serviço de Validação e Sanitização de Conteúdo para Website (Fase 6A)
-// Responsabilidades:
-// 1. Montar ContentGenerationInput seguro (expurgando custos internos, lucro, margem, fornecedor).
-// 2. Validar deterministicamente a resposta estruturada retornada pelo Gemini.
-
+import { normalizeLegacyToNewStructure } from './legacyAdapterService';
 import {
   ContentGenerationInput,
+  Currency,
   Package,
+  PackageData,
   Quotation,
+  SanitizedWebServiceItem,
+  ServiceItem,
   StructuredPackageContent,
+  WebsiteContentPayload,
 } from '../types';
 
 export const OBRIGATORIO_PAGAMENTO_OBSERVACAO =
@@ -18,6 +19,95 @@ export const OBRIGATORIO_ITEM_INCLUSO_S23 = {
   title: 'Guia exclusivo S23',
   desc: 'Nossas dicas práticas.',
 };
+
+/**
+ * Sanitiza observações de serviços para publicação web (Fase 6A).
+ * Se a nota contiver termos de custos, fornecedores, localizadores, códigos internos
+ * ou qualquer indício de backoffice, a nota é omitida (retorna undefined).
+ */
+export function sanitizePublicNote(note?: string | null): string | undefined {
+  if (!note || typeof note !== 'string') return undefined;
+  const trimmed = note.trim();
+  if (!trimmed) return undefined;
+
+  const lower = trimmed.toLowerCase();
+  const internalBlacklist = [
+    'custo', 'cost', 'net', 'bruto', 'líquido', 'liquido',
+    'fornecedor', 'supplier', 'operadora', 'parceiro',
+    'b2b', 'comissao', 'comissão', 'markup', 'margem', 'profit',
+    'pnr', 'locator', 'localizador', 'gds', 'voucher interno',
+    'reserva b2b', 'bloqueio', 'tarifa acordo', 'tarifa confidencial',
+    'privado', 'interno', 'não divulgar', 'nao divulgar', 'sigiloso',
+  ];
+
+  for (const term of internalBlacklist) {
+    if (lower.includes(term)) {
+      return undefined; // Não envia nota potencialmente interna
+    }
+  }
+
+  return trimmed;
+}
+
+/**
+ * Constrói explicitamente o payload comercial sanitizado a partir de PackageData (Fase 6A).
+ * Garante que dados operacionais sejam derivados de services[] e que custos/lucros/fornecedores
+ * NUNCA cheguem à IA.
+ */
+export function buildWebsiteContentPayload(
+  packageData: PackageData,
+  metadata?: { id?: string; name?: string; reference?: string; currency?: Currency }
+): WebsiteContentPayload {
+  // 1. Determina destination e services: se novo, usa direto; se legado, normaliza em memória
+  let destination = packageData.destination?.trim() || '';
+  let services = Array.isArray(packageData.services) ? packageData.services : [];
+
+  if (services.length === 0) {
+    const normalized = normalizeLegacyToNewStructure(packageData);
+    services = normalized.services || [];
+    if (!destination && normalized.destination) {
+      destination = normalized.destination;
+    }
+  }
+
+  // 2. Extrai preço de venda comercial público (NUNCA custos ou margens)
+  const publicSalePrice =
+    typeof packageData.financials?.salePrice === 'number'
+      ? packageData.financials.salePrice
+      : typeof packageData.financials?.priceTotal?.amount === 'number'
+      ? packageData.financials.priceTotal.amount
+      : 0;
+
+  // 3. Mapeia estritamente metadados descritivos públicos para SanitizedWebServiceItem
+  const sanitizedServices: SanitizedWebServiceItem[] = services.map((s: ServiceItem) => {
+    return {
+      type: s.type,
+      description: s.description,
+      destination: s.destination || undefined,
+      carrier: s.carrier || undefined,
+      departureTime: s.departureTime || undefined,
+      arrivalTime: s.arrivalTime || undefined,
+      quantity: s.quantity && s.quantity > 1 ? s.quantity : undefined,
+      mealPlan: s.mealPlan || undefined,
+      notes: sanitizePublicNote(s.notes),
+    };
+  });
+
+  return {
+    packageName: metadata?.name || '',
+    reference: metadata?.reference || '',
+    destination,
+    dates: packageData.dates,
+    passengers: packageData.passengers,
+    durationDays: packageData.dates?.durationDays,
+    durationNights: packageData.dates?.durationNights,
+    services: sanitizedServices,
+    publicSalePrice,
+    currency: metadata?.currency || packageData.financials?.currency || 'EUR',
+    paymentConditions: packageData.paymentConditions,
+    customNotes: packageData.customNotes,
+  };
+}
 
 /**
  * Constrói o input seguro para a IA a partir de um Package ou Quotation.
@@ -32,6 +122,7 @@ export function buildContentGenerationInput(source: {
     const d = q.data || {};
 
     const dest =
+      d.destination?.trim() ||
       d.lodging?.[0]?.destination?.trim() ||
       d.outboundTransport?.route?.split('→')[1]?.trim() ||
       d.outboundTransport?.route?.split('-')[1]?.trim() ||
@@ -91,6 +182,7 @@ export function buildContentGenerationInput(source: {
       mealPlan: d.lodging?.[0]?.mealPlan,
       nights: d.lodging?.[0]?.nights || d.dates?.durationNights,
       salePrice,
+      publicSalePrice: salePrice,
       currency: q.currency,
       includedServices,
       notIncludedServices,
@@ -105,50 +197,88 @@ export function buildContentGenerationInput(source: {
     const p = source.package;
     const d = p.data || {};
 
-    const dest =
-      d.lodging?.[0]?.destination?.trim() ||
-      d.outboundTransport?.route?.split('→')[1]?.trim() ||
-      d.outboundTransport?.route?.split('-')[1]?.trim() ||
-      p.name;
+    // 1. Gera o payload comercial sanitizado (utiliza services[] ou normaliza legado em memória)
+    const payload = buildWebsiteContentPayload(d, {
+      id: p.id,
+      name: p.name,
+      reference: p.reference,
+      currency: p.base_currency,
+    });
 
-    const origin =
-      d.outboundTransport?.route?.split('→')[0]?.trim() ||
-      d.outboundTransport?.route?.split('-')[0]?.trim() ||
-      '';
+    // 2. Extrai dados contextuais dos serviços sanitizados
+    const outboundService = payload.services.find((s) => s.type === 'outbound_transport');
+    const inboundService = payload.services.find((s) => s.type === 'inbound_transport');
+    const lodgingServices = payload.services.filter((s) => s.type === 'accommodation');
+    const primaryLodging = lodgingServices[0];
 
-    const salePrice =
-      typeof d.financials?.salePrice === 'number'
-        ? d.financials.salePrice
-        : typeof d.financials?.priceTotal?.amount === 'number'
-        ? d.financials.priceTotal.amount
-        : 0;
+    // Origem extraída do transporte de ida
+    let origin = '';
+    if (outboundService?.description) {
+      const parts = outboundService.description.split(/→|-/);
+      if (parts.length > 1) {
+        origin = parts[0].trim();
+      }
+    }
 
+    // 3. Constrói a lista comercial de serviços inclusos e não inclusos
     const includedServices: string[] = [];
-    if (d.outboundTransport?.route) {
-      includedServices.push(`Transporte de ida: ${d.outboundTransport.route}`);
+
+    if (outboundService) {
+      let desc = `Transporte de ida: ${outboundService.description}`;
+      const details: string[] = [];
+      if (outboundService.carrier) details.push(outboundService.carrier);
+      if (outboundService.departureTime) details.push(`partida ${outboundService.departureTime}`);
+      if (details.length > 0) desc += ` (${details.join(', ')})`;
+      includedServices.push(desc);
     }
-    if (d.inboundTransport?.route) {
-      includedServices.push(`Transporte de volta: ${d.inboundTransport.route}`);
+
+    if (inboundService) {
+      let desc = `Transporte de volta: ${inboundService.description}`;
+      const details: string[] = [];
+      if (inboundService.carrier) details.push(inboundService.carrier);
+      if (inboundService.departureTime) details.push(`partida ${inboundService.departureTime}`);
+      if (details.length > 0) desc += ` (${details.join(', ')})`;
+      includedServices.push(desc);
     }
-    if (d.lodging?.[0]?.name) {
-      includedServices.push(
-        `Hospedagem em ${d.lodging[0].name} (${d.lodging[0].mealPlan || 'Regime padrão'})`
-      );
+
+    for (const h of lodgingServices) {
+      let desc = `Hospedagem em ${h.description}`;
+      if (h.mealPlan) {
+        desc += ` (${h.mealPlan})`;
+      }
+      includedServices.push(desc);
     }
-    if (d.transferService) {
-      includedServices.push(d.transferService);
+
+    for (const s of payload.services) {
+      if (s.type === 'transfer') {
+        includedServices.push(`Transfer: ${s.description}`);
+      } else if (s.type === 'insurance') {
+        includedServices.push(`Seguro-viagem: ${s.description}`);
+      } else if (s.type === 'additional') {
+        includedServices.push(s.description);
+      } else if (s.type === 'other') {
+        includedServices.push(s.description);
+      }
     }
-    d.additionalServices
-      ?.filter((s) => s.included)
-      .forEach((s) => includedServices.push(s.name));
+
+    // Suporte a campo avulso transferService em registros legados
+    if (d.transferService?.trim()) {
+      const exists = includedServices.some((s) => s.toLowerCase().includes(d.transferService!.trim().toLowerCase()));
+      if (!exists) {
+        includedServices.push(d.transferService.trim());
+      }
+    }
 
     const notIncludedServices: string[] = [];
+    const taxServices = payload.services.filter((s) => s.type === 'taxes');
+    for (const t of taxServices) {
+      notIncludedServices.push(t.description);
+    }
     if (d.localTaxNotes) {
       notIncludedServices.push(`Taxa local na hospedagem: ${d.localTaxNotes}`);
     }
-    d.additionalServices
-      ?.filter((s) => !s.included)
-      .forEach((s) => notIncludedServices.push(s.name));
+
+    const dest = payload.destination || primaryLodging?.destination || p.name;
 
     return {
       sourceType: 'package',
@@ -157,18 +287,20 @@ export function buildContentGenerationInput(source: {
       name: p.name,
       destination: dest,
       origin: origin || undefined,
-      durationDays: d.dates?.durationDays,
-      startDate: d.dates?.startDate,
-      endDate: d.dates?.endDate,
-      hotelName: d.lodging?.[0]?.name,
-      mealPlan: d.lodging?.[0]?.mealPlan,
-      nights: d.lodging?.[0]?.nights || d.dates?.durationNights,
-      salePrice,
-      currency: p.base_currency,
+      durationDays: payload.durationDays,
+      startDate: payload.dates?.startDate,
+      endDate: payload.dates?.endDate,
+      hotelName: primaryLodging?.description,
+      mealPlan: primaryLodging?.mealPlan,
+      nights: payload.durationNights || primaryLodging?.quantity,
+      salePrice: payload.publicSalePrice,
+      publicSalePrice: payload.publicSalePrice,
+      currency: payload.currency,
+      services: payload.services,
       includedServices,
       notIncludedServices,
-      paymentConditions: d.paymentConditions,
-      customNotes: d.customNotes,
+      paymentConditions: payload.paymentConditions,
+      customNotes: payload.customNotes,
       localTaxNotes: d.localTaxNotes,
       transferService: d.transferService,
     };

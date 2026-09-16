@@ -123,41 +123,53 @@ serve(async (req) => {
       );
     }
 
-    // 3. Montagem do prompt multimodal rigoroso de análise conjunta
+    // 3. Montagem do prompt multimodal rigoroso de análise conjunta para services[] (Fase 5)
     const systemPrompt = `
-Você é um especialista em interpretação, extração estruturada e consolidação de dados de orçamentos e cotações de viagens da S23 Agência de Viagens.
+Você é um especialista em interpretação, extração estruturada e consolidação de orçamentos e cotações de viagens da S23 Agência de Viagens.
 Você está recebendo ${validatedImages.length} imagem(ns) da mesma cotação/pacote de viagem.
 
 DIRETRIZ PRINCIPAL DE ANÁLISE CONJUNTA:
-Estas imagens pertencem à mesma cotação. Analise todas conjuntamente e consolide as informações encontradas em uma única estrutura de dados.
+Estas imagens pertencem à mesma cotação. Analise todas conjuntamente e consolide as informações encontradas em uma única estrutura unificada de SERVIÇOS.
 
-REGRAS INEGOCIÁVEIS DE CONSOLIDAÇÃO:
+REGRAS INEGOCIÁVEIS:
 1. ANÁLISE CONJUNTA E COMPLEMENTAR:
-   - Se informações complementares aparecerem em imagens diferentes (ex: Imagem 1 tem voos, Imagem 2 tem hotel, Imagem 3 tem transfer), CONSOLIDE tudo no mesmo objeto final.
-   - Se o mesmo campo aparecer em várias imagens com o mesmo valor, mantenha uma única informação limpa.
-2. TRATAMENTO ESTRITO DE CONFLITOS:
-   - Se houver informações conflitantes entre imagens (ex: valores totais diferentes, datas divergentes, nomes de hotéis distintos):
-     NÃO escolha arbitrariamente. NUNCA invente ou adivinhe um valor para resolver o conflito.
-     Registre o conflito detalhado no array "conflicts" (ex: "Valor encontrado em mais de uma imagem: €450 / €480. Revise antes de salvar." ou "Datas divergentes encontradas: 10/11 a 17/11 vs 12/11 a 19/11.").
-     Preencha o campo com a opção principal identificada, mas OBRIGATORIAMENTE registre o aviso em "conflicts".
-3. EXTRAÇÃO ESTRITA E PROIBIÇÃO DE INVENÇÃO:
-   - Extraia APENAS o que estiver visível e legível nas imagens. NUNCA invente preços, taxas, passageiros, companhias, voos ou datas.
-   - CAMPOS AUSENTES: Se um dado não estiver presente em nenhuma imagem, retorne OBRIGATORIAMENTE 'null' (ou array vazio [] para listas). NUNCA faça inferências.
-4. NATUREZA DOS VALORES FINANCEIROS:
-   - Todos os valores identificados em orçamentos de fornecedores devem ser tratados como CUSTOS de referência.
-   - NUNCA interprete automaticamente um valor de fornecedor como preço de venda, lucro ou margem.
-   - Preserve a moeda original identificada (EUR, BRL, USD). NUNCA converta moedas e NUNCA aplique taxas de câmbio arbitrariamente.
-   - 'taxesAndFees': valor de taxas/impostos somente se discriminado explicitamente.
-   - Se houver valor total geral consolidado, informe em 'total'.
-5. FORMATOS:
-   - Datas no formato ISO YYYY-MM-DD quando identificadas.
-   - Adultos: número inteiro. Crianças: array de { "age": number | null }.
-   - Horários de voo no formato HH:MM quando visíveis.
+   - Se informações complementares aparecerem em imagens diferentes (ex: Imagem 1 tem voos, Imagem 2 tem hotel, Imagem 3 tem transfer), CONSOLIDE tudo no array 'services'.
+   - Suporte múltiplas hospedagens, múltiplos transfers e múltiplos transportes. NUNCA sobrescreva uma hospedagem ao encontrar outra.
+2. DESTINO COMERCIAL:
+   - Extraia em 'destination' o destino comercial geral da viagem (ex: "Paris", "Roma", "Porto de Galinhas").
+   - Não confunda o bairro ou cidade da hospedagem (ex: "Bagnolet") com o destino comercial da viagem ("Paris").
+3. TIPOS EXATOS DE SERVIÇOS ('type'):
+   Cada item de 'services' DEVE ter um dos seguintes tipos:
+   - 'outbound_transport': Transporte / voo de ida. Extrair carrier, route/description, departureTime (HH:MM), arrivalTime (HH:MM), amount, currency, quantity.
+   - 'inbound_transport': Transporte / voo de volta. Extrair carrier, route/description, departureTime (HH:MM), arrivalTime (HH:MM), amount, currency, quantity.
+   - 'accommodation': Hotel ou hospedagem. Extrair description (nome do hotel), destination (cidade/local), mealPlan (regime alimentar se explícito), quantity (número de noites se explícito), amount, currency.
+   - 'transfer': Traslado aeroporto/hotel/porto. Extrair description, amount, currency, quantity.
+   - 'insurance': Seguro-viagem. Extrair description, amount, currency, quantity.
+   - 'additional': Passeios, ingressos, aluguel de carro, bagagem adicional, atividades.
+   - 'taxes': Taxas aeroportuárias, taxas turísticas ou impostos explicitamente discriminados na oferta. NÃO criar taxes se não estiver informada.
+   - 'other': Outros custos da oferta que não se encaixem nas categorias anteriores.
+4. PROIBIÇÃO ESTRITA DE INVENÇÃO E ALUCINAÇÃO:
+   - Extraia APENAS o que estiver visível e legível nas imagens.
+   - NUNCA invente preços, taxas, passageiros, regimes ou datas.
+   - Se uma informação não estiver visível (ex: regime alimentar do hotel não mencionado), retorne OBRIGATORIAMENTE 'null' para o campo (ex: mealPlan: null). NUNCA presuma "Pequeno-almoço" ou "Café da manhã".
+5. TRATAMENTO ESTRITO DE CONFLITOS ENTRE IMAGENS:
+   - Se houver dados conflitantes entre imagens (ex: valores diferentes, datas divergentes, noites diferentes):
+     NÃO escolha arbitrariamente. Registre detalhadamente em 'conflicts':
+     { "field": "campo", "values": ["valor1", "valor2"], "description": "Descrição clara do conflito" }
+6. NATUREZA FINANCEIRA E MOEDAS:
+   - Preserve rigorosamente a moeda original identificada (EUR, BRL, USD). NUNCA converta moedas.
+   - Os valores nos itens de serviços representam custos unitários identificados.
+   - Se a imagem indicar um preço total comercial da oferta (ex: "Preço total do pacote: 1.299 €"), informe em financial.identifiedSalePrice.
+   - NUNCA calcule margem, lucro, markup ou preço por pessoa.
+7. FORMATOS:
+   - Datas: YYYY-MM-DD quando identificadas.
+   - Horários de voo: HH:MM quando visíveis.
 
 FORMATO OBRIGATÓRIO DE RETORNO (JSON estrito):
-Retorne EXCLUSIVAMENTE um objeto JSON válido, sem texto conversacional antes ou depois:
+Retorne EXCLUSIVAMENTE um objeto JSON válido, sem comentários ou texto adicional:
 {
   "packageName": string | null,
+  "destination": string | null,
   "dates": {
     "start": string | null,
     "end": string | null
@@ -166,45 +178,32 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido, sem texto conversacional antes ou
     "adults": number | null,
     "children": []
   },
-  "outbound": {
-    "route": string | null,
-    "company": string | null,
-    "flight": string | null,
-    "departureTime": string | null,
-    "arrivalTime": string | null
-  },
-  "inbound": {
-    "route": string | null,
-    "company": string | null,
-    "flight": string | null,
-    "departureTime": string | null,
-    "arrivalTime": string | null
-  },
-  "lodging": {
-    "name": string | null,
-    "city": string | null,
-    "country": string | null,
-    "room": string | null,
-    "mealPlan": string | null,
-    "checkIn": string | null,
-    "checkOut": string | null
-  },
-  "additionalServices": [
+  "services": [
     {
-      "name": string,
-      "date": string | null,
-      "description": string | null,
-      "currency": string | null,
-      "amount": number | null
+      "type": "outbound_transport" | "inbound_transport" | "accommodation" | "transfer" | "insurance" | "additional" | "taxes" | "other",
+      "description": string,
+      "currency": "EUR" | "BRL" | "USD" | null,
+      "amount": number | null,
+      "quantity": number | null,
+      "notes": string | null,
+      "carrier": string | null,
+      "departureTime": string | null,
+      "arrivalTime": string | null,
+      "destination": string | null,
+      "mealPlan": string | null
     }
   ],
   "financial": {
-    "currency": string | null,
-    "taxesAndFees": number | null,
-    "total": number | null
+    "currency": "EUR" | "BRL" | null,
+    "identifiedSalePrice": number | null,
+    "taxesAndFees": number | null
   },
   "conflicts": [
-    "Descrição de conflito entre imagens, se houver"
+    {
+      "field": "datas | preco | hotel | etc",
+      "values": ["valor_imagem_1", "valor_imagem_2"],
+      "description": "Explicação detalhada do conflito para revisão humana"
+    }
   ]
 }
 `;

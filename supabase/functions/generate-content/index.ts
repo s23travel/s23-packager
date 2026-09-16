@@ -63,25 +63,34 @@ serve(async (req) => {
       );
     }
 
-    // 2. Montagem do prompt comercial S23 com Google Search Grounding
+    // 2. Montagem do prompt comercial S23 com Google Search Grounding (Fase 6A)
+    const salePrice = input.publicSalePrice !== undefined ? input.publicSalePrice : input.salePrice;
+    const servicesList = Array.isArray(input.services) && input.services.length > 0
+      ? input.services.map((s: any) => `- [${s.type}] ${s.description}${s.mealPlan ? ` (Regime: ${s.mealPlan})` : ''}${s.carrier ? ` (Cia: ${s.carrier})` : ''}${s.departureTime ? ` (Partida: ${s.departureTime})` : ''}`).join('\n')
+      : (input.includedServices || []).map((s: string) => `- ${s}`).join('\n');
+
     const systemPrompt = `
 Você é o assistente de criação de conteúdo comercial da S23 Agência de Viagens (www.s23.travel/pacotes).
 Seu papel é criar o conteúdo editorial estruturado para publicação de pacotes de viagem.
 Idioma: Português do Brasil (PT-BR).
 
 REGRAS DE OURO — DADOS COMERCIAIS SOBERANOS (NÍVEL 1):
-1. Preço: O valor deve ser exatamente ${input.salePrice}. Não invente nem altere o preço.
+1. Preço de Venda ao Público: O valor comercial deve ser exatamente ${salePrice}. NUNCA altere ou deduza custos/margens.
 2. Moeda: ${input.currency}.
-3. Destino: ${input.destination}.
+3. Destino Comercial: ${input.destination}.
 4. Hotel: ${input.hotelName || 'Hospedagem selecionada'}. Não invente outro hotel.
-5. Inclusões: Considere os itens comerciais fornecidos: ${JSON.stringify(input.includedServices || [])}.
-6. Você DEVE incluir obrigatoriamente no array 'incluso' o seguinte item fixo da S23:
+5. Serviços Contratados (Fonte Autoritativa):
+${servicesList}
+6. Itens Inclusos: Baseie-se estritamente nos serviços contratados acima e nos itens fornecidos: ${JSON.stringify(input.includedServices || [])}.
+   PROIBIÇÃO DE INVENÇÃO: Se não houver seguro ou transfer listado nos serviços, NÃO afirme que estão incluídos.
+7. Você DEVE incluir obrigatoriamente no array 'incluso' o seguinte item fixo da S23:
    { "icon": "gift", "title": "Guia exclusivo S23", "desc": "Nossas dicas práticas." }
-7. No bloco 'pagamento', a observação DEVE SER EXATAMENTE:
+8. No bloco 'pagamento', a observação DEVE SER EXATAMENTE:
    "${OBRIGATORIO_PAGAMENTO_OBSERVACAO}"
 
 PESQUISA WEB (GOOGLE SEARCH GROUNDING - NÍVEL 2):
-Pesquise informações reais sobre o destino (${input.destination}) para enriquecer o bloco 'sobre' e 'infoDestino' (clima, cultura, documentação para brasileiros, atrativos principais).
+Pesquise informações reais e públicas sobre o destino (${input.destination}) para enriquecer o bloco 'sobre' e 'infoDestino' (clima, cultura, documentação para brasileiros, atrativos principais).
+ATENÇÃO: A pesquisa web NUNCA deve alterar preços, datas, serviços contratados ou inventar inclusões do pacote.
 
 FORMATO DE RESPOSTA:
 Retorne EXCLUSIVAMENTE um objeto JSON estruturado válido (sem marcação markdown em volta, sem crases \`\`\`json).
@@ -92,7 +101,7 @@ Estrutura JSON obrigatória:
   "category": "Categoria adequada (ex: Europa, Américas, Brasil, Exóticos)",
   "excerpt": "Resumo de 1 ou 2 frases curtas e persuasivas para o card da listagem",
   "slug": "slug-em-minusculas-sem-acentos-e-com-hifens",
-  "price": ${input.salePrice},
+  "price": ${salePrice},
   "published": false,
   "featured": false,
   "subtitle": "Frase convidativa no topo da página",

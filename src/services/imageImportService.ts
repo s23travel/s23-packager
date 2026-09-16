@@ -3,12 +3,30 @@
 // chamada à Edge Function 'import-package-image' e sanitização dos dados retornados.
 
 import { supabase } from '../lib/supabase';
-import { ImportedPackageData, ImageImportResponse } from '../types';
+import {
+  ImportedPackageData,
+  ImageImportResponse,
+  ImportConflict,
+  ServiceItem,
+  ServiceType,
+  VALID_SERVICE_TYPES,
+} from '../types';
 
 export const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
 export const MAX_IMAGES_PER_ANALYSIS = 10;
 export const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 export const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg'];
+
+function generateUuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export interface FileValidationResult {
   valid: boolean;
@@ -118,7 +136,7 @@ export function fileToBase64(file: File): Promise<string> {
 
 /**
  * Normaliza e valida a estrutura retornada pela IA para garantir que obedece
- * estritamente à interface ImportedPackageData, sem campos anômalos.
+ * estritamente à interface ImportedPackageData, sem campos anômalos. (Fase 5)
  */
 export function normalizeImportedPackageData(raw: any): ImportedPackageData {
   const safeStringOrNull = (val: any): string | null => {
@@ -169,7 +187,135 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
     }
   }
 
-  // Normaliza serviços adicionais
+  // Normaliza conflitos estruturados
+  const conflictsArray: Array<ImportConflict | string> = [];
+  if (Array.isArray(raw?.conflicts)) {
+    for (const c of raw.conflicts) {
+      if (typeof c === 'string' && c.trim()) {
+        conflictsArray.push(c.trim());
+      } else if (c && typeof c === 'object') {
+        const desc = safeStringOrNull(c.description) || 'Conflito detectado entre imagens';
+        conflictsArray.push({
+          field: safeStringOrNull(c.field) || 'geral',
+          values: Array.isArray(c.values) ? c.values.map(String) : [],
+          description: desc,
+        });
+      }
+    }
+  }
+
+  // Destino Comercial
+  const rawDest = safeStringOrNull(raw?.destination);
+  const hotelCityCountry = [safeStringOrNull(lodging.city), safeStringOrNull(lodging.country)].filter(Boolean).join(', ');
+  const destination = rawDest || (hotelCityCountry || null);
+
+  // 1. Constrói services: ServiceItem[] com UUIDs
+  const services: ServiceItem[] = [];
+
+  if (Array.isArray(raw?.services) && raw.services.length > 0) {
+    // Nova estrutura direta de services[]
+    for (const s of raw.services) {
+      if (!s || typeof s !== 'object') continue;
+
+      let type: ServiceType = 'other';
+      if (s.type && VALID_SERVICE_TYPES.includes(s.type as ServiceType)) {
+        type = s.type as ServiceType;
+      }
+
+      const description = safeStringOrNull(s.description) || safeStringOrNull(s.name) || 'Serviço';
+      const amount = safeNumberOrNull(s.amount) ?? 0;
+      const quantity = typeof s.quantity === 'number' && s.quantity > 0 ? s.quantity : 1;
+      const currency = s.currency === 'BRL' || s.currency === 'EUR' ? s.currency : 'EUR';
+
+      const item: ServiceItem = {
+        id: generateUuid(),
+        type,
+        description,
+        amount: amount >= 0 ? amount : 0,
+        currency,
+        quantity,
+        carrier: safeStringOrNull(s.carrier) || undefined,
+        departureTime: safeStringOrNull(s.departureTime) || undefined,
+        arrivalTime: safeStringOrNull(s.arrivalTime) || undefined,
+        destination: safeStringOrNull(s.destination) || undefined,
+        mealPlan: safeStringOrNull(s.mealPlan) || undefined, // NUNCA inventa
+        notes: safeStringOrNull(s.notes) || undefined,
+      };
+
+      services.push(item);
+    }
+  } else {
+    // Retrocompatibilidade: Se a IA ou mock retornou formato legado, mapeia para ServiceItem[]
+    if (outbound.route || outbound.company || outbound.flight) {
+      const parts = [outbound.route, outbound.company, outbound.flight].filter(Boolean);
+      services.push({
+        id: generateUuid(),
+        type: 'outbound_transport',
+        description: parts.join(' | ') || 'Transporte de ida',
+        carrier: safeStringOrNull(outbound.company) || undefined,
+        departureTime: safeStringOrNull(outbound.departureTime) || undefined,
+        arrivalTime: safeStringOrNull(outbound.arrivalTime) || undefined,
+        amount: 0,
+        currency: 'EUR',
+        quantity: 1,
+      });
+    }
+
+    if (inbound.route || inbound.company || inbound.flight) {
+      const parts = [inbound.route, inbound.company, inbound.flight].filter(Boolean);
+      services.push({
+        id: generateUuid(),
+        type: 'inbound_transport',
+        description: parts.join(' | ') || 'Transporte de volta',
+        carrier: safeStringOrNull(inbound.company) || undefined,
+        departureTime: safeStringOrNull(inbound.departureTime) || undefined,
+        arrivalTime: safeStringOrNull(inbound.arrivalTime) || undefined,
+        amount: 0,
+        currency: 'EUR',
+        quantity: 1,
+      });
+    }
+
+    if (lodging.name) {
+      services.push({
+        id: generateUuid(),
+        type: 'accommodation',
+        description: lodging.name,
+        destination: hotelCityCountry || undefined,
+        mealPlan: safeStringOrNull(lodging.mealPlan) || undefined,
+        notes: safeStringOrNull(lodging.room) || undefined,
+        amount: 0,
+        currency: 'EUR',
+        quantity: 1,
+      });
+    }
+
+    if (Array.isArray(raw?.additionalServices)) {
+      for (const s of raw.additionalServices) {
+        if (s && typeof s === 'object' && s.name) {
+          const sName = String(s.name).trim();
+          const sDesc = safeStringOrNull(s.description);
+          services.push({
+            id: generateUuid(),
+            type: 'additional',
+            description: sDesc ? `${sName} (${sDesc})` : sName,
+            amount: safeNumberOrNull(s.amount) ?? 0,
+            currency: s.currency === 'BRL' || s.currency === 'EUR' ? s.currency : 'EUR',
+            quantity: 1,
+            notes: safeStringOrNull(s.date) ? `Data: ${s.date}` : undefined,
+          });
+        }
+      }
+    }
+  }
+
+  // Preço de venda comercial (se identificado)
+  const identifiedSalePrice = safeNumberOrNull(
+    financial.identifiedSalePrice ?? financial.total ?? raw?.salePrice
+  );
+  const finCurrency = financial.currency === 'BRL' || financial.currency === 'EUR' ? financial.currency : null;
+
+  // Preserva lista de serviços adicionais em formato legado para compatibilidade com testes antigos
   const servicesArray: Array<{
     name: string;
     date: string | null;
@@ -190,20 +336,24 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
         });
       }
     }
-  }
-
-  // Normaliza conflitos se fornecidos
-  const conflictsArray: string[] = [];
-  if (Array.isArray(raw?.conflicts)) {
-    for (const c of raw.conflicts) {
-      if (typeof c === 'string' && c.trim()) {
-        conflictsArray.push(c.trim());
+  } else {
+    // Converte additional services do novo formato para legado se necessário
+    for (const s of services) {
+      if (s.type === 'additional' || s.type === 'transfer' || s.type === 'insurance') {
+        servicesArray.push({
+          name: s.description,
+          date: null,
+          description: s.notes || null,
+          currency: s.currency || null,
+          amount: s.amount || null,
+        });
       }
     }
   }
 
   return {
     packageName: safeStringOrNull(raw?.packageName),
+    destination,
     dates: {
       start: safeStringOrNull(dates.start),
       end: safeStringOrNull(dates.end),
@@ -212,26 +362,32 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
       adults: safeNumberOrNull(passengers.adults),
       children: childrenArray,
     },
+    services,
+    salePrice: identifiedSalePrice,
+    currency: finCurrency,
+    conflicts: conflictsArray.length > 0 ? conflictsArray : undefined,
+
+    // Campos legados para retrocompatibilidade
     outbound: {
-      route: safeStringOrNull(outbound.route),
-      company: safeStringOrNull(outbound.company),
+      route: safeStringOrNull(outbound.route) || services.find((s) => s.type === 'outbound_transport')?.description || null,
+      company: safeStringOrNull(outbound.company) || services.find((s) => s.type === 'outbound_transport')?.carrier || null,
       flight: safeStringOrNull(outbound.flight),
-      departureTime: safeStringOrNull(outbound.departureTime),
-      arrivalTime: safeStringOrNull(outbound.arrivalTime),
+      departureTime: safeStringOrNull(outbound.departureTime) || services.find((s) => s.type === 'outbound_transport')?.departureTime || null,
+      arrivalTime: safeStringOrNull(outbound.arrivalTime) || services.find((s) => s.type === 'outbound_transport')?.arrivalTime || null,
     },
     inbound: {
-      route: safeStringOrNull(inbound.route),
-      company: safeStringOrNull(inbound.company),
+      route: safeStringOrNull(inbound.route) || services.find((s) => s.type === 'inbound_transport')?.description || null,
+      company: safeStringOrNull(inbound.company) || services.find((s) => s.type === 'inbound_transport')?.carrier || null,
       flight: safeStringOrNull(inbound.flight),
-      departureTime: safeStringOrNull(inbound.departureTime),
-      arrivalTime: safeStringOrNull(inbound.arrivalTime),
+      departureTime: safeStringOrNull(inbound.departureTime) || services.find((s) => s.type === 'inbound_transport')?.departureTime || null,
+      arrivalTime: safeStringOrNull(inbound.arrivalTime) || services.find((s) => s.type === 'inbound_transport')?.arrivalTime || null,
     },
     lodging: {
-      name: safeStringOrNull(lodging.name),
-      city: safeStringOrNull(lodging.city),
+      name: safeStringOrNull(lodging.name) || services.find((s) => s.type === 'accommodation')?.description || null,
+      city: safeStringOrNull(lodging.city) || services.find((s) => s.type === 'accommodation')?.destination || null,
       country: safeStringOrNull(lodging.country),
       room: safeStringOrNull(lodging.room),
-      mealPlan: safeStringOrNull(lodging.mealPlan),
+      mealPlan: safeStringOrNull(lodging.mealPlan) || services.find((s) => s.type === 'accommodation')?.mealPlan || null,
       checkIn: safeStringOrNull(lodging.checkIn),
       checkOut: safeStringOrNull(lodging.checkOut),
     },
@@ -239,9 +395,8 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
     financial: {
       currency: safeStringOrNull(financial.currency),
       taxesAndFees: safeNumberOrNull(financial.taxesAndFees),
-      total: safeNumberOrNull(financial.total),
+      total: identifiedSalePrice,
     },
-    conflicts: conflictsArray.length > 0 ? conflictsArray : undefined,
   };
 }
 

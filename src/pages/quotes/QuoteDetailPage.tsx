@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
-import { Quotation, QuotationStatus } from '../../types';
+import { Quotation, QuotationStatus, ServiceItem } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { WhatsAppMessagePreview } from '../../components/whatsapp/WhatsAppMessagePreview';
+import { ServicesDetailView } from '../../components/common/ServicesDetailView';
+import { isLegacyPackageData, normalizeLegacyToNewStructure, serviceItemToCostComponent } from '../../services/legacyAdapterService';
 
 export const QuoteDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -86,7 +88,33 @@ export const QuoteDetailPage: React.FC = () => {
     );
   }
 
-  const d = quote.data || {};
+  const rawData = quote.data || {};
+
+  // Normalização transparente de legados vs. novos dados
+  let services: ServiceItem[] = [];
+  let destination = rawData.destination || '';
+  let paymentConditions = rawData.paymentConditions || '';
+  let localTaxNotes = rawData.localTaxNotes || '';
+  let extraServicesNotes = rawData.extraServicesNotes || '';
+  let customNotes = rawData.customNotes || '';
+
+  if (Array.isArray(rawData.services) && rawData.services.length > 0) {
+    services = rawData.services;
+  } else if (isLegacyPackageData(rawData) || !Array.isArray(rawData.services)) {
+    const normalized = normalizeLegacyToNewStructure(rawData);
+    services = normalized.services || [];
+    if (!destination && normalized.destination) {
+      destination = normalized.destination;
+    }
+    if (!paymentConditions && normalized.paymentConditions) paymentConditions = normalized.paymentConditions;
+    if (!localTaxNotes && normalized.localTaxNotes) localTaxNotes = normalized.localTaxNotes;
+    if (!extraServicesNotes && normalized.extraServicesNotes) extraServicesNotes = normalized.extraServicesNotes;
+    if (!customNotes && normalized.customNotes) customNotes = normalized.customNotes;
+  }
+
+  const costComponents = rawData.financials?.components?.length
+    ? rawData.financials.components
+    : services.map(serviceItemToCostComponent);
 
   return (
     <div>
@@ -126,7 +154,7 @@ export const QuoteDetailPage: React.FC = () => {
       {quote.package_id && (
         <div className="notice-banner" style={{ marginBottom: '1.25rem' }}>
           <span style={{ flex: 1 }}>
-            Cotação vinculada ao pacote <strong>{quote.origin_package_name || d.originPackageName || 'Base'}</strong>. Os dados estão preservados para esta proposta.
+            Cotação vinculada ao pacote <strong>{quote.origin_package_name || rawData.originPackageName || 'Base'}</strong>. Os dados estão preservados para esta proposta.
           </span>
           <Link to={`/pacotes/${quote.package_id}`} className="btn btn-sm btn-secondary" target="_blank">
             Ver Pacote Base ↗
@@ -160,97 +188,102 @@ export const QuoteDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid-cols-2" style={{ marginTop: '1.25rem' }}>
-        {/* Painel Esquerdo: Logística e Cliente */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="card">
-            <h3 className="card-title">Dados do Cliente & Logística</h3>
-            <div className="detail-rows">
-              <div className="detail-row">
-                <span className="detail-label">Cliente / Solicitante:</span>
-                <span className="detail-value" style={{ fontWeight: 600 }}>
-                  {quote.client_name || 'Não informado'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Período da Viagem:</span>
-                <span className="detail-value">
-                  {d.dates?.startDate ? `${d.dates.startDate} até ${d.dates.endDate || '—'}` : 'A definir'}
-                  {d.dates?.durationDays
-                    ? ` (${d.dates.durationDays} dias, ${d.dates.durationNights ?? Math.max(0, d.dates.durationDays - 1)} noites)`
-                    : ''}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Passageiros:</span>
-                <span className="detail-value">
-                  {d.passengers ? `${d.passengers.adults || 2} Adultos, ${d.passengers.children || 0} Crianças` : '2 Adultos'}
-                </span>
-              </div>
-            </div>
+      {/* Painel de Identificação e Logística */}
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <h3 className="card-title">Dados do Cliente, Destino & Logística</h3>
+        <div className="detail-rows">
+          <div className="detail-row">
+            <span className="detail-label">Cliente / Solicitante:</span>
+            <span className="detail-value" style={{ fontWeight: 600 }}>
+              {quote.client_name || 'Não informado'}
+            </span>
           </div>
-
-          <div className="card">
-            <h3 className="card-title">Transportes</h3>
-            <div className="detail-rows">
-              <div className="detail-row">
-                <span className="detail-label">Ida:</span>
-                <span className="detail-value">{d.outboundTransport?.route || 'Não incluído'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Volta:</span>
-                <span className="detail-value">{d.inboundTransport?.route || 'Não incluído'}</span>
-              </div>
-            </div>
+          <div className="detail-row">
+            <span className="detail-label">Destino Principal:</span>
+            <span className="detail-value" style={{ fontWeight: 600 }}>
+              {destination || 'Não especificado'}
+            </span>
           </div>
-
-          {d.customNotes && (
-            <div className="card">
-              <h3 className="card-title">Notas da Proposta para o Cliente</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                {d.customNotes}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Painel Direito: Hospedagem */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="card">
-            <h3 className="card-title">Hospedagem</h3>
-            {d.lodging && d.lodging.length > 0 ? (
-              <div className="detail-rows">
-                {d.lodging.map((h, idx) => (
-                  <div key={idx} className="detail-item-box">
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{h.name}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      {h.destination} • {h.mealPlan || 'Regime padrão'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nenhum hotel configurado.</p>
-            )}
+          <div className="detail-row">
+            <span className="detail-label">Período da Viagem:</span>
+            <span className="detail-value">
+              {rawData.dates?.startDate ? `${rawData.dates.startDate} até ${rawData.dates.endDate || '—'}` : 'A definir'}
+              {rawData.dates?.durationDays
+                ? ` (${rawData.dates.durationDays} dias, ${rawData.dates.durationNights ?? Math.max(0, rawData.dates.durationDays - 1)} noites)`
+                : ''}
+            </span>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Passageiros:</span>
+            <span className="detail-value">
+              {rawData.passengers
+                ? `${rawData.passengers.adults || 2} Adultos, ${rawData.passengers.children || 0} Crianças${rawData.passengers.infants ? `, ${rawData.passengers.infants} Bebês` : ''}`
+                : '2 Adultos'}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* Serviços Unificados Agrupados por Tipo */}
+      <div style={{ marginTop: '1.25rem' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+          Serviços da Cotação
+        </h3>
+        <ServicesDetailView
+          services={services}
+          currency={quote.currency}
+          emptyMessage="Nenhum serviço cadastrado nesta cotação."
+        />
+      </div>
+
+      {/* Condições Comerciais e Observações */}
+      {(paymentConditions || localTaxNotes || extraServicesNotes || customNotes) && (
+        <div className="card" style={{ marginTop: '1.25rem' }}>
+          <h3 className="card-title">Condições Comerciais e Observações</h3>
+          <div className="detail-rows">
+            {paymentConditions && (
+              <div className="detail-row">
+                <span className="detail-label">Condição de Pagamento:</span>
+                <span className="detail-value">{paymentConditions}</span>
+              </div>
+            )}
+            {localTaxNotes && (
+              <div className="detail-row">
+                <span className="detail-label">Taxa Local na Hospedagem:</span>
+                <span className="detail-value">{localTaxNotes}</span>
+              </div>
+            )}
+            {extraServicesNotes && (
+              <div className="detail-row">
+                <span className="detail-label">Serviços Extras / Opcionais:</span>
+                <span className="detail-value">{extraServicesNotes}</span>
+              </div>
+            )}
+            {customNotes && (
+              <div className="detail-row">
+                <span className="detail-label">Observações da Proposta:</span>
+                <span className="detail-value" style={{ whiteSpace: 'pre-wrap' }}>{customNotes}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Seção Financeiro (Motor Financeiro - Fase 4) */}
       <div style={{ marginTop: '1.5rem' }}>
         <FinancialEditor
           currency={quote.currency}
-          components={d.financials?.components || []}
+          components={costComponents}
           onChangeComponents={() => {}}
           salePrice={
-            typeof d.financials?.salePrice === 'number'
-              ? d.financials.salePrice
-              : d.financials?.priceTotal?.amount || 0
+            typeof rawData.financials?.salePrice === 'number'
+              ? rawData.financials.salePrice
+              : rawData.financials?.priceTotal?.amount || 0
           }
           onChangeSalePrice={() => {}}
-          exchangeRate={quote.exchange_rate ?? d.financials?.exchangeRateUsed ?? null}
+          exchangeRate={quote.exchange_rate ?? rawData.financials?.exchangeRateUsed ?? null}
           exchangeRateDate={quote.exchange_rate_date ?? null}
-          passengers={d.passengers}
+          passengers={rawData.passengers}
           readOnly={true}
         />
       </div>
@@ -262,3 +295,4 @@ export const QuoteDetailPage: React.FC = () => {
     </div>
   );
 };
+

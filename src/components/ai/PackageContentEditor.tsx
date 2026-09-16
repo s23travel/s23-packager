@@ -284,7 +284,8 @@ export const PackageContentEditor: React.FC<PackageContentEditorProps> = ({
       ? `${basePackage.base_currency} ${content.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
       : `${content.price}`;
 
-  const hotelBase = pData.lodging?.[0]?.name || 'Não especificado';
+  const hotelFromServices = pData.services?.find((s) => s.type === 'accommodation')?.description;
+  const hotelBase = hotelFromServices || pData.lodging?.[0]?.name || 'Não especificado';
   const datesBase = pData.dates?.startDate
     ? `${pData.dates.startDate} a ${pData.dates.endDate || '—'}`
     : 'Datas sob consulta';

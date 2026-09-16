@@ -1,13 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
-import { Currency, QuotationStatus, QuotationData, CostComponent, ImportedPackageData, MEAL_PLAN_OPTIONS, normalizeMealPlan } from '../../types';
+import {
+  Currency,
+  QuotationStatus,
+  QuotationData,
+  FavoriteService,
+  FavoriteServiceType,
+  ImportedPackageData,
+  ServiceItem,
+  normalizeMealPlan,
+} from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
-import { FinancialEditor } from '../../components/finance/FinancialEditor';
-import { calculateFinancialSummary } from '../../services/financeService';
+import { PackageServicesEditor } from '../../components/packages/PackageServicesEditor';
 import { ImageImportModal } from '../../components/import/ImageImportModal';
-import { syncOperationalWithFinancials } from '../../services/packageFinancialSyncService';
-
+import {
+  saveQuoteDraft,
+  getQuoteDraft,
+  clearQuoteDraft,
+} from '../../services/quoteDraftService';
+import {
+  calculateFinancialSummaryFromServices,
+  createDefaultServiceItem,
+  generateServiceId,
+  isLegacyPackageData,
+  normalizeLegacyToNewStructure,
+} from '../../services/legacyAdapterService';
 
 export const QuoteFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,18 +33,18 @@ export const QuoteFormPage: React.FC = () => {
   const location = useLocation();
   const isEditing = Boolean(id);
 
+  // SEÇÃO 1: Dados da Cotação / Identificação Comercial
   const [reference, setReference] = useState('');
   const [clientName, setClientName] = useState('');
   const [status, setStatus] = useState<QuotationStatus>('draft');
   const [currency, setCurrency] = useState<Currency>('EUR');
   const [exchangeRate, setExchangeRate] = useState<string>('');
   const [exchangeRateDate, setExchangeRateDate] = useState<string>('');
-
   const [originPackageId, setOriginPackageId] = useState<string | null>(null);
   const [originPackageName, setOriginPackageName] = useState<string>('');
-  const [customNotes, setCustomNotes] = useState('');
 
-  // Datas e passageiros
+  // SEÇÃO 2: Datas, Passageiros e Destino
+  const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [durationDays, setDurationDays] = useState<number | ''>(0);
@@ -35,30 +53,17 @@ export const QuoteFormPage: React.FC = () => {
   const [children, setChildren] = useState<number | ''>(0);
   const [infants, setInfants] = useState<number | ''>(0);
 
-  // Transportes
-  const [outboundRoute, setOutboundRoute] = useState('');
-  const [outboundCarrier, setOutboundCarrier] = useState('');
-  const [outboundDepartureTime, setOutboundDepartureTime] = useState('');
-  const [outboundArrivalTime, setOutboundArrivalTime] = useState('');
-  const [inboundRoute, setInboundRoute] = useState('');
-  const [inboundCarrier, setInboundCarrier] = useState('');
-  const [inboundDepartureTime, setInboundDepartureTime] = useState('');
-  const [inboundArrivalTime, setInboundArrivalTime] = useState('');
-  const [transferService, setTransferService] = useState('');
-
-  // Hotelaria
-  const [hotelName, setHotelName] = useState('');
-  const [hotelDestination, setHotelDestination] = useState('');
-  const [hotelMealPlan, setHotelMealPlan] = useState('');
-
-  // Condições comerciais WhatsApp
+  // SEÇÃO 3: Serviços e Financeiro (Lista Única de Serviços e Preço de Venda)
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [salePrice, setSalePrice] = useState<number>(0);
   const [paymentConditions, setPaymentConditions] = useState('');
   const [localTaxNotes, setLocalTaxNotes] = useState('');
   const [extraServicesNotes, setExtraServicesNotes] = useState('');
+  const [customNotes, setCustomNotes] = useState('');
+  const [transferService, setTransferService] = useState('');
 
-  // Componentes e valores financeiros (Fase 4)
-  const [costComponents, setCostComponents] = useState<CostComponent[]>([]);
-  const [salePrice, setSalePrice] = useState<number>(0);
+  // Metadados legados preservados sem perda
+  const [legacyExtraData, setLegacyExtraData] = useState<Record<string, unknown>>({});
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
@@ -69,118 +74,7 @@ export const QuoteFormPage: React.FC = () => {
   );
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  const handleImportData = (data: ImportedPackageData) => {
-    if (data.dates.start) setStartDate(data.dates.start);
-    if (data.dates.end) setEndDate(data.dates.end);
-    if (data.passengers.adults !== null) setAdults(data.passengers.adults);
-    if (data.passengers.children && data.passengers.children.length > 0) {
-      setChildren(data.passengers.children.length);
-    }
-
-    if (data.outbound.route) {
-      const parts = [data.outbound.route, data.outbound.company, data.outbound.flight].filter(Boolean);
-      setOutboundRoute(parts.join(' | '));
-    }
-    if (data.outbound.company) setOutboundCarrier(data.outbound.company);
-    if (data.outbound.departureTime) setOutboundDepartureTime(data.outbound.departureTime);
-    if (data.outbound.arrivalTime) setOutboundArrivalTime(data.outbound.arrivalTime);
-
-    if (data.inbound.route) {
-      const parts = [data.inbound.route, data.inbound.company, data.inbound.flight].filter(Boolean);
-      setInboundRoute(parts.join(' | '));
-    }
-    if (data.inbound.company) setInboundCarrier(data.inbound.company);
-    if (data.inbound.departureTime) setInboundDepartureTime(data.inbound.departureTime);
-    if (data.inbound.arrivalTime) setInboundArrivalTime(data.inbound.arrivalTime);
-
-    if (data.lodging.name) setHotelName(data.lodging.name);
-    const dest = [data.lodging.city, data.lodging.country].filter(Boolean).join(', ');
-    if (dest) setHotelDestination(dest);
-    if (data.lodging.mealPlan) setHotelMealPlan(normalizeMealPlan(data.lodging.mealPlan));
-
-    if (data.financial.currency === 'BRL' || data.financial.currency === 'EUR') {
-      setCurrency(data.financial.currency);
-    }
-    if (data.financial.total !== null && data.financial.total > 0) {
-      setSalePrice(data.financial.total);
-    }
-
-    // Cria componentes de custo iniciais caso identificados
-    const newComponents: CostComponent[] = [];
-    const itemCurrency = (data.financial.currency === 'BRL' || data.financial.currency === 'EUR')
-      ? data.financial.currency
-      : currency;
-
-    if (data.outbound.route) {
-      newComponents.push({
-        id: `quote-outbound-${Date.now()}`,
-        category: 'outbound_transport',
-        description: [data.outbound.route, data.outbound.company, data.outbound.flight].filter(Boolean).join(' | '),
-        amount: 0,
-        currency: itemCurrency,
-        quantity: 1,
-      });
-    }
-    if (data.inbound.route) {
-      newComponents.push({
-        id: `quote-inbound-${Date.now()}`,
-        category: 'inbound_transport',
-        description: [data.inbound.route, data.inbound.company, data.inbound.flight].filter(Boolean).join(' | '),
-        amount: 0,
-        currency: itemCurrency,
-        quantity: 1,
-      });
-    }
-    if (data.lodging.name) {
-      newComponents.push({
-        id: `quote-lodging-${Date.now()}`,
-        category: 'lodging',
-        description: data.lodging.name,
-        amount: 0,
-        currency: itemCurrency,
-        quantity: 1,
-      });
-    }
-    if (data.additionalServices && data.additionalServices.length > 0) {
-      data.additionalServices.forEach((srv, idx) => {
-        newComponents.push({
-          id: `quote-srv-${Date.now()}-${idx}`,
-          category: 'services',
-          description: srv.name + (srv.description ? ` (${srv.description})` : ''),
-          amount: srv.amount || 0,
-          currency: (srv.currency === 'BRL' || srv.currency === 'EUR') ? srv.currency : itemCurrency,
-          quantity: 1,
-          notes: srv.date ? `Data: ${srv.date}` : undefined,
-        });
-      });
-    }
-
-    if (newComponents.length > 0) {
-      setCostComponents((prev) => [...prev, ...newComponents]);
-    }
-
-    setFeedback({
-      type: 'success',
-      message: 'Dados da imagem importados com sucesso! Revise os campos preenchidos.',
-    });
-  };
-
-
-  // Sincronização automática e determinística Seção 3 → Seção 4
-  useEffect(() => {
-    if (loading) return;
-
-    setCostComponents((prev) =>
-      syncOperationalWithFinancials(prev, {
-        outboundRoute,
-        inboundRoute,
-        hotelName,
-        baseCurrency: currency,
-      })
-    );
-  }, [outboundRoute, inboundRoute, hotelName, currency, loading]);
-
-  // Cálculo automático de Duração (Dias) e Duração (Noites) a partir das datas
+  // Cálculo automático de Duração (Dias) e Duração (Noites)
   useEffect(() => {
     if (startDate && endDate) {
       if (endDate < startDate) {
@@ -200,17 +94,118 @@ export const QuoteFormPage: React.FC = () => {
     }
   }, [startDate, endDate]);
 
+  // Carregamento de Cotação existente ou Rascunho / Inicialização de Nova Cotação
   useEffect(() => {
     if (!id) {
-      quotationsService.getNextReference().then((nextRef) => {
-        setReference(nextRef);
-      }).catch((err) => {
-        console.error('Erro ao sugerir referência de cotação:', err);
-        setReference(`COT-${new Date().getFullYear()}-001`);
-      });
+      // 1. Tenta restaurar rascunho anterior de sessionStorage
+      const draft = getQuoteDraft();
+      if (draft) {
+        setReference(draft.reference || '');
+        setClientName(draft.clientName || '');
+        setStatus(draft.status || 'draft');
+        setCurrency(draft.currency || 'EUR');
+        setExchangeRate(draft.exchangeRate || '');
+        setExchangeRateDate(draft.exchangeRateDate || '');
+        setOriginPackageId(draft.originPackageId || null);
+        setOriginPackageName(draft.originPackageName || '');
+        setStartDate(draft.startDate || '');
+        setEndDate(draft.endDate || '');
+        setDurationDays(draft.durationDays);
+        setDurationNights(draft.durationNights);
+        setAdults(draft.adults);
+        setChildren(draft.children);
+        setInfants(draft.infants);
+        setSalePrice(draft.salePrice || 0);
+        setPaymentConditions(draft.paymentConditions || '');
+        setLocalTaxNotes(draft.localTaxNotes || '');
+        setExtraServicesNotes(draft.extraServicesNotes || '');
+        setCustomNotes(draft.customNotes || '');
+        setTransferService(draft.transferService || '');
+
+        if (Array.isArray(draft.services)) {
+          setDestination(draft.destination || '');
+          setServices(draft.services);
+        } else {
+          // Se for draft em formato legado, normaliza
+          const legacyDraftData: QuotationData = {
+            outboundTransport: draft.outboundRoute
+              ? { type: 'flight', route: draft.outboundRoute, carrier: draft.outboundCarrier }
+              : undefined,
+            inboundTransport: draft.inboundRoute
+              ? { type: 'flight', route: draft.inboundRoute, carrier: draft.inboundCarrier }
+              : undefined,
+            lodging: draft.hotelName
+              ? [{ id: 'hotel-draft', name: draft.hotelName, destination: draft.hotelDestination || '', mealPlan: draft.hotelMealPlan }]
+              : [],
+            financials: draft.costComponents
+              ? { components: draft.costComponents, currency: draft.currency, salePrice: draft.salePrice } as any
+              : undefined,
+          };
+          const normalized = normalizeLegacyToNewStructure(legacyDraftData);
+          setDestination(normalized.destination || draft.hotelDestination || '');
+          setServices(normalized.services);
+        }
+      } else {
+        // Sugestão sequencial inteligente para novas cotações
+        quotationsService
+          .getNextReference()
+          .then((nextRef) => {
+            setReference(nextRef);
+          })
+          .catch((err) => {
+            console.error('Erro ao sugerir referência de cotação:', err);
+            setReference(`COT-${new Date().getFullYear()}-001`);
+          });
+      }
+
+      // 2. Se retornou de /servicos/novo com um serviço recém-criado, copia como snapshot independente
+      const navState = location.state as {
+        createdService?: FavoriteService;
+        message?: string;
+      } | null;
+
+      if (navState?.createdService) {
+        const created = navState.createdService;
+        const sType =
+          created.type === 'hotel'
+            ? 'accommodation'
+            : created.type === 'transfer'
+            ? 'transfer'
+            : created.type === 'insurance'
+            ? 'insurance'
+            : created.type === 'airline'
+            ? 'outbound_transport'
+            : 'additional';
+
+        const hotelDest = [created.city, created.country].filter(Boolean).join(', ');
+
+        const createdItem: ServiceItem = {
+          id: generateServiceId(),
+          type: sType,
+          description: created.name,
+          currency: currency,
+          amount: 0,
+          quantity: 1,
+          destination: created.type === 'hotel' ? hotelDest : undefined,
+          mealPlan: created.type === 'hotel' ? 'Café da manhã (BB)' : undefined,
+          notes: created.notes || undefined,
+        };
+
+        setServices((prev) => [...prev, createdItem]);
+
+        if (created.type === 'hotel' && hotelDest) {
+          setDestination((curr) => curr || hotelDest);
+        }
+      }
+
+      if (navState?.message) {
+        setFeedback({ type: 'success', message: navState.message });
+      }
+
       return;
     }
 
+    // Modo Edição: Carregar cotação existente do banco
     const loadQuote = async () => {
       try {
         setLoading(true);
@@ -229,58 +224,67 @@ export const QuoteFormPage: React.FC = () => {
         setOriginPackageId(quote.package_id);
         setOriginPackageName(quote.origin_package_name || quote.data?.originPackageName || '');
 
-        const d = quote.data || {};
-        setCustomNotes(d.customNotes || '');
+        const rawData = quote.data || {};
+        setCustomNotes(rawData.customNotes || '');
+        setPaymentConditions(rawData.paymentConditions || '');
+        setLocalTaxNotes(rawData.localTaxNotes || '');
+        setExtraServicesNotes(rawData.extraServicesNotes || '');
+        setTransferService(rawData.transferService || '');
 
-        if (d.dates) {
-          setStartDate(d.dates.startDate || '');
-          setEndDate(d.dates.endDate || '');
-          setDurationDays(d.dates.durationDays ?? 0);
+        if (rawData.dates) {
+          setStartDate(rawData.dates.startDate || '');
+          setEndDate(rawData.dates.endDate || '');
+          setDurationDays(rawData.dates.durationDays ?? 0);
           setDurationNights(
-            d.dates.durationNights ?? (d.dates.durationDays ? Math.max(0, d.dates.durationDays - 1) : 0)
+            rawData.dates.durationNights ??
+              (rawData.dates.durationDays ? Math.max(0, rawData.dates.durationDays - 1) : 0)
           );
         }
 
-        if (d.passengers) {
-          setAdults(d.passengers.adults ?? 2);
-          setChildren(d.passengers.children ?? 0);
-          setInfants(d.passengers.infants ?? 0);
+        if (rawData.passengers) {
+          setAdults(rawData.passengers.adults ?? 2);
+          setChildren(rawData.passengers.children ?? 0);
+          setInfants(rawData.passengers.infants ?? 0);
         }
 
-        if (d.outboundTransport) {
-          setOutboundRoute(d.outboundTransport.route || '');
-          setOutboundCarrier(d.outboundTransport.carrier || '');
-          setOutboundDepartureTime(d.outboundTransport.departureTime || '');
-          setOutboundArrivalTime(d.outboundTransport.arrivalTime || '');
-        }
-
-        if (d.inboundTransport) {
-          setInboundRoute(d.inboundTransport.route || '');
-          setInboundCarrier(d.inboundTransport.carrier || '');
-          setInboundDepartureTime(d.inboundTransport.departureTime || '');
-          setInboundArrivalTime(d.inboundTransport.arrivalTime || '');
-        }
-
-        setTransferService(d.transferService || '');
-        setPaymentConditions(d.paymentConditions || '');
-        setLocalTaxNotes(d.localTaxNotes || '');
-        setExtraServicesNotes(d.extraServicesNotes || '');
-
-        if (d.lodging && d.lodging.length > 0) {
-          setHotelName(d.lodging[0].name || '');
-          setHotelDestination(d.lodging[0].destination || '');
-          setHotelMealPlan(normalizeMealPlan(d.lodging[0].mealPlan) || '');
-        }
-
-        if (d.financials) {
-          if (Array.isArray(d.financials.components)) {
-            setCostComponents(d.financials.components);
+        if (rawData.financials) {
+          if (typeof rawData.financials.salePrice === 'number') {
+            setSalePrice(rawData.financials.salePrice);
+          } else if (rawData.financials.priceTotal?.amount) {
+            setSalePrice(rawData.financials.priceTotal.amount);
           }
-          if (typeof d.financials.salePrice === 'number') {
-            setSalePrice(d.financials.salePrice);
-          } else if (d.financials.priceTotal?.amount) {
-            setSalePrice(d.financials.priceTotal.amount);
+          if (rawData.financials.exchangeRateUsed && !quote.exchange_rate) {
+            setExchangeRate(String(rawData.financials.exchangeRateUsed));
           }
+        }
+
+        // DETECÇÃO DE DADOS LEGADOS vs. NOVA ESTRUTURA
+        if (isLegacyPackageData(rawData) || !Array.isArray(rawData.services)) {
+          // Cotação no formato legado: normaliza em memória através do adapter determinístico
+          const normalized = normalizeLegacyToNewStructure(rawData);
+          setDestination(normalized.destination || rawData.destination || '');
+          setServices(normalized.services || []);
+
+          setLegacyExtraData({
+            localTaxNotes: normalized.localTaxNotes,
+            paymentConditions: normalized.paymentConditions,
+            transferService: normalized.transferService,
+            extraServicesNotes: normalized.extraServicesNotes,
+            customNotes: normalized.customNotes,
+            supplier: normalized.supplier,
+          });
+        } else {
+          // Cotação já na nova estrutura de serviços
+          setDestination(rawData.destination || '');
+          setServices(rawData.services || []);
+          setLegacyExtraData({
+            localTaxNotes: rawData.localTaxNotes,
+            paymentConditions: rawData.paymentConditions,
+            transferService: rawData.transferService,
+            extraServicesNotes: rawData.extraServicesNotes,
+            customNotes: rawData.customNotes,
+            supplier: rawData.supplier,
+          });
         }
       } catch (err: any) {
         setFeedback({ type: 'error', message: err.message || 'Erro ao carregar cotação.' });
@@ -290,7 +294,174 @@ export const QuoteFormPage: React.FC = () => {
     };
 
     loadQuote();
-  }, [id]);
+  }, [id, location.state]);
+
+  // Callback para navegar e cadastrar serviço no catálogo (favorite_services)
+  const handleAddNewServiceFromEditor = useCallback(
+    (serviceType: FavoriteServiceType = 'hotel', currentQuery: string = '') => {
+      saveQuoteDraft({
+        reference,
+        clientName,
+        status,
+        currency,
+        exchangeRate,
+        exchangeRateDate,
+        originPackageId,
+        originPackageName,
+        customNotes,
+        startDate,
+        endDate,
+        durationDays,
+        durationNights,
+        adults,
+        children,
+        infants,
+        destination,
+        services,
+        salePrice,
+        paymentConditions,
+        localTaxNotes,
+        extraServicesNotes,
+        transferService,
+      });
+
+      navigate('/servicos/novo', {
+        state: {
+          returnTo: isEditing ? `/cotacoes/${id}/editar` : '/cotacoes/novo',
+          serviceType,
+          initialName: currentQuery,
+        },
+      });
+    },
+    [
+      reference,
+      clientName,
+      status,
+      currency,
+      exchangeRate,
+      exchangeRateDate,
+      originPackageId,
+      originPackageName,
+      customNotes,
+      startDate,
+      endDate,
+      durationDays,
+      durationNights,
+      adults,
+      children,
+      infants,
+      destination,
+      services,
+      salePrice,
+      paymentConditions,
+      localTaxNotes,
+      extraServicesNotes,
+      transferService,
+      isEditing,
+      id,
+      navigate,
+    ]
+  );
+
+  // Importação estruturada por imagem via IA multimodal (Fase 5)
+  const handleImportData = (data: ImportedPackageData) => {
+    if (data.dates?.start) {
+      setStartDate(data.dates.start);
+    }
+    if (data.dates?.end) {
+      setEndDate(data.dates.end);
+    }
+    if (data.passengers?.adults !== null && data.passengers?.adults !== undefined) {
+      setAdults(data.passengers.adults);
+    }
+    if (data.passengers?.children && data.passengers.children.length > 0) {
+      setChildren(data.passengers.children.length);
+    }
+
+    // Destino Comercial
+    if (data.destination && !destination) {
+      setDestination(data.destination);
+    } else {
+      const hotelDest = [data.lodging?.city, data.lodging?.country].filter(Boolean).join(', ');
+      if (hotelDest && !destination) {
+        setDestination(hotelDest);
+      }
+    }
+
+    // Aplica services[] diretamente da importação
+    if (Array.isArray(data.services) && data.services.length > 0) {
+      setServices((prev) => [...prev, ...data.services]);
+    } else {
+      // Fallback legado se services não vier preenchido
+      const importedServices: ServiceItem[] = [];
+
+      if (data.outbound?.route) {
+        const parts = [data.outbound.route, data.outbound.company, data.outbound.flight].filter(Boolean);
+        const outItem = createDefaultServiceItem('outbound_transport', currency);
+        outItem.description = parts.join(' | ');
+        outItem.carrier = data.outbound.company || undefined;
+        outItem.departureTime = data.outbound.departureTime || undefined;
+        outItem.arrivalTime = data.outbound.arrivalTime || undefined;
+        importedServices.push(outItem);
+      }
+
+      if (data.inbound?.route) {
+        const parts = [data.inbound.route, data.inbound.company, data.inbound.flight].filter(Boolean);
+        const inItem = createDefaultServiceItem('inbound_transport', currency);
+        inItem.description = parts.join(' | ');
+        inItem.carrier = data.inbound.company || undefined;
+        inItem.departureTime = data.inbound.departureTime || undefined;
+        inItem.arrivalTime = data.inbound.arrivalTime || undefined;
+        importedServices.push(inItem);
+      }
+
+      if (data.lodging?.name) {
+        const hotelItem = createDefaultServiceItem('accommodation', currency);
+        hotelItem.description = data.lodging.name;
+        hotelItem.destination = data.destination || undefined;
+        if (data.lodging.mealPlan) {
+          hotelItem.mealPlan = normalizeMealPlan(data.lodging.mealPlan);
+        }
+        importedServices.push(hotelItem);
+      }
+
+      if (data.additionalServices && data.additionalServices.length > 0) {
+        data.additionalServices.forEach((srv) => {
+          const extraItem = createDefaultServiceItem('additional', currency);
+          extraItem.description = srv.name + (srv.description ? ` (${srv.description})` : '');
+          extraItem.amount = srv.amount || 0;
+          extraItem.currency = srv.currency === 'BRL' || srv.currency === 'EUR' ? srv.currency : currency;
+          extraItem.notes = srv.date ? `Data: ${srv.date}` : undefined;
+          importedServices.push(extraItem);
+        });
+      }
+
+      if (importedServices.length > 0) {
+        setServices((prev) => [...prev, ...importedServices]);
+      }
+    }
+
+    if (data.currency === 'BRL' || data.currency === 'EUR') {
+      setCurrency(data.currency);
+    } else if (data.financial?.currency === 'BRL' || data.financial?.currency === 'EUR') {
+      setCurrency(data.financial.currency);
+    }
+
+    const salePriceVal = data.salePrice ?? data.financial?.total;
+    if (salePriceVal !== null && salePriceVal !== undefined && salePriceVal > 0) {
+      setSalePrice(salePriceVal);
+    }
+
+    setFeedback({
+      type: 'success',
+      message: 'Dados importados com sucesso para a lista de serviços da cotação! Revise os valores antes de salvar.',
+    });
+  };
+
+  const handleCancel = () => {
+    clearQuoteDraft();
+    navigate(isEditing && id ? `/cotacoes/${id}` : '/cotacoes');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,63 +485,43 @@ export const QuoteFormPage: React.FC = () => {
         return;
       }
 
-      const quotationData: QuotationData = {
-        customNotes: customNotes.trim() || undefined,
-        originPackageName: originPackageName || undefined,
-        transferService: transferService.trim() || undefined,
-        paymentConditions: paymentConditions.trim() || undefined,
-        localTaxNotes: localTaxNotes.trim() || undefined,
-        extraServicesNotes: extraServicesNotes.trim() || undefined,
+      // Consolidação financeira a partir da lista unificada services[]
+      const calculatedFinancials = calculateFinancialSummaryFromServices({
+        services,
+        salePrice: Number(salePrice) || 0,
+        targetCurrency: currency,
+        exchangeRate: exchangeRate ? parseFloat(exchangeRate) : null,
         passengers: {
           adults: Number(adults) || 2,
           children: Number(children) || 0,
           infants: Number(infants) || 0,
         },
+      });
+
+      // Estrutura final de QuotationData (Fase 3: Nova Estrutura Unificada de Serviços)
+      // Não cria estruturas operacionais legadas (outboundTransport, inboundTransport, lodging)
+      const quotationData: QuotationData = {
+        destination: destination.trim(),
+        services,
         dates: {
           startDate,
           endDate,
           durationDays: Number(durationDays) || undefined,
           durationNights: Number(durationNights) ?? undefined,
         },
-        outboundTransport: outboundRoute.trim()
-          ? {
-              type: 'flight',
-              route: outboundRoute.trim(),
-              carrier: outboundCarrier.trim() || undefined,
-              departureTime: outboundDepartureTime.trim() || undefined,
-              arrivalTime: outboundArrivalTime.trim() || undefined,
-            }
-          : undefined,
-        inboundTransport: inboundRoute.trim()
-          ? {
-              type: 'flight',
-              route: inboundRoute.trim(),
-              carrier: inboundCarrier.trim() || undefined,
-              departureTime: inboundDepartureTime.trim() || undefined,
-              arrivalTime: inboundArrivalTime.trim() || undefined,
-            }
-          : undefined,
-        lodging: (hotelName.trim() || hotelDestination.trim())
-          ? [
-              {
-                id: 'hotel-quote-1',
-                name: hotelName.trim(),
-                destination: hotelDestination.trim(),
-                mealPlan: hotelMealPlan.trim(),
-              },
-            ]
-          : [],
-        financials: calculateFinancialSummary({
-          components: costComponents,
-          salePrice: Number(salePrice) || 0,
-          targetCurrency: currency,
-          exchangeRate: exchangeRate ? Number(exchangeRate) : null,
-          passengers: {
-            adults: Number(adults) || 2,
-            children: Number(children) || 0,
-            infants: Number(infants) || 0,
-          },
-        }),
+        passengers: {
+          adults: Number(adults) || 2,
+          children: Number(children) || 0,
+          infants: Number(infants) || 0,
+        },
+        financials: calculatedFinancials,
+        customNotes: customNotes.trim() || undefined,
+        originPackageName: originPackageName || undefined,
+        transferService: transferService.trim() || undefined,
+        paymentConditions: paymentConditions.trim() || undefined,
+        localTaxNotes: localTaxNotes.trim() || undefined,
+        extraServicesNotes: extraServicesNotes.trim() || undefined,
+        supplier: legacyExtraData.supplier as string | undefined,
       };
 
       if (isEditing && id) {
@@ -383,11 +534,13 @@ export const QuoteFormPage: React.FC = () => {
           exchange_rate_date: exchangeRateDate || null,
           data: quotationData,
         });
+        clearQuoteDraft();
         navigate(`/cotacoes/${id}`, {
-          state: { message: 'Cotação atualizada com sucesso!' },
+          state: { message: 'Cotação atualizada com sucesso na nova estrutura de serviços!' },
         });
       } else {
         const created = await quotationsService.createQuotation({
+          package_id: originPackageId || null,
           reference,
           client_name: clientName || null,
           status,
@@ -396,6 +549,7 @@ export const QuoteFormPage: React.FC = () => {
           exchange_rate_date: exchangeRateDate || null,
           data: quotationData,
         });
+        clearQuoteDraft();
         navigate(`/cotacoes/${created.id}`, {
           state: { message: 'Cotação criada com sucesso!' },
         });
@@ -425,7 +579,7 @@ export const QuoteFormPage: React.FC = () => {
                 Snapshot independente originado do pacote: <strong>{originPackageName}</strong>
               </span>
             ) : (
-              'Cotação personalizada direta para cliente.'
+              'Cotação personalizada com lista unificada de serviços e financeiro derivado.'
             )}
           </p>
         </div>
@@ -439,9 +593,9 @@ export const QuoteFormPage: React.FC = () => {
           >
             <span>📷</span> Importar arquivo
           </button>
-          <Link to="/cotacoes" className="btn btn-secondary">
-            Voltar para Cotações
-          </Link>
+          <button type="button" onClick={handleCancel} className="btn btn-secondary">
+            Cancelar
+          </button>
         </div>
       </div>
 
@@ -451,7 +605,6 @@ export const QuoteFormPage: React.FC = () => {
         onImport={handleImportData}
         targetType="quote"
       />
-
 
       {feedback && (
         <FeedbackBanner
@@ -477,7 +630,7 @@ export const QuoteFormPage: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit} className="form-layout">
-        {/* Seção 1: Cliente e Identificação */}
+        {/* SEÇÃO 1: Identificação Comercial */}
         <div className="card form-card">
           <h3 className="form-section-title">1. Identificação Comercial</h3>
           <div className="form-grid-3">
@@ -540,8 +693,8 @@ export const QuoteFormPage: React.FC = () => {
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as Currency)}
               >
-                <option value="EUR">EUR (€)</option>
-                <option value="BRL">BRL (R$)</option>
+                <option value="EUR">EUR (€) - Euro</option>
+                <option value="BRL">BRL (R$) - Real Brasileiro</option>
               </select>
             </div>
 
@@ -575,10 +728,31 @@ export const QuoteFormPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Seção 2: Datas & Passageiros do Snapshot */}
+        {/* SEÇÃO 2: Datas, Passageiros e Destino */}
         <div className="card form-card">
-          <h3 className="form-section-title">2. Datas e Passageiros da Cotação</h3>
-          <div className="form-grid-4">
+          <h3 className="form-section-title">2. Datas, Passageiros e Destino</h3>
+
+          <div className="form-grid-2" style={{ marginBottom: '1rem' }}>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label" htmlFor="destination">
+                Destino Principal da Cotação *
+              </label>
+              <input
+                id="destination"
+                type="text"
+                className="form-input"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                placeholder="Ex: Paris, Milão, Tanzânia ou Paris / Bruxelas"
+                required
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Destino comercial da cotação. Cada hospedagem pode ter seu destino específico na lista de serviços.
+              </span>
+            </div>
+          </div>
+
+          <div className="form-grid-5">
             <div className="form-group">
               <label className="form-label" htmlFor="startDate">
                 Data de Partida
@@ -762,154 +936,24 @@ export const QuoteFormPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Seção 3: Transporte e Hotelaria */}
+        {/* SEÇÃO 3: Serviços e Financeiro */}
         <div className="card form-card">
-          <h3 className="form-section-title">3. Transporte, Transfer e Hospedagem (Snapshot)</h3>
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label className="form-label" htmlFor="outboundRoute">
-                Transporte de Ida (Rota / Cia)
-              </label>
-              <input
-                id="outboundRoute"
-                type="text"
-                className="form-input"
-                value={outboundRoute}
-                onChange={(e) => setOutboundRoute(e.target.value)}
-                placeholder="Ex: Porto → Maiorca (Ryanair)"
-              />
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <input
-                  type="text"
-                  placeholder="Horário Partida (ex: 08:30)"
-                  className="form-input text-xs"
-                  value={outboundDepartureTime}
-                  onChange={(e) => setOutboundDepartureTime(e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="Horário Chegada (ex: 11:45)"
-                  className="form-input text-xs"
-                  value={outboundArrivalTime}
-                  onChange={(e) => setOutboundArrivalTime(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="inboundRoute">
-                Transporte de Volta (Rota / Cia)
-              </label>
-              <input
-                id="inboundRoute"
-                type="text"
-                className="form-input"
-                value={inboundRoute}
-                onChange={(e) => setInboundRoute(e.target.value)}
-                placeholder="Ex: Maiorca → Porto (Ryanair)"
-              />
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <input
-                  type="text"
-                  placeholder="Horário Partida (ex: 18:20)"
-                  className="form-input text-xs"
-                  value={inboundDepartureTime}
-                  onChange={(e) => setInboundDepartureTime(e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="Horário Chegada (ex: 19:40)"
-                  className="form-input text-xs"
-                  value={inboundArrivalTime}
-                  onChange={(e) => setInboundArrivalTime(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-grid-3" style={{ marginTop: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="hotelName">
-                Hospedagem
-              </label>
-              <input
-                id="hotelName"
-                type="text"
-                className="form-input"
-                value={hotelName}
-                onChange={(e) => setHotelName(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="hotelDestination">
-                Destino / Cidade
-              </label>
-              <input
-                id="hotelDestination"
-                type="text"
-                className="form-input"
-                value={hotelDestination}
-                onChange={(e) => setHotelDestination(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="hotelMealPlan">
-                Regime de Acomodação
-              </label>
-              <select
-                id="hotelMealPlan"
-                className="form-select"
-                value={hotelMealPlan}
-                onChange={(e) => setHotelMealPlan(e.target.value)}
-              >
-                <option value="">Selecione um regime...</option>
-                {MEAL_PLAN_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-                {hotelMealPlan && !MEAL_PLAN_OPTIONS.includes(hotelMealPlan as any) && (
-                  <option value={hotelMealPlan}>{hotelMealPlan}</option>
-                )}
-              </select>
-            </div>
-          </div>
-
-          <div className="form-group" style={{ marginTop: '1rem' }}>
-            <label className="form-label" htmlFor="transferService">
-              Serviços adicionais
-            </label>
-            <input
-              id="transferService"
-              type="text"
-              className="form-input"
-              value={transferService}
-              onChange={(e) => setTransferService(e.target.value)}
-              placeholder="Ex: Transfer privativo, seguro viagem, passeios ou outros serviços incluídos"
-            />
-          </div>
-        </div>
-
-        {/* Seção 4: Financeiro */}
-        <div className="card form-card">
-          <h3 className="form-section-title">4. Financeiro ({currency})</h3>
-          <FinancialEditor
-            currency={currency}
-            components={costComponents}
-            onChangeComponents={setCostComponents}
+          <h3 className="form-section-title">3. Serviços e Financeiro ({currency})</h3>
+          <PackageServicesEditor
+            services={services}
+            onChangeServices={setServices}
+            baseCurrency={currency}
             salePrice={salePrice}
             onChangeSalePrice={setSalePrice}
             exchangeRate={exchangeRate ? parseFloat(exchangeRate) : null}
             onChangeExchangeRate={(rate) => setExchangeRate(rate !== null ? String(rate) : '')}
-            exchangeRateDate={exchangeRateDate}
-            onChangeExchangeRateDate={setExchangeRateDate}
             passengers={{
               adults: Number(adults) || 2,
               children: Number(children) || 0,
               infants: Number(infants) || 0,
             }}
+            defaultDestination={destination}
+            onAddNewService={handleAddNewServiceFromEditor}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ marginTop: '1.25rem' }}>
@@ -972,9 +1016,9 @@ export const QuoteFormPage: React.FC = () => {
         </div>
 
         <div className="form-actions">
-          <Link to="/cotacoes" className="btn btn-secondary">
+          <button type="button" onClick={handleCancel} className="btn btn-secondary">
             Cancelar
-          </Link>
+          </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? 'Salvando...' : isEditing ? 'Salvar Cotação' : 'Criar Cotação'}
           </button>

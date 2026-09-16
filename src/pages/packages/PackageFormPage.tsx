@@ -1,19 +1,31 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { packagesService } from '../../services/packagesService';
-import { Currency, PackageStatus, PackageData, CostComponent, FavoriteService, ImportedPackageData, MEAL_PLAN_OPTIONS, normalizeMealPlan } from '../../types';
+import {
+  Currency,
+  PackageStatus,
+  PackageData,
+  FavoriteService,
+  FavoriteServiceType,
+  ImportedPackageData,
+  ServiceItem,
+  normalizeMealPlan,
+} from '../../types';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
-import { FinancialEditor } from '../../components/finance/FinancialEditor';
-import { calculateFinancialSummary } from '../../services/financeService';
-import { ServiceAutocomplete } from '../../components/common/ServiceAutocomplete';
+import { PackageServicesEditor } from '../../components/packages/PackageServicesEditor';
 import { ImageImportModal } from '../../components/import/ImageImportModal';
-
 import {
   savePackageDraft,
   getPackageDraft,
   clearPackageDraft,
 } from '../../services/packageDraftService';
-import { syncOperationalWithFinancials } from '../../services/packageFinancialSyncService';
+import {
+  calculateFinancialSummaryFromServices,
+  createDefaultServiceItem,
+  generateServiceId,
+  isLegacyPackageData,
+  normalizeLegacyToNewStructure,
+} from '../../services/legacyAdapterService';
 
 export const PackageFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,138 +33,37 @@ export const PackageFormPage: React.FC = () => {
   const location = useLocation();
   const isEditing = Boolean(id);
 
+  // Seção 1: Dados Principais
   const [reference, setReference] = useState('');
   const [name, setName] = useState('');
   const [status, setStatus] = useState<PackageStatus>('draft');
   const [baseCurrency, setBaseCurrency] = useState<Currency>('EUR');
   const [supplier, setSupplier] = useState('');
-  const [additionalInfo, setAdditionalInfo] = useState('');
 
-  // Callback para autocomplete de hotel — snapshot: copia apenas texto, sem ID do serviço
-  const handleHotelSelect = useCallback((service: FavoriteService) => {
-    setHotelName(service.name);
-    setHotelDestination([service.city, service.country].filter(Boolean).join(', '));
-  }, []);
-
-  // Datas e passageiros
+  // Seção 2: Datas, Passageiros e Destino
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [durationDays, setDurationDays] = useState<number | ''>(0);
   const [durationNights, setDurationNights] = useState<number | ''>(0);
   const [adults, setAdults] = useState<number | ''>(2);
   const [children, setChildren] = useState<number | ''>(0);
+  const [destination, setDestination] = useState('');
 
-  // Transportes
-  const [outboundRoute, setOutboundRoute] = useState('');
-  const [outboundCarrier, setOutboundCarrier] = useState('');
-  const [inboundRoute, setInboundRoute] = useState('');
-  const [inboundCarrier, setInboundCarrier] = useState('');
-
-  // Hospedagem básica
-  const [hotelName, setHotelName] = useState('');
-  const [hotelDestination, setHotelDestination] = useState('');
-  const [hotelMealPlan, setHotelMealPlan] = useState('Café da manhã (BB)');
-
-  // Componentes e valores financeiros (Fase 4)
-  const [costComponents, setCostComponents] = useState<CostComponent[]>([]);
+  // Seção 3: Financeiro (Lista Única de Serviços e Preço de Venda)
+  const [services, setServices] = useState<ServiceItem[]>([]);
   const [salePrice, setSalePrice] = useState<number>(0);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [additionalInfo, setAdditionalInfo] = useState('');
+
+  // Metadados legados preservados sem perda
+  const [legacyExtraData, setLegacyExtraData] = useState<Record<string, unknown>>({});
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  const handleImportData = (data: ImportedPackageData) => {
-    if (data.packageName && !name) {
-      setName(data.packageName);
-    }
-    if (data.dates.start) {
-      setStartDate(data.dates.start);
-    }
-    if (data.dates.end) {
-      setEndDate(data.dates.end);
-    }
-    if (data.passengers.adults !== null) {
-      setAdults(data.passengers.adults);
-    }
-    if (data.passengers.children && data.passengers.children.length > 0) {
-      setChildren(data.passengers.children.length);
-    }
-
-    if (data.outbound.route) {
-      const parts = [
-        data.outbound.route,
-        data.outbound.company,
-        data.outbound.flight,
-      ].filter(Boolean);
-      setOutboundRoute(parts.join(' | '));
-      if (data.outbound.company) setOutboundCarrier(data.outbound.company);
-    }
-
-    if (data.inbound.route) {
-      const parts = [
-        data.inbound.route,
-        data.inbound.company,
-        data.inbound.flight,
-      ].filter(Boolean);
-      setInboundRoute(parts.join(' | '));
-      if (data.inbound.company) setInboundCarrier(data.inbound.company);
-    }
-
-    if (data.lodging.name) {
-      setHotelName(data.lodging.name);
-    }
-    const dest = [data.lodging.city, data.lodging.country].filter(Boolean).join(', ');
-    if (dest) {
-      setHotelDestination(dest);
-    }
-    if (data.lodging.mealPlan) {
-      setHotelMealPlan(normalizeMealPlan(data.lodging.mealPlan));
-    }
-
-    if (data.financial.currency === 'BRL' || data.financial.currency === 'EUR') {
-      setBaseCurrency(data.financial.currency);
-    }
-    if (data.financial.total !== null && data.financial.total > 0) {
-      setSalePrice(data.financial.total);
-    }
-
-    if (data.additionalServices && data.additionalServices.length > 0) {
-      const extraComponents: CostComponent[] = data.additionalServices.map((srv, idx) => ({
-        id: `imported-srv-${Date.now()}-${idx}`,
-        category: 'services',
-        description: srv.name + (srv.description ? ` (${srv.description})` : ''),
-        amount: srv.amount || 0,
-        currency:
-          srv.currency === 'BRL' || srv.currency === 'EUR' ? srv.currency : baseCurrency,
-        quantity: 1,
-        notes: srv.date ? `Data: ${srv.date}` : undefined,
-      }));
-      setCostComponents((prev) => [...prev, ...extraComponents]);
-    }
-
-    setFeedback({
-      type: 'success',
-      message: 'Dados da imagem importados com sucesso! Revise os campos preenchidos.',
-    });
-  };
-
-
-  // Sincronização automática e determinística Seção 3 → Seção 4
-  useEffect(() => {
-    if (loading) return;
-
-    setCostComponents((prev) =>
-      syncOperationalWithFinancials(prev, {
-        outboundRoute,
-        inboundRoute,
-        hotelName,
-        baseCurrency,
-      })
-    );
-  }, [outboundRoute, inboundRoute, hotelName, baseCurrency, loading]);
-
-  // Cálculo automático de Duração (Dias) e Duração (Noites) a partir das datas
+  // Cálculo automático de Duração (Dias) e Duração (Noites)
   useEffect(() => {
     if (startDate && endDate) {
       if (endDate < startDate) {
@@ -172,15 +83,16 @@ export const PackageFormPage: React.FC = () => {
     }
   }, [startDate, endDate]);
 
+  // Carregamento de Pacote existente ou Rascunho / Inicialização de Novo Pacote
   useEffect(() => {
     if (!id) {
       // 1. Tenta restaurar rascunho anterior de sessionStorage
       const draft = getPackageDraft();
       if (draft) {
-        setReference(draft.reference);
-        setName(draft.name);
-        setStatus(draft.status);
-        setBaseCurrency(draft.baseCurrency);
+        setReference(draft.reference || '');
+        setName(draft.name || '');
+        setStatus(draft.status || 'draft');
+        setBaseCurrency(draft.baseCurrency || 'EUR');
         setSupplier(draft.supplier || '');
         setAdditionalInfo(draft.additionalInfo || '');
         setStartDate(draft.startDate || '');
@@ -189,26 +101,46 @@ export const PackageFormPage: React.FC = () => {
         setDurationNights(draft.durationNights);
         setAdults(draft.adults);
         setChildren(draft.children);
-        setOutboundRoute(draft.outboundRoute || '');
-        setOutboundCarrier(draft.outboundCarrier || '');
-        setInboundRoute(draft.inboundRoute || '');
-        setInboundCarrier(draft.inboundCarrier || '');
-        setHotelName(draft.hotelName || '');
-        setHotelDestination(draft.hotelDestination || '');
-        setHotelMealPlan(normalizeMealPlan(draft.hotelMealPlan) || 'Café da manhã (BB)');
-        setCostComponents(draft.costComponents || []);
         setSalePrice(draft.salePrice || 0);
+
+        // Se o draft já tem services, usa diretamente
+        if (Array.isArray(draft.services)) {
+          setDestination(draft.destination || '');
+          setServices(draft.services);
+        } else {
+          // Se for draft antigo (formato legado de transporte/hotel), normaliza com o adapter
+          const legacyDraftData: PackageData = {
+            outboundTransport: draft.outboundRoute
+              ? { type: 'flight', route: draft.outboundRoute, carrier: draft.outboundCarrier }
+              : undefined,
+            inboundTransport: draft.inboundRoute
+              ? { type: 'flight', route: draft.inboundRoute, carrier: draft.inboundCarrier }
+              : undefined,
+            lodging: draft.hotelName
+              ? [{ id: 'hotel-draft', name: draft.hotelName, destination: draft.hotelDestination || '', mealPlan: draft.hotelMealPlan }]
+              : [],
+            financials: draft.costComponents
+              ? { components: draft.costComponents, currency: draft.baseCurrency, salePrice: draft.salePrice } as any
+              : undefined,
+          };
+          const normalized = normalizeLegacyToNewStructure(legacyDraftData);
+          setDestination(normalized.destination || draft.hotelDestination || '');
+          setServices(normalized.services);
+        }
       } else {
         // Sugestão sequencial inteligente para novos pacotes base
-        packagesService.getNextReference().then((nextRef) => {
-          setReference(nextRef);
-        }).catch((err) => {
-          console.error('Erro ao sugerir referência de pacote:', err);
-          setReference(`PK-${new Date().getFullYear()}-001`);
-        });
+        packagesService
+          .getNextReference()
+          .then((nextRef) => {
+            setReference(nextRef);
+          })
+          .catch((err) => {
+            console.error('Erro ao sugerir referência de pacote:', err);
+            setReference(`PK-${new Date().getFullYear()}-001`);
+          });
       }
 
-      // 2. Se retornou de /servicos/novo com um serviço recém-criado, auto-seleciona
+      // 2. Se retornou de /servicos/novo com um serviço recém-criado, copia como snapshot independente
       const navState = location.state as {
         createdService?: FavoriteService;
         message?: string;
@@ -216,8 +148,37 @@ export const PackageFormPage: React.FC = () => {
 
       if (navState?.createdService) {
         const created = navState.createdService;
-        setHotelName(created.name);
-        setHotelDestination([created.city, created.country].filter(Boolean).join(', '));
+        const sType =
+          created.type === 'hotel'
+            ? 'accommodation'
+            : created.type === 'transfer'
+            ? 'transfer'
+            : created.type === 'insurance'
+            ? 'insurance'
+            : created.type === 'airline'
+            ? 'outbound_transport'
+            : 'additional';
+
+        const hotelDest = [created.city, created.country].filter(Boolean).join(', ');
+
+        const createdItem: ServiceItem = {
+          id: generateServiceId(),
+          type: sType,
+          description: created.name,
+          currency: baseCurrency,
+          amount: 0,
+          quantity: 1,
+          destination: created.type === 'hotel' ? hotelDest : undefined,
+          mealPlan: created.type === 'hotel' ? 'Café da manhã (BB)' : undefined,
+          notes: created.notes || undefined,
+        };
+
+        setServices((prev) => [...prev, createdItem]);
+
+        // Se o destino principal do pacote estiver vazio e o hotel tiver cidade/país, preenche
+        if (created.type === 'hotel' && hotelDest) {
+          setDestination((curr) => curr || hotelDest);
+        }
       }
 
       if (navState?.message) {
@@ -227,6 +188,7 @@ export const PackageFormPage: React.FC = () => {
       return;
     }
 
+    // Modo Edição: Carregar pacote existente do banco
     const loadPackage = async () => {
       try {
         setLoading(true);
@@ -241,52 +203,68 @@ export const PackageFormPage: React.FC = () => {
         setStatus(pkg.status);
         setBaseCurrency(pkg.base_currency);
 
-        const d = pkg.data || {};
-        setSupplier(d.supplier || '');
-        setAdditionalInfo(d.additionalInfo || '');
+        const rawData = pkg.data || {};
+        setSupplier(rawData.supplier || '');
+        setAdditionalInfo(rawData.additionalInfo || '');
 
-        if (d.dates) {
-          setStartDate(d.dates.startDate || '');
-          setEndDate(d.dates.endDate || '');
-          setDurationDays(d.dates.durationDays ?? 0);
+        if (rawData.dates) {
+          setStartDate(rawData.dates.startDate || '');
+          setEndDate(rawData.dates.endDate || '');
+          setDurationDays(rawData.dates.durationDays ?? 0);
           setDurationNights(
-            d.dates.durationNights ?? (d.dates.durationDays ? Math.max(0, d.dates.durationDays - 1) : 0)
+            rawData.dates.durationNights ??
+              (rawData.dates.durationDays ? Math.max(0, rawData.dates.durationDays - 1) : 0)
           );
         }
 
-        if (d.passengers) {
-          setAdults(d.passengers.adults ?? 2);
-          setChildren(d.passengers.children ?? 0);
+        if (rawData.passengers) {
+          setAdults(rawData.passengers.adults ?? 2);
+          setChildren(rawData.passengers.children ?? 0);
         }
 
-        if (d.outboundTransport) {
-          setOutboundRoute(d.outboundTransport.route || '');
-          setOutboundCarrier(d.outboundTransport.carrier || '');
-        }
-
-        if (d.inboundTransport) {
-          setInboundRoute(d.inboundTransport.route || '');
-          setInboundCarrier(d.inboundTransport.carrier || '');
-        }
-
-        if (d.lodging && d.lodging.length > 0) {
-          setHotelName(d.lodging[0].name || '');
-          setHotelDestination(d.lodging[0].destination || '');
-          setHotelMealPlan(normalizeMealPlan(d.lodging[0].mealPlan) || 'Café da manhã (BB)');
-        }
-
-        if (d.financials) {
-          if (Array.isArray(d.financials.components)) {
-            setCostComponents(d.financials.components);
+        if (rawData.financials) {
+          if (typeof rawData.financials.salePrice === 'number') {
+            setSalePrice(rawData.financials.salePrice);
+          } else if (rawData.financials.priceTotal?.amount) {
+            setSalePrice(rawData.financials.priceTotal.amount);
           }
-          if (typeof d.financials.salePrice === 'number') {
-            setSalePrice(d.financials.salePrice);
-          } else if (d.financials.priceTotal?.amount) {
-            setSalePrice(d.financials.priceTotal.amount);
+          if (rawData.financials.exchangeRateUsed) {
+            setExchangeRate(rawData.financials.exchangeRateUsed);
           }
+        }
+
+        // DETECÇÃO DE DADOS LEGADOS vs. NOVA ESTRUTURA
+        if (isLegacyPackageData(rawData) || !Array.isArray(rawData.services)) {
+          // Pacote no formato legado: normaliza em memória através do adapter determinístico
+          const normalized = normalizeLegacyToNewStructure(rawData);
+          setDestination(normalized.destination || rawData.destination || '');
+          setServices(normalized.services || []);
+
+          // Preserva campos legados que possam existir
+          setLegacyExtraData({
+            localTaxNotes: normalized.localTaxNotes,
+            paymentConditions: normalized.paymentConditions,
+            transferService: normalized.transferService,
+            extraServicesNotes: normalized.extraServicesNotes,
+            customNotes: normalized.customNotes,
+          });
+        } else {
+          // Pacote já na nova estrutura
+          setDestination(rawData.destination || '');
+          setServices(rawData.services || []);
+          setLegacyExtraData({
+            localTaxNotes: rawData.localTaxNotes,
+            paymentConditions: rawData.paymentConditions,
+            transferService: rawData.transferService,
+            extraServicesNotes: rawData.extraServicesNotes,
+            customNotes: rawData.customNotes,
+          });
         }
       } catch (err: any) {
-        setFeedback({ type: 'error', message: err.message || 'Erro ao carregar dados do pacote.' });
+        setFeedback({
+          type: 'error',
+          message: err.message || 'Erro ao carregar dados do pacote.',
+        });
       } finally {
         setLoading(false);
       }
@@ -295,8 +273,9 @@ export const PackageFormPage: React.FC = () => {
     loadPackage();
   }, [id, location.state]);
 
-  const handleAddNewService = useCallback(
-    (currentQuery: string) => {
+  // Callback para navegar e cadastrar serviço no catálogo (favorite_services)
+  const handleAddNewServiceFromEditor = useCallback(
+    (serviceType: FavoriteServiceType = 'hotel', currentQuery: string = '') => {
       savePackageDraft({
         reference,
         name,
@@ -310,22 +289,16 @@ export const PackageFormPage: React.FC = () => {
         durationNights,
         adults,
         children,
-        outboundRoute,
-        outboundCarrier,
-        inboundRoute,
-        inboundCarrier,
-        hotelName: currentQuery || hotelName,
-        hotelDestination,
-        hotelMealPlan,
-        costComponents,
+        destination,
+        services,
         salePrice,
       });
 
       navigate('/servicos/novo', {
         state: {
-          returnTo: '/pacotes/novo',
-          serviceType: 'hotel',
-          initialName: currentQuery || hotelName,
+          returnTo: isEditing ? `/pacotes/${id}/editar` : '/pacotes/novo',
+          serviceType,
+          initialName: currentQuery,
         },
       });
     },
@@ -342,22 +315,116 @@ export const PackageFormPage: React.FC = () => {
       durationNights,
       adults,
       children,
-      outboundRoute,
-      outboundCarrier,
-      inboundRoute,
-      inboundCarrier,
-      hotelName,
-      hotelDestination,
-      hotelMealPlan,
-      costComponents,
+      destination,
+      services,
       salePrice,
+      isEditing,
+      id,
       navigate,
     ]
   );
 
+  // Importação estruturada por imagem via IA multimodal (Fase 5)
+  const handleImportData = (data: ImportedPackageData) => {
+    if (data.packageName && !name) {
+      setName(data.packageName);
+    }
+    if (data.dates?.start) {
+      setStartDate(data.dates.start);
+    }
+    if (data.dates?.end) {
+      setEndDate(data.dates.end);
+    }
+    if (data.passengers?.adults !== null && data.passengers?.adults !== undefined) {
+      setAdults(data.passengers.adults);
+    }
+    if (data.passengers?.children && data.passengers.children.length > 0) {
+      setChildren(data.passengers.children.length);
+    }
+
+    // Destino Comercial
+    if (data.destination && !destination) {
+      setDestination(data.destination);
+    } else {
+      const hotelDest = [data.lodging?.city, data.lodging?.country].filter(Boolean).join(', ');
+      if (hotelDest && !destination) {
+        setDestination(hotelDest);
+      }
+    }
+
+    // Aplica services[] diretamente da importação
+    if (Array.isArray(data.services) && data.services.length > 0) {
+      setServices((prev) => [...prev, ...data.services]);
+    } else {
+      // Fallback legado se services não vier preenchido
+      const importedServices: ServiceItem[] = [];
+
+      if (data.outbound?.route) {
+        const parts = [data.outbound.route, data.outbound.company, data.outbound.flight].filter(Boolean);
+        const outItem = createDefaultServiceItem('outbound_transport', baseCurrency);
+        outItem.description = parts.join(' | ');
+        outItem.carrier = data.outbound.company || undefined;
+        outItem.departureTime = data.outbound.departureTime || undefined;
+        outItem.arrivalTime = data.outbound.arrivalTime || undefined;
+        importedServices.push(outItem);
+      }
+
+      if (data.inbound?.route) {
+        const parts = [data.inbound.route, data.inbound.company, data.inbound.flight].filter(Boolean);
+        const inItem = createDefaultServiceItem('inbound_transport', baseCurrency);
+        inItem.description = parts.join(' | ');
+        inItem.carrier = data.inbound.company || undefined;
+        inItem.departureTime = data.inbound.departureTime || undefined;
+        inItem.arrivalTime = data.inbound.arrivalTime || undefined;
+        importedServices.push(inItem);
+      }
+
+      if (data.lodging?.name) {
+        const hotelItem = createDefaultServiceItem('accommodation', baseCurrency);
+        hotelItem.description = data.lodging.name;
+        hotelItem.destination = data.destination || undefined;
+        if (data.lodging.mealPlan) {
+          hotelItem.mealPlan = normalizeMealPlan(data.lodging.mealPlan);
+        }
+        importedServices.push(hotelItem);
+      }
+
+      if (data.additionalServices && data.additionalServices.length > 0) {
+        data.additionalServices.forEach((srv) => {
+          const extraItem = createDefaultServiceItem('additional', baseCurrency);
+          extraItem.description = srv.name + (srv.description ? ` (${srv.description})` : '');
+          extraItem.amount = srv.amount || 0;
+          extraItem.currency = (srv.currency === 'BRL' || srv.currency === 'EUR' ? srv.currency : baseCurrency);
+          extraItem.notes = srv.date ? `Data: ${srv.date}` : undefined;
+          importedServices.push(extraItem);
+        });
+      }
+
+      if (importedServices.length > 0) {
+        setServices((prev) => [...prev, ...importedServices]);
+      }
+    }
+
+    if (data.currency === 'BRL' || data.currency === 'EUR') {
+      setBaseCurrency(data.currency);
+    } else if (data.financial?.currency === 'BRL' || data.financial?.currency === 'EUR') {
+      setBaseCurrency(data.financial.currency);
+    }
+
+    const salePriceVal = data.salePrice ?? data.financial?.total;
+    if (salePriceVal !== null && salePriceVal !== undefined && salePriceVal > 0) {
+      setSalePrice(salePriceVal);
+    }
+
+    setFeedback({
+      type: 'success',
+      message: 'Dados importados com sucesso para a lista de serviços! Revise os valores antes de salvar.',
+    });
+  };
+
   const handleCancel = () => {
     clearPackageDraft();
-    navigate('/pacotes');
+    navigate(isEditing && id ? `/pacotes/${id}` : '/pacotes');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -386,54 +453,44 @@ export const PackageFormPage: React.FC = () => {
         return;
       }
 
-      const packageData: PackageData = {
-        supplier: supplier.trim() || undefined,
-        additionalInfo: additionalInfo.trim() || undefined,
+      // Consolidação financeira a partir da lista unificada services[]
+      const calculatedFinancials = calculateFinancialSummaryFromServices({
+        services,
+        salePrice: Number(salePrice) || 0,
+        targetCurrency: baseCurrency,
+        exchangeRate,
         passengers: {
           adults: Number(adults) || 2,
           children: Number(children) || 0,
           infants: 0,
         },
+      });
+
+      // Estrutura final do PackageData (Fase 2: Nova Estrutura Unificada de Serviços)
+      // Não cria estruturas operacionais legadas (outboundTransport, inboundTransport, lodging)
+      const packageData: PackageData = {
+        destination: destination.trim(),
+        services,
         dates: {
           startDate,
           endDate,
           durationDays: Number(durationDays) || undefined,
           durationNights: Number(durationNights) ?? undefined,
         },
-        outboundTransport: outboundRoute.trim()
-          ? {
-              type: 'flight',
-              route: outboundRoute.trim(),
-              carrier: outboundCarrier.trim() || undefined,
-            }
-          : undefined,
-        inboundTransport: inboundRoute.trim()
-          ? {
-              type: 'flight',
-              route: inboundRoute.trim(),
-              carrier: inboundCarrier.trim() || undefined,
-            }
-          : undefined,
-        lodging: hotelName.trim()
-          ? [
-              {
-                id: 'hotel-1',
-                name: hotelName.trim(),
-                destination: hotelDestination.trim(),
-                mealPlan: hotelMealPlan.trim(),
-              },
-            ]
-          : [],
-        financials: calculateFinancialSummary({
-          components: costComponents,
-          salePrice: Number(salePrice) || 0,
-          targetCurrency: baseCurrency,
-          passengers: {
-            adults: Number(adults) || 2,
-            children: Number(children) || 0,
-            infants: 0,
-          },
-        }),
+        passengers: {
+          adults: Number(adults) || 2,
+          children: Number(children) || 0,
+          infants: 0,
+        },
+        financials: calculatedFinancials,
+        supplier: supplier.trim() || undefined,
+        additionalInfo: additionalInfo.trim() || undefined,
+        // Preserva rigorosamente campos legados sem descartar nada
+        localTaxNotes: legacyExtraData.localTaxNotes as string | undefined,
+        paymentConditions: legacyExtraData.paymentConditions as string | undefined,
+        customNotes: legacyExtraData.customNotes as string | undefined,
+        transferService: legacyExtraData.transferService as string | undefined,
+        extraServicesNotes: legacyExtraData.extraServicesNotes as string | undefined,
       };
 
       if (isEditing && id) {
@@ -446,7 +503,7 @@ export const PackageFormPage: React.FC = () => {
         });
         clearPackageDraft();
         navigate(`/pacotes/${id}`, {
-          state: { message: 'Pacote atualizado com sucesso.' },
+          state: { message: 'Pacote atualizado com sucesso na nova estrutura de serviços!' },
         });
       } else {
         const created = await packagesService.createPackage({
@@ -458,11 +515,11 @@ export const PackageFormPage: React.FC = () => {
         });
         clearPackageDraft();
         navigate(`/pacotes/${created.id}`, {
-          state: { message: 'Pacote cadastrado com sucesso!' },
+          state: { message: 'Pacote base cadastrado com sucesso!' },
         });
       }
     } catch (err: any) {
-      setFeedback({ type: 'error', message: `Erro ao salvar: ${err.message}` });
+      setFeedback({ type: 'error', message: `Erro ao salvar pacote: ${err.message}` });
       setSaving(false);
     }
   };
@@ -481,7 +538,7 @@ export const PackageFormPage: React.FC = () => {
         <div>
           <h1 className="page-title">{isEditing ? 'Editar Pacote Base' : 'Novo Pacote Base'}</h1>
           <p className="page-subtitle">
-            Configure as bases operacionais, transportes, hotelaria e valores de referência.
+            Configure o destino, datas e a lista unificada de serviços e custos do pacote.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -507,7 +564,6 @@ export const PackageFormPage: React.FC = () => {
         targetType="package"
       />
 
-
       {feedback && (
         <FeedbackBanner
           type={feedback.type}
@@ -517,7 +573,7 @@ export const PackageFormPage: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit} className="form-layout">
-        {/* Seção 1: Dados Gerais */}
+        {/* SEÇÃO 1: Dados Principais */}
         <div className="card form-card">
           <h3 className="form-section-title">1. Dados Principais</h3>
           <div className="form-grid-3">
@@ -600,9 +656,30 @@ export const PackageFormPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Seção 2: Datas & Passageiros */}
+        {/* SEÇÃO 2: Datas, Passageiros e Destino */}
         <div className="card form-card">
-          <h3 className="form-section-title">2. Datas e Passageiros Padrão</h3>
+          <h3 className="form-section-title">2. Datas, Passageiros e Destino</h3>
+
+          <div className="form-grid-2" style={{ marginBottom: '1rem' }}>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label" htmlFor="destination">
+                Destino Principal da Viagem *
+              </label>
+              <input
+                id="destination"
+                type="text"
+                className="form-input"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                placeholder="Ex: Paris, Milão, Tanzânia ou Paris / Bruxelas"
+                required
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Destino principal ou cidades-chave do pacote. Cada hospedagem pode ter seu destino específico na Seção Financeiro.
+              </span>
+            </div>
+          </div>
+
           <div className="form-grid-5">
             <div className="form-group">
               <label className="form-label" htmlFor="startDate">
@@ -729,111 +806,27 @@ export const PackageFormPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Seção 3: Transportes e Hotelaria Base */}
+        {/* SEÇÃO 3: Financeiro (Lista Única de Serviços e Resumo Financeiro) */}
         <div className="card form-card">
-          <h3 className="form-section-title">3. Transporte e Hospedagem Base</h3>
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label className="form-label" htmlFor="outboundRoute">
-                Transporte de Ida (Rota / Cia)
-              </label>
-              <input
-                id="outboundRoute"
-                type="text"
-                className="form-input"
-                value={outboundRoute}
-                onChange={(e) => setOutboundRoute(e.target.value)}
-                placeholder="Ex: LIS → JRO (Qatar Airways / Voo QR-142)"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="inboundRoute">
-                Transporte de Volta (Rota / Cia)
-              </label>
-              <input
-                id="inboundRoute"
-                type="text"
-                className="form-input"
-                value={inboundRoute}
-                onChange={(e) => setInboundRoute(e.target.value)}
-                placeholder="Ex: ZNZ → LIS (Qatar Airways / Voo QR-143)"
-              />
-            </div>
-          </div>
-
-          <div className="form-grid-3" style={{ marginTop: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="hotelName">
-                Hospedagem Principal
-              </label>
-              {/* ServiceAutocomplete: copia apenas texto para o state local — sem referência ao ID do serviço (snapshot garantido) */}
-              <ServiceAutocomplete
-                id="hotelName"
-                value={hotelName}
-                onChange={setHotelName}
-                onSelect={handleHotelSelect}
-                onAddNewService={handleAddNewService}
-                serviceType="hotel"
-                placeholder="Ex: Four Seasons Safari Lodge"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="hotelDestination">
-                Destino / Cidade
-              </label>
-              <input
-                id="hotelDestination"
-                type="text"
-                className="form-input"
-                value={hotelDestination}
-                onChange={(e) => setHotelDestination(e.target.value)}
-                placeholder="Ex: Serengeti, Tanzânia"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="hotelMealPlan">
-                Regime de Acomodação
-              </label>
-              <select
-                id="hotelMealPlan"
-                className="form-select"
-                value={hotelMealPlan}
-                onChange={(e) => setHotelMealPlan(e.target.value)}
-              >
-                <option value="">Selecione um regime...</option>
-                {MEAL_PLAN_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-                {hotelMealPlan && !MEAL_PLAN_OPTIONS.includes(hotelMealPlan as any) && (
-                  <option value={hotelMealPlan}>{hotelMealPlan}</option>
-                )}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Seção 4: Financeiro */}
-        <div className="card form-card">
-          <h3 className="form-section-title">4. Financeiro ({baseCurrency})</h3>
-          <FinancialEditor
-            currency={baseCurrency}
-            components={costComponents}
-            onChangeComponents={setCostComponents}
+          <h3 className="form-section-title">3. Financeiro ({baseCurrency})</h3>
+          <PackageServicesEditor
+            services={services}
+            onChangeServices={setServices}
+            baseCurrency={baseCurrency}
             salePrice={salePrice}
             onChangeSalePrice={setSalePrice}
+            exchangeRate={exchangeRate}
+            onChangeExchangeRate={setExchangeRate}
             passengers={{
               adults: Number(adults) || 2,
               children: Number(children) || 0,
               infants: 0,
             }}
+            defaultDestination={destination}
+            onAddNewService={handleAddNewServiceFromEditor}
           />
 
-          <div className="form-group" style={{ marginTop: '1rem' }}>
+          <div className="form-group" style={{ marginTop: '1.25rem' }}>
             <label className="form-label" htmlFor="additionalInfo">
               Informações Adicionais / Notas Operacionais
             </label>

@@ -118,6 +118,39 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
     setStep('review');
   };
 
+  const handleRemoveService = (serviceId: string) => {
+    if (!extractedData) return;
+    setExtractedData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        services: prev.services.filter((s) => s.id !== serviceId),
+      };
+    });
+  };
+
+  const SERVICE_TYPE_ICONS: Record<string, string> = {
+    outbound_transport: '🛫',
+    inbound_transport: '🛬',
+    accommodation: '🏨',
+    transfer: '🚐',
+    insurance: '🛡️',
+    additional: '🎫',
+    taxes: '🏛️',
+    other: '📦',
+  };
+
+  const SERVICE_TYPE_LABELS: Record<string, string> = {
+    outbound_transport: 'Transporte de Ida',
+    inbound_transport: 'Transporte de Volta',
+    accommodation: 'Hospedagem',
+    transfer: 'Transfer',
+    insurance: 'Seguro-viagem',
+    additional: 'Serviço Adicional',
+    taxes: 'Impostos / Taxas',
+    other: 'Outros Custos',
+  };
+
   const handleApply = () => {
     if (!extractedData) return;
     onImport(extractedData);
@@ -320,27 +353,48 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
                 <div className="review-conflicts-box">
                   <div className="review-conflicts-header">
                     <span>⚠️</span>
-                    <span>Avisos de Conflitos Detectados (Revise antes de salvar)</span>
+                    <span>Avisos de Conflitos Detectados entre Imagens (Revise antes de salvar)</span>
                   </div>
                   <ul className="review-conflicts-list">
                     {extractedData.conflicts.map((conf, idx) => (
-                      <li key={idx}>{conf}</li>
+                      <li key={idx}>
+                        {typeof conf === 'string'
+                          ? conf
+                          : `${conf.field ? `[${conf.field}] ` : ''}${conf.description}${
+                              conf.values && conf.values.length > 0 ? ` (${conf.values.join(' vs ')})` : ''
+                            }`}
+                      </li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Título do Pacote se identificado */}
+              {/* Destino Comercial da Viagem */}
+              <div className="review-section-box highlight">
+                <span className="review-box-label">Destino Comercial da Viagem</span>
+                <input
+                  type="text"
+                  className="input input-sm"
+                  style={{ marginTop: '4px', width: '100%', fontWeight: 600 }}
+                  value={extractedData.destination || ''}
+                  placeholder="Ex.: Paris, Roma, Porto de Galinhas..."
+                  onChange={(e) =>
+                    setExtractedData((prev) => (prev ? { ...prev, destination: e.target.value } : prev))
+                  }
+                />
+              </div>
+
+              {/* Nome do Pacote (se identificado) */}
               {extractedData.packageName && (
-                <div className="review-section-box highlight">
-                  <span className="review-box-label">Nome / Destino Identificado</span>
-                  <p className="review-box-val" style={{ fontSize: '1.05rem', fontWeight: 600 }}>
+                <div className="review-section-box" style={{ marginTop: '0.5rem' }}>
+                  <span className="review-box-label">Nome Comercial Sugerido</span>
+                  <p className="review-box-val" style={{ fontSize: '0.95rem', fontWeight: 500, margin: '2px 0' }}>
                     {extractedData.packageName}
                   </p>
                 </div>
               )}
 
-              <div className="review-grid-2">
+              <div className="review-grid-2" style={{ marginTop: '0.5rem' }}>
                 {/* 1. Datas e Duração */}
                 <div className="review-section-box">
                   <span className="review-box-label">📅 Datas da Viagem</span>
@@ -378,125 +432,103 @@ export const ImageImportModal: React.FC<ImageImportModalProps> = ({
                 </div>
               </div>
 
-              {/* 3. Transportes */}
+              {/* 3. Serviços Unificados Identificados (services[]) */}
               <div className="review-section-box" style={{ marginTop: '0.75rem' }}>
-                <span className="review-box-label">✈️ Transporte Base</span>
-                <div className="review-grid-2" style={{ marginTop: '0.5rem' }}>
-                  <div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ida</span>
-                    <p style={{ fontWeight: 500, margin: '2px 0' }}>
-                      {extractedData.outbound.route || 'Não informado'}
-                    </p>
-                    <small style={{ color: 'var(--text-secondary)' }}>
-                      {[
-                        extractedData.outbound.company,
-                        extractedData.outbound.flight,
-                        extractedData.outbound.departureTime &&
-                          `Saída: ${extractedData.outbound.departureTime}`,
-                      ]
-                        .filter(Boolean)
-                        .join(' | ') || 'Sem detalhes de voo'}
-                    </small>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Volta</span>
-                    <p style={{ fontWeight: 500, margin: '2px 0' }}>
-                      {extractedData.inbound.route || 'Não informado'}
-                    </p>
-                    <small style={{ color: 'var(--text-secondary)' }}>
-                      {[
-                        extractedData.inbound.company,
-                        extractedData.inbound.flight,
-                        extractedData.inbound.departureTime &&
-                          `Saída: ${extractedData.inbound.departureTime}`,
-                      ]
-                        .filter(Boolean)
-                        .join(' | ') || 'Sem detalhes de voo'}
-                    </small>
-                  </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span className="review-box-label" style={{ marginBottom: 0 }}>
+                    🎒 Serviços Extraídos ({extractedData.services.length})
+                  </span>
+                  <small style={{ color: 'var(--text-muted)' }}>Você pode remover itens indesejados antes de aplicar</small>
                 </div>
-              </div>
 
-              {/* 4. Hospedagem */}
-              <div className="review-section-box" style={{ marginTop: '0.75rem' }}>
-                <span className="review-box-label">🏨 Hospedagem Principal</span>
-                <div className="review-row" style={{ marginTop: '0.25rem' }}>
-                  <span>Hotel:</span>
-                  <strong>{extractedData.lodging.name || 'Não informado'}</strong>
-                </div>
-                <div className="review-row">
-                  <span>Destino / Local:</span>
-                  <strong>
-                    {[extractedData.lodging.city, extractedData.lodging.country]
-                      .filter(Boolean)
-                      .join(', ') || 'Não informado'}
-                  </strong>
-                </div>
-                <div className="review-row">
-                  <span>Regime de Alimentação:</span>
-                  <strong>{extractedData.lodging.mealPlan || 'Não informado'}</strong>
-                </div>
-                {extractedData.lodging.room && (
-                  <div className="review-row">
-                    <span>Acomodação / Quarto:</span>
-                    <strong>{extractedData.lodging.room}</strong>
+                {extractedData.services.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0, fontStyle: 'italic' }}>
+                    Nenhum serviço discriminado foi identificado.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {extractedData.services.map((srv) => {
+                      const icon = SERVICE_TYPE_ICONS[srv.type] || '📦';
+                      const label = SERVICE_TYPE_LABELS[srv.type] || 'Serviço';
+
+                      return (
+                        <div
+                          key={srv.id}
+                          style={{
+                            background: 'var(--bg-surface-elevated)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '0.65rem 0.85rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.25rem',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '14px' }}>{icon}</span>
+                                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                                  {label}
+                                </span>
+                              </div>
+                              <p style={{ fontWeight: 600, fontSize: '13px', margin: '3px 0', color: 'var(--text-primary)' }}>
+                                {srv.description}
+                              </p>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>
+                                {srv.amount > 0 ? (
+                                  `${srv.currency} ${srv.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}${
+                                    srv.quantity > 1 ? ` (${srv.quantity}x)` : ''
+                                  }`
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Incluso</span>
+                                )}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-ghost"
+                                style={{ padding: '2px 6px', color: 'var(--danger)', fontSize: '12px' }}
+                                onClick={() => handleRemoveService(srv.id)}
+                                title="Remover este serviço"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Metadados específicos do serviço */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {srv.carrier && <span>Cia: <strong>{srv.carrier}</strong></span>}
+                            {(srv.departureTime || srv.arrivalTime) && (
+                              <span>
+                                ⏰ {srv.departureTime && srv.arrivalTime ? `${srv.departureTime} → ${srv.arrivalTime}` : srv.departureTime || srv.arrivalTime}
+                              </span>
+                            )}
+                            {srv.destination && <span>📍 {srv.destination}</span>}
+                            {srv.mealPlan && <span>🍽️ {srv.mealPlan}</span>}
+                            {srv.notes && <span>💬 {srv.notes}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
-              {/* 5. Serviços Adicionais (se houver) */}
-              {extractedData.additionalServices.length > 0 && (
+              {/* 4. Preço de Venda Comercial Identificado */}
+              {extractedData.salePrice !== null && extractedData.salePrice !== undefined && extractedData.salePrice > 0 && (
                 <div className="review-section-box" style={{ marginTop: '0.75rem' }}>
-                  <span className="review-box-label">
-                    🎒 Serviços Adicionais ({extractedData.additionalServices.length})
-                  </span>
-                  <ul style={{ paddingLeft: '1.25rem', marginTop: '0.25rem', fontSize: '0.85rem' }}>
-                    {extractedData.additionalServices.map((srv, idx) => (
-                      <li key={idx} style={{ marginBottom: '2px' }}>
-                        <strong>{srv.name}</strong>
-                        {srv.amount !== null && (
-                          <span style={{ color: 'var(--text-secondary)', marginLeft: '6px' }}>
-                            ({srv.currency || ''} {srv.amount})
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                  <span className="review-box-label">💰 Preço Total Comercial Identificado</span>
+                  <p style={{ fontWeight: 700, fontSize: '15px', color: 'var(--accent-text)', margin: '2px 0' }}>
+                    {extractedData.currency || 'EUR'} {extractedData.salePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                  <small style={{ color: 'var(--text-muted)' }}>
+                    O motor financeiro calculará automaticamente o custo total dos serviços e a margem após aplicação.
+                  </small>
                 </div>
               )}
-
-              {/* 6. Financeiro (Tratado estritamente como custo) */}
-              <div className="review-section-box" style={{ marginTop: '0.75rem' }}>
-                <span className="review-box-label">💰 Custos Comerciais Identificados</span>
-                <div className="review-grid-3" style={{ marginTop: '0.25rem' }}>
-                  <div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Moeda</span>
-                    <p style={{ fontWeight: 600 }}>
-                      {extractedData.financial.currency || 'Não informada'}
-                    </p>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Taxas / Impostos
-                    </span>
-                    <p style={{ fontWeight: 600 }}>
-                      {extractedData.financial.taxesAndFees !== null
-                        ? extractedData.financial.taxesAndFees
-                        : 'Não discriminadas'}
-                    </p>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Custo Total Identificado
-                    </span>
-                    <p style={{ fontWeight: 700, color: 'var(--accent-text)' }}>
-                      {extractedData.financial.total !== null
-                        ? `${extractedData.financial.currency || ''} ${extractedData.financial.total}`
-                        : 'Não identificado'}
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </div>

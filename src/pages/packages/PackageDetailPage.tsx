@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { packagesService } from '../../services/packagesService';
 import { quotationsService } from '../../services/quotationsService';
-import { Package, PackageStatus } from '../../types';
+import { Package, PackageStatus, ServiceItem } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { AIContentGenerator } from '../../components/ai/AIContentGenerator';
+import { ServicesDetailView } from '../../components/common/ServicesDetailView';
+import { isLegacyPackageData, normalizeLegacyToNewStructure, serviceItemToCostComponent } from '../../services/legacyAdapterService';
 
 export const PackageDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -103,7 +105,25 @@ export const PackageDetailPage: React.FC = () => {
     );
   }
 
-  const d = pkg.data || {};
+  const rawData = pkg.data || {};
+
+  // Normalização transparente de legados vs. novos dados
+  let services: ServiceItem[] = [];
+  let destination = rawData.destination || '';
+
+  if (Array.isArray(rawData.services) && rawData.services.length > 0) {
+    services = rawData.services;
+  } else if (isLegacyPackageData(rawData) || !Array.isArray(rawData.services)) {
+    const normalized = normalizeLegacyToNewStructure(rawData);
+    services = normalized.services || [];
+    if (!destination && normalized.destination) {
+      destination = normalized.destination;
+    }
+  }
+
+  const costComponents = rawData.financials?.components?.length
+    ? rawData.financials.components
+    : services.map(serviceItemToCostComponent);
 
   return (
     <div>
@@ -163,98 +183,77 @@ export const PackageDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid-cols-2" style={{ marginTop: '1.25rem' }}>
-        {/* Painel Esquerdo: Logística e Itinerário */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="card">
-            <h3 className="card-title">Datas & Passageiros</h3>
-            <div className="detail-rows">
-              <div className="detail-row">
-                <span className="detail-label">Datas:</span>
-                <span className="detail-value">
-                  {d.dates?.startDate ? `${d.dates.startDate} até ${d.dates.endDate || '—'}` : 'Datas flexíveis / A definir'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Duração:</span>
-                <span className="detail-value">
-                  {d.dates?.durationDays
-                    ? `${d.dates.durationDays} dias (${d.dates.durationNights ?? Math.max(0, d.dates.durationDays - 1)} noites)`
-                    : '—'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Configuração de Passageiros:</span>
-                <span className="detail-value">
-                  {d.passengers ? `${d.passengers.adults || 2} Adultos, ${d.passengers.children || 0} Crianças` : '2 Adultos'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Operador / Fornecedor:</span>
-                <span className="detail-value">{d.supplier || 'Não especificado'}</span>
-              </div>
-            </div>
+      {/* Painel de Dados Principais e Destino */}
+      <div className="card" style={{ marginTop: '1.25rem' }}>
+        <h3 className="card-title">Datas, Passageiros e Destino</h3>
+        <div className="detail-rows">
+          <div className="detail-row">
+            <span className="detail-label">Destino Principal:</span>
+            <span className="detail-value" style={{ fontWeight: 600 }}>
+              {destination || 'Não especificado'}
+            </span>
           </div>
-
-          <div className="card">
-            <h3 className="card-title">Transporte de Ida e Volta</h3>
-            <div className="detail-rows">
-              <div className="detail-row">
-                <span className="detail-label">Ida:</span>
-                <span className="detail-value">{d.outboundTransport?.route || 'Não incluído'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Volta:</span>
-                <span className="detail-value">{d.inboundTransport?.route || 'Não incluído'}</span>
-              </div>
-            </div>
+          <div className="detail-row">
+            <span className="detail-label">Datas:</span>
+            <span className="detail-value">
+              {rawData.dates?.startDate ? `${rawData.dates.startDate} até ${rawData.dates.endDate || '—'}` : 'Datas flexíveis / A definir'}
+            </span>
           </div>
-        </div>
-
-        {/* Painel Direito: Hospedagem e Valores */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="card">
-            <h3 className="card-title">Hospedagem Base</h3>
-            {d.lodging && d.lodging.length > 0 ? (
-              <div className="detail-rows">
-                {d.lodging.map((h, idx) => (
-                  <div key={idx} className="detail-item-box">
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{h.name}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      {h.destination} • {h.mealPlan || 'Regime padrão'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nenhum hotel configurado.</p>
-            )}
+          <div className="detail-row">
+            <span className="detail-label">Duração:</span>
+            <span className="detail-value">
+              {rawData.dates?.durationDays
+                ? `${rawData.dates.durationDays} dias (${rawData.dates.durationNights ?? Math.max(0, rawData.dates.durationDays - 1)} noites)`
+                : '—'}
+            </span>
           </div>
-
-          {d.additionalInfo && (
-            <div className="card">
-              <h3 className="card-title">Informações Adicionais</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                {d.additionalInfo}
-              </p>
-            </div>
-          )}
+          <div className="detail-row">
+            <span className="detail-label">Configuração de Passageiros:</span>
+            <span className="detail-value">
+              {rawData.passengers ? `${rawData.passengers.adults || 2} Adultos, ${rawData.passengers.children || 0} Crianças` : '2 Adultos'}
+            </span>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Operador / Fornecedor:</span>
+            <span className="detail-value">{rawData.supplier || 'Não especificado'}</span>
+          </div>
         </div>
       </div>
+
+      {/* Serviços Unificados Agrupados por Tipo */}
+      <div style={{ marginTop: '1.25rem' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+          Serviços e Itinerário do Pacote
+        </h3>
+        <ServicesDetailView
+          services={services}
+          currency={pkg.base_currency}
+          emptyMessage="Nenhum serviço cadastrado neste pacote."
+        />
+      </div>
+
+      {rawData.additionalInfo && (
+        <div className="card" style={{ marginTop: '1.25rem' }}>
+          <h3 className="card-title">Informações Adicionais</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>
+            {rawData.additionalInfo}
+          </p>
+        </div>
+      )}
 
       {/* Seção Financeiro (Motor Financeiro - Fase 4) */}
       <div style={{ marginTop: '1.5rem' }}>
         <FinancialEditor
           currency={pkg.base_currency}
-          components={d.financials?.components || []}
+          components={costComponents}
           onChangeComponents={() => {}}
           salePrice={
-            typeof d.financials?.salePrice === 'number'
-              ? d.financials.salePrice
-              : d.financials?.priceTotal?.amount || 0
+            typeof rawData.financials?.salePrice === 'number'
+              ? rawData.financials.salePrice
+              : rawData.financials?.priceTotal?.amount || 0
           }
           onChangeSalePrice={() => {}}
-          passengers={d.passengers}
+          passengers={rawData.passengers}
           readOnly={true}
         />
       </div>
@@ -266,3 +265,4 @@ export const PackageDetailPage: React.FC = () => {
     </div>
   );
 };
+

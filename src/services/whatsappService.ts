@@ -1,9 +1,10 @@
-// Gerador Determinístico de Mensagens Comerciais para WhatsApp (Packager - Fase 5)
+// Gerador Determinístico de Mensagens Comerciais para WhatsApp (Packager - Fase 4 / Fase 5)
 // REGRA FUNDAMENTAL: Sem IA, sem APIs externas, puramente determinístico em TypeScript.
 // Utiliza estritamente os dados congelados no snapshot da Quotation.
 // Nunca expõe dados internos (custo, lucro, margem, fornecedor, markup, IDs).
 
-import { Currency, Quotation, QuotationData } from '../types';
+import { Currency, Quotation, QuotationData, ServiceItem } from '../types';
+import { isLegacyPackageData, normalizeLegacyToNewStructure } from './legacyAdapterService';
 
 /**
  * Converte data de formato ISO (YYYY-MM-DD) para formato comercial DD/MM/YYYY
@@ -105,11 +106,32 @@ function getClientName(quotation: Quotation): string {
 function getDestination(quotation: Quotation): string {
   const d = quotation.data;
   if (!d) return '';
+
+  // 1. Destino comercial explícito no nível da cotação
+  if (typeof d.destination === 'string' && d.destination.trim()) {
+    return d.destination.trim();
+  }
+
+  // 2. Se for formato legado, resolve através do adapter
+  if (isLegacyPackageData(d) || !Array.isArray(d.services)) {
+    const normalized = normalizeLegacyToNewStructure(d);
+    if (normalized.destination?.trim()) {
+      return normalized.destination.trim();
+    }
+  }
+
+  // 3. Destino das hospedagens nos serviços
+  if (Array.isArray(d.services)) {
+    const hotelWithDest = d.services.find((s) => s.type === 'accommodation' && s.destination?.trim());
+    if (hotelWithDest?.destination?.trim()) {
+      return hotelWithDest.destination.trim();
+    }
+  }
+
+  // 4. Fallback para hospedagem legada
   const fromLodging = d.lodging?.map((l) => l?.destination?.trim()).find(Boolean);
   if (fromLodging) return fromLodging;
-  if (typeof (d as any)?.destination === 'string' && (d as any).destination.trim()) {
-    return (d as any).destination.trim();
-  }
+
   if (typeof (d as any)?.city === 'string' && (d as any).city.trim()) {
     return (d as any).city.trim();
   }
@@ -178,15 +200,51 @@ export function getPackageCommercialTitle(d?: QuotationData): string {
   return getWhatsAppTitle(mockQuotation as Quotation);
 }
 
+function calculateNightsBetweenDates(startDate?: string, endDate?: string): number | undefined {
+  if (!startDate || !endDate) return undefined;
+  const s = new Date(startDate);
+  const e = new Date(endDate);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return undefined;
+  const diffTime = e.getTime() - s.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : undefined;
+}
+
 /**
  * Gera a mensagem comercial completa para envio no WhatsApp
  * baseando-se única e exclusivamente nos dados da cotação.
+ * Suporta tanto a nova estrutura unificada `services[]` quanto dados legados via adapter.
  */
 export function generateWhatsAppMessage(quotation: Quotation): string {
   if (!quotation) return '';
 
   const d: QuotationData = quotation.data || {};
   const currency: Currency = quotation.currency || 'EUR';
+
+  const isLegacy = !Array.isArray(d.services);
+  const hasLegacyLodging = isLegacy ? Boolean(d.lodging && d.lodging.length > 0) : true;
+  const hasLegacyOutbound = isLegacy ? Boolean(d.outboundTransport && (d.outboundTransport.route || d.outboundTransport.carrier)) : true;
+  const hasLegacyInbound = isLegacy ? Boolean(d.inboundTransport && (d.inboundTransport.route || d.inboundTransport.carrier)) : true;
+
+  // Unificação de Fonte de Dados: se for legado ou não tiver services[], normaliza via adapter
+  let services: ServiceItem[] = [];
+  let localTaxNotes = d.localTaxNotes;
+  let paymentConditions = d.paymentConditions;
+  let extraServicesNotes = d.extraServicesNotes;
+  let customNotes = d.customNotes;
+  let transferService = d.transferService;
+
+  if (Array.isArray(d.services) && d.services.length > 0) {
+    services = d.services;
+  } else if (d && (isLegacyPackageData(d) || !Array.isArray(d.services))) {
+    const normalized = normalizeLegacyToNewStructure(d);
+    services = normalized.services || [];
+    if (!localTaxNotes && normalized.localTaxNotes) localTaxNotes = normalized.localTaxNotes;
+    if (!paymentConditions && normalized.paymentConditions) paymentConditions = normalized.paymentConditions;
+    if (!extraServicesNotes && normalized.extraServicesNotes) extraServicesNotes = normalized.extraServicesNotes;
+    if (!customNotes && normalized.customNotes) customNotes = normalized.customNotes;
+    if (!transferService && normalized.transferService) transferService = normalized.transferService;
+  }
 
   const sections: string[] = [];
 
@@ -210,105 +268,140 @@ export function generateWhatsAppMessage(quotation: Quotation): string {
 
   inclusions.push(`✈️ O que está incluído para ${passengersText}:`);
 
-  // Transporte de Ida
-  const outbound = d.outboundTransport;
-  if (outbound && (outbound.route?.trim() || outbound.carrier?.trim())) {
-    const obDate = outbound.departureDate
-      ? formatDateCommercial(outbound.departureDate)
-      : startDate;
-    const obDesc = [
-      outbound.carrier?.trim(),
-      outbound.route?.trim(),
-    ]
-      .filter(Boolean)
-      .join(' ');
+  // Transporte de Ida (outbound_transport)
+  const outbounds = isLegacy && !hasLegacyOutbound
+    ? []
+    : services.filter((s) => s.type === 'outbound_transport');
+  for (const outbound of outbounds) {
+    if (outbound.description?.trim()) {
+      let obDesc = outbound.description.trim();
+      if (outbound.carrier?.trim() && !obDesc.toLowerCase().includes(outbound.carrier.toLowerCase().trim())) {
+        obDesc = `${outbound.carrier.trim()} ${obDesc}`;
+      }
 
-    if (obDate) {
-      inclusions.push(`🛫 ${obDate} – ${obDesc}`);
-    } else {
-      inclusions.push(`🛫 ${obDesc}`);
-    }
+      if (startDate) {
+        inclusions.push(`🛫 ${startDate} – ${obDesc}`);
+      } else {
+        inclusions.push(`🛫 ${obDesc}`);
+      }
 
-    // Horários de ida (omitido se não informado)
-    const depTime = outbound.departureTime?.trim();
-    const arrTime = outbound.arrivalTime?.trim();
-    if (depTime && arrTime) {
-      inclusions.push(`⏰ Partida: ${depTime} → ${arrTime}`);
-    } else if (depTime) {
-      inclusions.push(`⏰ Partida: ${depTime}`);
-    } else if (arrTime) {
-      inclusions.push(`⏰ Chegada: ${arrTime}`);
-    }
-  }
-
-  // Transporte de Volta
-  const inbound = d.inboundTransport;
-  if (inbound && (inbound.route?.trim() || inbound.carrier?.trim())) {
-    const ibDate = inbound.departureDate
-      ? formatDateCommercial(inbound.departureDate)
-      : endDate;
-    const ibDesc = [
-      inbound.carrier?.trim(),
-      inbound.route?.trim(),
-    ]
-      .filter(Boolean)
-      .join(' ');
-
-    if (ibDate) {
-      inclusions.push(`🛬 ${ibDate} – ${ibDesc}`);
-    } else {
-      inclusions.push(`🛬 ${ibDesc}`);
-    }
-
-    // Horários de volta (omitido se não informado)
-    const depTime = inbound.departureTime?.trim();
-    const arrTime = inbound.arrivalTime?.trim();
-    if (depTime && arrTime) {
-      inclusions.push(`⏰ Partida: ${depTime} → ${arrTime}`);
-    } else if (depTime) {
-      inclusions.push(`⏰ Partida: ${depTime}`);
-    } else if (arrTime) {
-      inclusions.push(`⏰ Chegada: ${arrTime}`);
+      // Horários de ida (omitido se não informado)
+      const depTime = outbound.departureTime?.trim();
+      const arrTime = outbound.arrivalTime?.trim();
+      if (depTime && arrTime) {
+        inclusions.push(`⏰ Partida: ${depTime} → ${arrTime}`);
+      } else if (depTime) {
+        inclusions.push(`⏰ Partida: ${depTime}`);
+      } else if (arrTime) {
+        inclusions.push(`⏰ Chegada: ${arrTime}`);
+      }
     }
   }
 
-  // Hospedagem
-  if (d.lodging && d.lodging.length > 0) {
-    const h = d.lodging[0];
-    if (h.name?.trim()) {
+  // Transporte de Volta (inbound_transport)
+  const inbounds = isLegacy && !hasLegacyInbound
+    ? []
+    : services.filter((s) => s.type === 'inbound_transport');
+  for (const inbound of inbounds) {
+    if (inbound.description?.trim()) {
+      let ibDesc = inbound.description.trim();
+      if (inbound.carrier?.trim() && !ibDesc.toLowerCase().includes(inbound.carrier.toLowerCase().trim())) {
+        ibDesc = `${inbound.carrier.trim()} ${ibDesc}`;
+      }
+
+      if (endDate) {
+        inclusions.push(`🛬 ${endDate} – ${ibDesc}`);
+      } else {
+        inclusions.push(`🛬 ${ibDesc}`);
+      }
+
+      // Horários de volta (omitido se não informado)
+      const depTime = inbound.departureTime?.trim();
+      const arrTime = inbound.arrivalTime?.trim();
+      if (depTime && arrTime) {
+        inclusions.push(`⏰ Partida: ${depTime} → ${arrTime}`);
+      } else if (depTime) {
+        inclusions.push(`⏰ Partida: ${depTime}`);
+      } else if (arrTime) {
+        inclusions.push(`⏰ Chegada: ${arrTime}`);
+      }
+    }
+  }
+
+  // Hospedagem (accommodation) - Suporta múltiplas hospedagens
+  const accommodations = isLegacy && !hasLegacyLodging
+    ? []
+    : services.filter((s) => s.type === 'accommodation');
+  for (const h of accommodations) {
+    if (h.description?.trim()) {
+      const parsedNotesNights = h.notes?.match(/(\d+)\s*noites?/i);
+      const nightsFromNotes = parsedNotesNights ? parseInt(parsedNotesNights[1], 10) : undefined;
       const nights =
-        h.nights ||
         d.dates?.durationNights ||
-        (d.dates?.durationDays && d.dates.durationDays > 1 ? d.dates.durationDays - 1 : d.dates?.durationDays);
-      const hDate = h.checkIn ? formatDateCommercial(h.checkIn) : startDate;
+        (d.dates?.durationDays && d.dates.durationDays > 1 ? d.dates.durationDays - 1 : d.dates?.durationDays) ||
+        calculateNightsBetweenDates(d.dates?.startDate, d.dates?.endDate) ||
+        nightsFromNotes ||
+        (h.quantity && h.quantity > 1 ? h.quantity : undefined);
       const mealPlan = h.mealPlan?.trim();
 
       let hotelLine = '🏨 ';
-      if (hDate && nights && mealPlan) {
-        hotelLine += `${hDate} – ${nights} noites em ${h.name.trim()}, com ${mealPlan}.`;
+      if (startDate && nights && mealPlan) {
+        hotelLine += `${startDate} – ${nights} noites em ${h.description.trim()}, com ${mealPlan}.`;
       } else if (nights && mealPlan) {
-        hotelLine += `${nights} noites em ${h.name.trim()}, com ${mealPlan}.`;
+        hotelLine += `${nights} noites em ${h.description.trim()}, com ${mealPlan}.`;
       } else if (nights) {
-        hotelLine += `${nights} noites em ${h.name.trim()}.`;
+        hotelLine += `${nights} noites em ${h.description.trim()}.`;
       } else if (mealPlan) {
-        hotelLine += `Hospedagem em ${h.name.trim()}, com ${mealPlan}.`;
+        hotelLine += `Hospedagem em ${h.description.trim()}, com ${mealPlan}.`;
       } else {
-        hotelLine += `Hospedagem em ${h.name.trim()}.`;
+        hotelLine += `Hospedagem em ${h.description.trim()}.`;
       }
       inclusions.push(hotelLine);
     }
   }
 
-  // Transfer (se configurado)
-  if (d.transferService?.trim()) {
-    inclusions.push(`🚗 ${d.transferService.trim()}`);
-  } else {
-    // Procura em additionalServices se há algum transfer incluído
-    const includedTransfer = d.additionalServices?.find(
-      (s) => s.included && (s.type?.toLowerCase().includes('transfer') || s.name?.toLowerCase().includes('transfer'))
-    );
-    if (includedTransfer) {
-      inclusions.push(`🚗 ${includedTransfer.name.trim()}`);
+  // Transfers (transfer)
+  if (transferService?.trim()) {
+    inclusions.push(`🚗 ${transferService.trim()}`);
+  }
+  const transfers = services.filter((s) => s.type === 'transfer');
+  for (const t of transfers) {
+    if (t.description?.trim()) {
+      if (!transferService || transferService.trim().toLowerCase() !== t.description.trim().toLowerCase()) {
+        inclusions.push(`🚗 ${t.description.trim()}`);
+      }
+    }
+  }
+
+  // Seguro-viagem (insurance)
+  const insurances = services.filter((s) => s.type === 'insurance');
+  for (const ins of insurances) {
+    if (ins.description?.trim()) {
+      inclusions.push(`🛡️ ${ins.description.trim()}`);
+    }
+  }
+
+  // Serviços adicionais (additional)
+  const additionals = services.filter((s) => s.type === 'additional');
+  for (const add of additionals) {
+    if (add.description?.trim()) {
+      inclusions.push(`🎫 ${add.description.trim()}`);
+    }
+  }
+
+  // Impostos / Taxas (taxes)
+  const taxes = services.filter((s) => s.type === 'taxes');
+  for (const tax of taxes) {
+    if (tax.description?.trim()) {
+      inclusions.push(`🏛️ ${tax.description.trim()}`);
+    }
+  }
+
+  // Outros custos (other)
+  const others = services.filter((s) => s.type === 'other');
+  for (const oth of others) {
+    if (oth.description?.trim()) {
+      inclusions.push(`📦 ${oth.description.trim()}`);
     }
   }
 
@@ -327,23 +420,23 @@ export function generateWhatsAppMessage(quotation: Quotation): string {
   }
 
   // 5. Condição de Pagamento (Entrada / Parcelamento)
-  if (d.paymentConditions?.trim()) {
-    sections.push(`💳 Entrada: ${d.paymentConditions.trim()}`);
+  if (paymentConditions?.trim()) {
+    sections.push(`💳 Entrada: ${paymentConditions.trim()}`);
   }
 
   // 6. Observações ou Opções Comerciais
-  if (d.customNotes?.trim()) {
-    sections.push(d.customNotes.trim());
+  if (customNotes?.trim()) {
+    sections.push(customNotes.trim());
   }
 
   // 7. Taxa Local (se aplicável)
-  if (d.localTaxNotes?.trim()) {
-    sections.push(`Taxa local a pagar diretamente na hospedagem: ${d.localTaxNotes.trim()}`);
+  if (localTaxNotes?.trim()) {
+    sections.push(`Taxa local a pagar diretamente na hospedagem: ${localTaxNotes.trim()}`);
   }
 
   // 8. Serviços Extras / Opcionais (se aplicável)
-  if (d.extraServicesNotes?.trim()) {
-    sections.push(`Consulte-nos sobre serviços extra: ${d.extraServicesNotes.trim()}`);
+  if (extraServicesNotes?.trim()) {
+    sections.push(`Consulte-nos sobre serviços extra: ${extraServicesNotes.trim()}`);
   } else {
     const extraServices = d.additionalServices?.filter((s) => !s.included);
     if (extraServices && extraServices.length > 0) {

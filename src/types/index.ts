@@ -143,6 +143,92 @@ export interface CostComponent {
   isCustomized?: boolean;
 }
 
+// ==========================================
+// NOVO MODELO UNIFICADO DE SERVIÇOS (FASE 1)
+// ==========================================
+
+export type ServiceType =
+  | 'outbound_transport'
+  | 'inbound_transport'
+  | 'accommodation'
+  | 'transfer'
+  | 'insurance'
+  | 'additional'
+  | 'taxes'
+  | 'other';
+
+export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
+  outbound_transport: 'Transporte de ida',
+  inbound_transport:  'Transporte de volta',
+  accommodation:      'Hospedagem',
+  transfer:           'Transfer',
+  insurance:          'Seguro-viagem',
+  additional:         'Serviços adicionais',
+  taxes:              'Impostos/taxas',
+  other:              'Outros custos',
+};
+
+export const VALID_SERVICE_TYPES: readonly ServiceType[] = [
+  'outbound_transport',
+  'inbound_transport',
+  'accommodation',
+  'transfer',
+  'insurance',
+  'additional',
+  'taxes',
+  'other',
+] as const;
+
+/**
+ * Item de serviço unificado que consolida descrição operacional,
+ * capacidade financeira (custo, moeda, quantidade) e dados específicos do tipo.
+ */
+export interface ServiceItem {
+  id: string; // UUID (crypto.randomUUID())
+  type: ServiceType;
+  description: string;
+  currency: Currency;
+  amount: number;
+  quantity: number;
+  notes?: string;
+
+  // Campos específicos para Transporte (ida / volta)
+  carrier?: string;
+  departureTime?: string; // HH:MM
+  arrivalTime?: string;   // HH:MM
+
+  // Campos específicos para Hospedagem
+  destination?: string;
+  mealPlan?: string;
+
+  // Rastreabilidade e preservação na migração/adapter
+  sourceField?: string;
+  legacyComponentId?: string;
+  legacyCategory?: string;
+  isCustomized?: boolean;
+}
+
+/**
+ * Estrutura representacional dos dados normalizados para a nova arquitetura
+ */
+export interface NormalizedPackageData {
+  destination?: string;
+  destinationConflict?: boolean;
+  destinationConflictDetails?: string[];
+  dates?: TravelDates;
+  passengers?: PassengerConfig;
+  services: ServiceItem[];
+  financials?: FinancialSummary;
+  additionalInfo?: string;
+  localTaxNotes?: string;
+  paymentConditions?: string;
+  supplier?: string;
+  transferService?: string;
+  extraServicesNotes?: string;
+  customNotes?: string;
+  [key: string]: unknown;
+}
+
 // Resumo financeiro e cálculos determinísticos do motor financeiro
 export interface FinancialSummary {
   currency: Currency;
@@ -164,6 +250,10 @@ export interface FinancialSummary {
  * Estrutura rica de dados armazenada no campo JSONB `packages.data`
  */
 export interface PackageData {
+  destination?: string;
+  services?: ServiceItem[];
+  destinationConflict?: boolean;
+  destinationConflictDetails?: string[];
   passengers?: PassengerConfig;
   dates?: TravelDates;
   outboundTransport?: TransportDetails;
@@ -337,6 +427,43 @@ export interface PackageWebsiteContent {
 }
 
 /**
+ * Representação sanitizada de um serviço para consumo da IA de Conteúdo para Website (Fase 6A).
+ * Contém estritamente metadados descritivos públicos, sem custos, fornecedores ou IDs internos.
+ */
+export interface SanitizedWebServiceItem {
+  type: ServiceType;
+  description: string;
+  destination?: string;
+  city?: string;
+  country?: string;
+  carrier?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  quantity?: number;
+  mealPlan?: string;
+  notes?: string;
+}
+
+/**
+ * Payload comercial sanitizado gerado a partir do Pacote Base para geração de conteúdo Website (Fase 6A).
+ * Garante que dados confidenciais ou financeiros internos não sejam enviados à IA.
+ */
+export interface WebsiteContentPayload {
+  packageName: string;
+  reference?: string;
+  destination: string;
+  dates?: TravelDates;
+  passengers?: PassengerConfig;
+  durationDays?: number;
+  durationNights?: number;
+  services: SanitizedWebServiceItem[];
+  publicSalePrice: number;
+  currency: Currency;
+  paymentConditions?: string;
+  customNotes?: string;
+}
+
+/**
  * Input seguro fornecido ao backend de IA (Gemini + Grounding)
  * Protegido contra vazamento de custos internos, lucro, margem ou dados confidenciais de fornecedor.
  */
@@ -354,13 +481,16 @@ export interface ContentGenerationInput {
   mealPlan?: string;
   nights?: number;
   salePrice: number;
+  publicSalePrice?: number;
   currency: Currency;
+  services?: SanitizedWebServiceItem[];
   includedServices: string[];
   notIncludedServices: string[];
   paymentConditions?: string;
   customNotes?: string;
   localTaxNotes?: string;
   transferService?: string;
+  model?: string;
 }
 
 // ==========================================
@@ -437,23 +567,74 @@ export interface PackageDraft {
   durationNights: number | '';
   adults: number | '';
   children: number | '';
-  outboundRoute: string;
-  outboundCarrier: string;
-  inboundRoute: string;
-  inboundCarrier: string;
-  hotelName: string;
-  hotelDestination: string;
-  hotelMealPlan: string;
-  costComponents: CostComponent[];
+  destination?: string;
+  services?: ServiceItem[];
+  outboundRoute?: string;
+  outboundCarrier?: string;
+  inboundRoute?: string;
+  inboundCarrier?: string;
+  hotelName?: string;
+  hotelDestination?: string;
+  hotelMealPlan?: string;
+  costComponents?: CostComponent[];
   salePrice: number;
   savedAt: number;
 }
 
 /**
- * Modelo estruturado de retorno da extração de cotação por imagem via IA multimodal
+ * Interface para rascunho de criação de cotação salvo em sessionStorage
+ * Preserva o estado completo do formulário durante navegações contextuais.
+ */
+export interface QuoteDraft {
+  reference: string;
+  clientName: string;
+  status: QuotationStatus;
+  currency: Currency;
+  exchangeRate?: string;
+  exchangeRateDate?: string;
+  originPackageId?: string | null;
+  originPackageName?: string;
+  customNotes?: string;
+  startDate: string;
+  endDate: string;
+  durationDays: number | '';
+  durationNights: number | '';
+  adults: number | '';
+  children: number | '';
+  infants: number | '';
+  destination?: string;
+  services?: ServiceItem[];
+  salePrice: number;
+  paymentConditions?: string;
+  localTaxNotes?: string;
+  extraServicesNotes?: string;
+  transferService?: string;
+  outboundRoute?: string;
+  outboundCarrier?: string;
+  inboundRoute?: string;
+  inboundCarrier?: string;
+  hotelName?: string;
+  hotelDestination?: string;
+  hotelMealPlan?: string;
+  costComponents?: CostComponent[];
+  savedAt: number;
+}
+
+/**
+ * Conflito detectado entre imagens durante análise multimodal
+ */
+export interface ImportConflict {
+  field: string;
+  values: string[];
+  description: string;
+}
+
+/**
+ * Modelo estruturado de retorno da extração de cotação por imagem via IA multimodal (Fase 5)
  */
 export interface ImportedPackageData {
   packageName?: string | null;
+  destination?: string | null;
 
   dates: {
     start: string | null;
@@ -467,7 +648,24 @@ export interface ImportedPackageData {
     }>;
   };
 
-  outbound: {
+  /**
+   * Lista unificada e tipada de serviços extraídos pela IA
+   */
+  services: ServiceItem[];
+
+  /**
+   * Valor comercial total de venda explicitamente identificado na imagem (se houver)
+   */
+  salePrice?: number | null;
+  currency?: Currency | null;
+
+  /**
+   * Avisos estruturados de conflitos detectados entre múltiplas imagens analisadas conjuntamente
+   */
+  conflicts?: Array<ImportConflict | string>;
+
+  // --- Campos legados preservados para retrocompatibilidade ---
+  outbound?: {
     route: string | null;
     company: string | null;
     flight: string | null;
@@ -475,7 +673,7 @@ export interface ImportedPackageData {
     arrivalTime: string | null;
   };
 
-  inbound: {
+  inbound?: {
     route: string | null;
     company: string | null;
     flight: string | null;
@@ -483,7 +681,7 @@ export interface ImportedPackageData {
     arrivalTime: string | null;
   };
 
-  lodging: {
+  lodging?: {
     name: string | null;
     city: string | null;
     country: string | null;
@@ -493,7 +691,7 @@ export interface ImportedPackageData {
     checkOut: string | null;
   };
 
-  additionalServices: Array<{
+  additionalServices?: Array<{
     name: string;
     date: string | null;
     description: string | null;
@@ -501,17 +699,11 @@ export interface ImportedPackageData {
     amount: number | null;
   }>;
 
-  financial: {
+  financial?: {
     currency: string | null;
     taxesAndFees: number | null;
     total: number | null;
   };
-
-  /**
-   * Avisos de conflitos detectados entre múltiplas imagens analisadas conjuntamente
-   * (ex: "Valor encontrado em mais de uma imagem: €450 / €480. Revise antes de salvar.")
-   */
-  conflicts?: string[];
 }
 
 export interface ImageImportResponse {
