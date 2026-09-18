@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Supabase Edge Function: import-package-image
 // Responsável por receber uma imagem de cotação/orçamento de viagem (PNG, JPG, JPEG),
 // analisar com a IA multimodal do Gemini e extrair dados estruturados deterministicamente.

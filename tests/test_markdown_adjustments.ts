@@ -110,8 +110,11 @@ runTest('TESTE 2: Observação de pagamento editada manualmente é persistida e 
     excerpt: 'Resumo.',
     slug: 'viena-imperial',
     price: 849.5,
+    published: false,
+    featured: false,
     sobre: { title: 'Sobre', text: appendDestinationDisclaimer('Texto.') },
     incluso: [{ icon: 'gift', title: 'Guia exclusivo S23', desc: 'Dicas' }],
+    naoIncluso: [],
     pagamento: {
       observacao: customNote,
     },
@@ -162,8 +165,11 @@ runTest('TESTE 3: Novo conteúdo possui a observação oficial padrão por defau
     excerpt: 'Resumo.',
     slug: 'novo-pacote',
     price: 500,
+    published: false,
+    featured: false,
     sobre: { title: 'Sobre', text: appendDestinationDisclaimer('Texto.') },
     incluso: [{ icon: 'gift', title: 'Guia exclusivo S23', desc: 'Dicas' }],
+    naoIncluso: [],
     pagamento: {
       observacao: defaultNote,
     },
@@ -271,6 +277,8 @@ runTest('TESTE 6: Generalização no Markdown omite Ryanair, 15:05, 19:20 e Hote
     excerpt: 'Pacote incrível para Viena.',
     slug: 'viena-classica-2026',
     price: 650,
+    published: false,
+    featured: false,
     sobre: {
       title: 'Sobre Viena',
       text: 'Encante-se com a estadia no Hotel Brixen e aproveite o voo Ryanair das 15:05 até 19:20.',
@@ -291,8 +299,8 @@ runTest('TESTE 6: Generalização no Markdown omite Ryanair, 15:05, 19:20 e Hote
   // Gera o Markdown passando os metadados do pacote
   const md = generatePackageMarkdown(content, {
     packageData: originalPackageData,
-    disallowedCarriers: ['Ryanair'],
-    disallowedHotels: ['Hotel Brixen'],
+    carriers: ['Ryanair'],
+    hotelNames: ['Hotel Brixen'],
   });
 
   // Verificações no Markdown público
@@ -374,8 +382,11 @@ runTest('TESTE 7: Serviços internos (services[]) continuam estritamente inalter
     excerpt: 'Resumo',
     slug: 'londres-classica',
     price: 750,
+    published: false,
+    featured: false,
     sobre: { title: 'Sobre', text: appendDestinationDisclaimer('Texto') },
     incluso: [{ icon: 'gift', title: 'Guia exclusivo S23', desc: 'Dicas' }],
+    naoIncluso: [],
     pagamento: { observacao: S23_OBLIGATORY_PAYMENT_NOTE },
     seoTitle: 'SEO',
     seoDescription: 'SEO',
@@ -463,7 +474,7 @@ runTest('TESTE 8: Geração de WhatsApp permanece 100% funcional e preserva dado
     data: quoteData,
   };
 
-  const waMessage = generateWhatsAppMessage(quote, basePackage);
+  const waMessage = generateWhatsAppMessage(quote);
 
   // O WhatsApp deve continuar contendo o título comercial do pacote, detalhes de hotel e preço por pessoa
   assert(waMessage.includes('Pacote Viena & Budapeste'), 'Título do WhatsApp preservado');

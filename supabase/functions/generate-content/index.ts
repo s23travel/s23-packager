@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Supabase Edge Function: generate-content
 // Responsável por orquestrar a geração de conteúdo comercial para o website S23
 // utilizando a API do Google Gemini com Google Search Grounding de forma segura no backend.

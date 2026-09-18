@@ -185,9 +185,18 @@ async function runValidation() {
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     data: {
-      financials: { salePrice: 500, pricePerPerson: 500 },
-      dates: { durationDays: 5 },
-      lodging: [{ name: 'Hotel Base Maiorca', destination: 'Maiorca' }],
+      financials: {
+        salePrice: 500,
+        pricePerPerson: 500,
+        currency: 'EUR',
+        components: [],
+        totalCost: 350,
+        profit: 150,
+        profitPercent: 30,
+        taxesAndFeesTotal: 0,
+      },
+      dates: { startDate: '2026-09-01', endDate: '2026-09-06', durationDays: 5 },
+      lodging: [{ id: 'lodging-1', name: 'Hotel Base Maiorca', destination: 'Maiorca' }],
     },
   };
 
@@ -204,9 +213,18 @@ async function runValidation() {
     updated_at: new Date().toISOString(),
     data: {
       originPackageName: 'Maiorca Personalizado',
-      financials: { salePrice: 720, pricePerPerson: 720 }, // Preço negociado independente
-      dates: { durationDays: 7 },
-      lodging: [{ name: 'Hotel 5 Estrelas Luxo', destination: 'Palma de Maiorca' }],
+      financials: {
+        salePrice: 720,
+        pricePerPerson: 720,
+        currency: 'EUR',
+        components: [],
+        totalCost: 500,
+        profit: 220,
+        profitPercent: 30.55,
+        taxesAndFeesTotal: 0,
+      }, // Preço negociado independente
+      dates: { startDate: '2026-09-01', endDate: '2026-09-08', durationDays: 7 },
+      lodging: [{ id: 'lodging-2', name: 'Hotel 5 Estrelas Luxo', destination: 'Palma de Maiorca' }],
     },
   };
 
