@@ -4,7 +4,10 @@
 
 import { supabase } from '../lib/supabase';
 import { ContentGenerationInput, StructuredPackageContent } from '../types';
-import { validateStructuredContent } from './contentValidationService';
+import {
+  validateStructuredContent,
+  OBRIGATORIO_PAGAMENTO_OBSERVACAO,
+} from './contentValidationService';
 
 export interface AIContentResponse {
   success: boolean;
@@ -54,8 +57,29 @@ export async function generateContentForWebsite(
       };
     }
 
+    // Aplica camada determinística de soberania: se a IA tiver gerado preço divergente
+    // ou frase de pagamento diferente, o frontend impõe os valores oficiais soberanos da S23
+    const rawContent = data.data;
+    const expectedPrice =
+      typeof input.publicSalePrice === 'number' && input.publicSalePrice > 0
+        ? input.publicSalePrice
+        : input.salePrice;
+
+    if (rawContent && typeof rawContent === 'object') {
+      if (expectedPrice > 0) {
+        rawContent.price = expectedPrice;
+      }
+      if (!rawContent.pagamento || typeof rawContent.pagamento !== 'object') {
+        rawContent.pagamento = { observacao: OBRIGATORIO_PAGAMENTO_OBSERVACAO };
+      } else if (!rawContent.pagamento.observacao || typeof rawContent.pagamento.observacao !== 'string') {
+        rawContent.pagamento.observacao = OBRIGATORIO_PAGAMENTO_OBSERVACAO;
+      } else if (rawContent.pagamento.observacao.trim() !== OBRIGATORIO_PAGAMENTO_OBSERVACAO) {
+        rawContent.pagamento.observacao = OBRIGATORIO_PAGAMENTO_OBSERVACAO;
+      }
+    }
+
     // Validação determinística client-side adicional antes de aceitar o conteúdo
-    const validation = validateStructuredContent(data.data, input);
+    const validation = validateStructuredContent(rawContent, input);
     if (!validation.valid) {
       return {
         success: false,
