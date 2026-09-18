@@ -12,7 +12,21 @@ import {
 } from '../types';
 
 export const OBRIGATORIO_PAGAMENTO_OBSERVACAO =
-  'Valor por pessoa. Consulte-nos sobre personalizações, pagamento parcelado ou em outras moedas.';
+  'Valor por pessoa em quarto duplo. Consulte-nos sobre personalizações.';
+
+export const S23_DESTINATION_DISCLAIMER =
+  'Anúncio gerado por rotina informática. Confirme informações e condições junto à S23 antes da contratação.';
+
+export function appendDestinationDisclaimer(text?: string): string {
+  if (!text || !text.trim()) {
+    return S23_DESTINATION_DISCLAIMER;
+  }
+  const trimmed = text.trim();
+  if (trimmed.includes(S23_DESTINATION_DISCLAIMER)) {
+    return trimmed;
+  }
+  return `${trimmed}\n\n${S23_DESTINATION_DISCLAIMER}`;
+}
 
 export const OBRIGATORIO_ITEM_INCLUSO_S23 = {
   icon: 'gift',
@@ -70,13 +84,15 @@ export function buildWebsiteContentPayload(
     }
   }
 
-  // 2. Extrai preço de venda comercial público (NUNCA custos ou margens)
+  // 2. Extrai preço de venda comercial público (SEMPRE financials.pricePerPerson)
   const publicSalePrice =
-    typeof packageData.financials?.salePrice === 'number'
-      ? packageData.financials.salePrice
-      : typeof packageData.financials?.priceTotal?.amount === 'number'
-      ? packageData.financials.priceTotal.amount
-      : 0;
+    typeof packageData.financials?.pricePerPerson === 'number'
+      ? packageData.financials.pricePerPerson
+    : typeof packageData.financials?.salePrice === 'number'
+    ? packageData.financials.salePrice
+    : typeof packageData.financials?.priceTotal?.amount === 'number'
+    ? packageData.financials.priceTotal.amount
+    : 0;
 
   // 3. Mapeia estritamente metadados descritivos públicos para SanitizedWebServiceItem
   const sanitizedServices: SanitizedWebServiceItem[] = services.map((s: ServiceItem) => {
@@ -137,9 +153,16 @@ export function buildContentGenerationInput(source: {
     const salePrice =
       typeof d.financials?.salePrice === 'number'
         ? d.financials.salePrice
+        : typeof d.financials?.pricePerPerson === 'number'
+        ? d.financials.pricePerPerson
         : typeof d.financials?.priceTotal?.amount === 'number'
         ? d.financials.priceTotal.amount
         : 0;
+
+    const publicSalePrice =
+      typeof d.financials?.pricePerPerson === 'number'
+        ? d.financials.pricePerPerson
+        : salePrice;
 
     const includedServices: string[] = [];
     if (d.outboundTransport?.route) {
@@ -148,9 +171,9 @@ export function buildContentGenerationInput(source: {
     if (d.inboundTransport?.route) {
       includedServices.push(`Transporte de volta: ${d.inboundTransport.route}`);
     }
-    if (d.lodging?.[0]?.name) {
+    if (d.lodging?.[0]) {
       includedServices.push(
-        `Hospedagem em ${d.lodging[0].name} (${d.lodging[0].mealPlan || 'Regime padrão'})`
+        `${d.lodging[0].name} (${d.lodging[0].mealPlan || 'Regime padrão'})`
       );
     }
     if (d.transferService) {
@@ -182,7 +205,7 @@ export function buildContentGenerationInput(source: {
       mealPlan: d.lodging?.[0]?.mealPlan,
       nights: d.lodging?.[0]?.nights || d.dates?.durationNights,
       salePrice,
-      publicSalePrice: salePrice,
+      publicSalePrice,
       currency: q.currency,
       includedServices,
       notIncludedServices,
@@ -225,24 +248,22 @@ export function buildContentGenerationInput(source: {
 
     if (outboundService) {
       let desc = `Transporte de ida: ${outboundService.description}`;
-      const details: string[] = [];
-      if (outboundService.carrier) details.push(outboundService.carrier);
-      if (outboundService.departureTime) details.push(`partida ${outboundService.departureTime}`);
-      if (details.length > 0) desc += ` (${details.join(', ')})`;
+      if (outboundService.carrier) {
+        desc += ` (${outboundService.carrier})`;
+      }
       includedServices.push(desc);
     }
 
     if (inboundService) {
       let desc = `Transporte de volta: ${inboundService.description}`;
-      const details: string[] = [];
-      if (inboundService.carrier) details.push(inboundService.carrier);
-      if (inboundService.departureTime) details.push(`partida ${inboundService.departureTime}`);
-      if (details.length > 0) desc += ` (${details.join(', ')})`;
+      if (inboundService.carrier) {
+        desc += ` (${inboundService.carrier})`;
+      }
       includedServices.push(desc);
     }
 
     for (const h of lodgingServices) {
-      let desc = `Hospedagem em ${h.description}`;
+      let desc = h.description;
       if (h.mealPlan) {
         desc += ` (${h.mealPlan})`;
       }
@@ -293,7 +314,10 @@ export function buildContentGenerationInput(source: {
       hotelName: primaryLodging?.description,
       mealPlan: primaryLodging?.mealPlan,
       nights: payload.durationNights || primaryLodging?.quantity,
-      salePrice: payload.publicSalePrice,
+      salePrice:
+        typeof d.financials?.salePrice === 'number'
+          ? d.financials.salePrice
+          : payload.publicSalePrice,
       publicSalePrice: payload.publicSalePrice,
       currency: payload.currency,
       services: payload.services,
@@ -321,7 +345,8 @@ export interface ValidationResult {
  */
 export function validateStructuredContent(
   raw: unknown,
-  input?: ContentGenerationInput
+  input?: ContentGenerationInput,
+  options?: { allowCustomPaymentNote?: boolean }
 ): ValidationResult {
   const errors: string[] = [];
 
@@ -371,9 +396,20 @@ export function validateStructuredContent(
   if (!obj.pagamento || typeof obj.pagamento !== 'object') {
     errors.push('Bloco obrigatório ausente ou inválido: pagamento');
   } else {
-    if (obj.pagamento.observacao !== OBRIGATORIO_PAGAMENTO_OBSERVACAO) {
+    if (!obj.pagamento.observacao || typeof obj.pagamento.observacao !== 'string' || !obj.pagamento.observacao.trim()) {
+      if (options?.allowCustomPaymentNote) {
+        obj.pagamento.observacao = OBRIGATORIO_PAGAMENTO_OBSERVACAO;
+      } else {
+        errors.push(
+          `A observação de pagamento deve ser exatamente: "${OBRIGATORIO_PAGAMENTO_OBSERVACAO}".`
+        );
+      }
+    } else if (
+      !options?.allowCustomPaymentNote &&
+      obj.pagamento.observacao.trim() !== OBRIGATORIO_PAGAMENTO_OBSERVACAO
+    ) {
       errors.push(
-        `A observação de pagamento deve ser exatamente: "${OBRIGATORIO_PAGAMENTO_OBSERVACAO}"`
+        `A observação de pagamento deve ser exatamente: "${OBRIGATORIO_PAGAMENTO_OBSERVACAO}". A IA não pode modificar este campo oficial.`
       );
     }
   }
@@ -408,12 +444,17 @@ export function validateStructuredContent(
     if (input.hotelName && obj.sobre?.text) {
       // Se houver hotel, verificar coerência básica se aplicável
     }
-    // Preço deve corresponder estritamente ao valor comercial soberano (sem tolerância de 1€ ou 1R$)
-    if (input.salePrice > 0 && obj.price !== undefined) {
+    // Preço deve corresponder estritamente ao valor comercial oficial (sem tolerância de 1€ ou 1R$)
+    const expectedPrice =
+      typeof input.publicSalePrice === 'number' && input.publicSalePrice > 0
+        ? input.publicSalePrice
+        : input.salePrice;
+
+    if (expectedPrice > 0 && obj.price !== undefined) {
       const priceNum = typeof obj.price === 'number' ? obj.price : parseFloat(obj.price);
-      if (Number.isFinite(priceNum) && Math.abs(priceNum - input.salePrice) > 0.001) {
+      if (Number.isFinite(priceNum) && Math.abs(priceNum - expectedPrice) > 0.001) {
         errors.push(
-          `O preço retornado (${obj.price}) diverge do preço comercial oficial (${input.salePrice}). A IA não pode alterar dados comerciais.`
+          `O preço retornado (${obj.price}) diverge do preço comercial oficial (${expectedPrice}). A IA não pode alterar dados comerciais.`
         );
       }
     }
@@ -442,7 +483,11 @@ export function validateStructuredContent(
     customInfo: obj.customInfo ? String(obj.customInfo).trim() : undefined,
     incluso: obj.incluso,
     naoIncluso: Array.isArray(obj.naoIncluso) ? obj.naoIncluso : [],
-    sobre: obj.sobre,
+    sobre: {
+      ...obj.sobre,
+      title: String(obj.sobre.title).trim(),
+      text: appendDestinationDisclaimer(String(obj.sobre.text)),
+    },
     infoDestino: obj.infoDestino || undefined,
     roteiro: Array.isArray(obj.roteiro) ? obj.roteiro : undefined,
     pagamento: obj.pagamento,

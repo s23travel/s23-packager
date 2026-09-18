@@ -216,8 +216,8 @@ O sistema adota uma hierarquia estrita de 3 níveis:
 ### 7.4 Classificação dos Campos do Conteúdo
 Os campos do modelo `StructuredPackageContent` dividem-se em 3 categorias operacionais:
 - **A) Campos Comerciais Soberanos (Nível 1)**:
-  - `price`: Lido diretamente do snapshot financeiro da cotação/pacote (`salePrice`).
-  - `pagamento.observacao`: Frase obrigatória exata: `"Valor por pessoa. Consulte-nos sobre personalizações, pagamento parcelado ou em outras moedas."`.
+  - `price`: Lido diretamente do snapshot financeiro da cotação/pacote (`financials.pricePerPerson`).
+  - `pagamento.observacao`: Frase padrão oficial: `"Valor por pessoa em quarto duplo. Consulte-nos sobre personalizações."` (livremente editável pelo operador e preservada contra sobrescrita por IA).
   - `incluso`: Contém obrigatoriamente os serviços contratados mais o item fixo da S23: `{ icon: "gift", title: "Guia exclusivo S23", desc: "Nossas dicas práticas." }`.
   - `duracao` / `origem` / `date`: Derivados estritamente dos transportes e datas aprovadas.
 - **B) Campos Editoriais Gerados pela IA (Nível 2 e 3)**:
@@ -278,8 +278,15 @@ O arquivo gerado obedece estritamente à documentação de referência (`docs/CO
     title: "Guia exclusivo S23"
     desc: "Nossas dicas práticas."
   ```
-- **Observação Oficial de Pagamento**: O campo `pagamento.observacao` contém obrigatoriamente a frase:
-  `"Valor por pessoa. Consulte-nos sobre personalizações, pagamento parcelado ou em outras moedas."`
+- **Observação Padrão de Pagamento**: O campo `pagamento.observacao` adota como padrão oficial a frase:
+  `"Valor por pessoa em quarto duplo. Consulte-nos sobre personalizações."` (editável livremente pelo operador no editor de conteúdo).
+- **Aviso Obrigatório do Destino**: O campo `sobre.text` e o corpo do Markdown contêm ao final o aviso institucional sem duplicações:
+  `"Anúncio gerado por rotina informática. Confirme informações e condições junto à S23 antes da contratação."`
+- **Regras de Generalização Comercial no Markdown**:
+  - Companhias aéreas: Não expor nomes comerciais (ex: Ryanair) no Markdown; usar termos genéricos como "voo de ida", "transporte aéreo".
+  - Horários de voo: Não expor horários específicos (ex: 15:05 → 19:20).
+  - Nomes de hotel: Não expor nomes de hotéis específicos (ex: Hotel Brixen); usar "hospedagem selecionada" ou "hospedagem em hotel".
+  - *Nota*: Os dados operacionais no banco e formulários internos permanecem 100% íntegros e inalterados.
 
 ### 8.4 Regras de Serialização YAML
 - **Aspas e Escape Seguro**: Valores de texto são formatados com aspas duplas padronizadas (`formatYamlString`), tratando caracteres especiais (`:`, `"`, quebras de linha, emojis e acentuação).

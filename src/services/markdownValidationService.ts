@@ -8,7 +8,7 @@
 // 6. Contenha o item fixo da S23 e a frase obrigatória de pagamento.
 
 import { StructuredPackageContent } from '../types';
-import { S23_FIXED_INCLUSO_ITEM, S23_OBLIGATORY_PAYMENT_NOTE } from './markdownService';
+import { S23_FIXED_INCLUSO_ITEM } from './markdownService';
 
 export interface MarkdownValidationResult {
   valid: boolean;
@@ -155,14 +155,12 @@ export function validatePackageMarkdown(
     }
   }
 
-  // 10. Bloco Obrigatório 'pagamento' e frase oficial S23
+  // 10. Bloco Obrigatório 'pagamento'
   if (!frontmatter.pagamento || typeof frontmatter.pagamento !== 'object') {
     errors.push("Bloco obrigatório 'pagamento' ausente ou malformatado.");
   } else {
-    if (frontmatter.pagamento.observacao !== S23_OBLIGATORY_PAYMENT_NOTE) {
-      errors.push(
-        `A observação de pagamento deve ser exatamente: "${S23_OBLIGATORY_PAYMENT_NOTE}"`
-      );
+    if (!frontmatter.pagamento.observacao || typeof frontmatter.pagamento.observacao !== 'string' || !frontmatter.pagamento.observacao.trim()) {
+      errors.push("A observação de pagamento no bloco 'pagamento' é obrigatória e deve estar preenchida.");
     }
   }
 
@@ -244,6 +242,15 @@ export function validatePackageMarkdown(
       errors.push(
         `Divergência na data: original é "${originalContent.date}", mas o Markdown contém "${frontmatter.date}".`
       );
+    }
+
+    // Observação de pagamento (se definida no originalContent)
+    if (originalContent.pagamento?.observacao && frontmatter.pagamento?.observacao) {
+      if (frontmatter.pagamento.observacao.trim() !== originalContent.pagamento.observacao.trim()) {
+        errors.push(
+          `Divergência na observação de pagamento: original é "${originalContent.pagamento.observacao}", mas o Markdown contém "${frontmatter.pagamento.observacao}".`
+        );
+      }
     }
   }
 

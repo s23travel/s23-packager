@@ -148,7 +148,7 @@ async function runValidation() {
     },
     pagamento: {
       valor: 'Entrada de 100€ no ato da reserva e restante até 10/10/2026',
-      observacao: 'Valor por pessoa. Consulte-nos sobre personalizações, pagamento parcelado ou em outras moedas.',
+      observacao: 'Valor por pessoa em quarto duplo. Consulte-nos sobre personalizações.',
     },
     seoTitle: 'Pacote Teste Maiorca | S23',
     seoDescription: 'Pacote completo para Maiorca em outubro de 2026.',
@@ -185,7 +185,7 @@ async function runValidation() {
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     data: {
-      financials: { salePrice: 500 },
+      financials: { salePrice: 500, pricePerPerson: 500 },
       dates: { durationDays: 5 },
       lodging: [{ name: 'Hotel Base Maiorca', destination: 'Maiorca' }],
     },
@@ -204,7 +204,7 @@ async function runValidation() {
     updated_at: new Date().toISOString(),
     data: {
       originPackageName: 'Maiorca Personalizado',
-      financials: { salePrice: 720 }, // Preço negociado independente
+      financials: { salePrice: 720, pricePerPerson: 720 }, // Preço negociado independente
       dates: { durationDays: 7 },
       lodging: [{ name: 'Hotel 5 Estrelas Luxo', destination: 'Palma de Maiorca' }],
     },

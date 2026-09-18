@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Package, StructuredPackageContent, PackageWebsiteContent } from '../../types';
 import { buildContentGenerationInput, validateStructuredContent } from '../../services/contentValidationService';
 import { generateContentForWebsite } from '../../services/aiContentService';
-import { generatePackageMarkdown, getMarkdownFileName, S23_FIXED_INCLUSO_ITEM } from '../../services/markdownService';
+import { generatePackageMarkdown, getMarkdownFileName, S23_FIXED_INCLUSO_ITEM, S23_OBLIGATORY_PAYMENT_NOTE, appendDestinationDisclaimer } from '../../services/markdownService';
 import { validatePackageMarkdown } from '../../services/markdownValidationService';
 import { packageWebsiteContentService } from '../../services/packageWebsiteContentService';
 import { PackageContentEditor } from './PackageContentEditor';
@@ -117,7 +117,9 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
 
   const pData = pkg.data || {};
   const sovereignSalePrice =
-    typeof pData.financials?.salePrice === 'number'
+    typeof pData.financials?.pricePerPerson === 'number'
+      ? pData.financials.pricePerPerson
+      : typeof pData.financials?.salePrice === 'number'
       ? pData.financials.salePrice
       : typeof pData.financials?.priceTotal?.amount === 'number'
       ? pData.financials.priceTotal.amount
@@ -164,11 +166,32 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
         return;
       }
 
-      // Aplica dados soberanos do Pacote Base
+      // Aplica dados soberanos do Pacote Base e preserva edição manual de pagamento
       const rawGenerated = res.data;
+
+      // Preserva observação de pagamento previamente editada ou salva
+      const existingPaymentNote =
+        content?.pagamento?.observacao || savedRecord?.content?.pagamento?.observacao;
+      const paymentNoteToUse =
+        existingPaymentNote && existingPaymentNote.trim()
+          ? existingPaymentNote.trim()
+          : (rawGenerated.pagamento?.observacao?.trim() || S23_OBLIGATORY_PAYMENT_NOTE);
+
+      // Anexa o aviso padrão na descrição do destino sem duplicar
+      const rawSobreText = rawGenerated.sobre?.text || '';
+      const sobreTextWithDisclaimer = appendDestinationDisclaimer(rawSobreText);
+
       const enforcedContent: StructuredPackageContent = {
         ...rawGenerated,
         price: sovereignSalePrice > 0 ? sovereignSalePrice : rawGenerated.price,
+        sobre: {
+          ...rawGenerated.sobre,
+          text: sobreTextWithDisclaimer,
+        },
+        pagamento: {
+          ...rawGenerated.pagamento,
+          observacao: paymentNoteToUse,
+        },
         incluso: [
           ...(rawGenerated.incluso || []).filter(
             (item) => item.title?.trim() !== S23_FIXED_INCLUSO_ITEM.title
@@ -208,15 +231,21 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
     setSaveSuccessMessage(null);
     setSaving(true);
 
-    // 1. Garante que os dados soberanos continuem protegidos
+    // 1. Garante que os dados soberanos continuem protegidos e aviso anexado
     const finalizedContent: StructuredPackageContent = {
       ...content,
       price: sovereignSalePrice > 0 ? sovereignSalePrice : content.price,
+      sobre: {
+        ...content.sobre,
+        text: appendDestinationDisclaimer(content.sobre?.text),
+      },
     };
 
-    // 2. Validação determinística do modelo estruturado
+    // 2. Validação determinística do modelo estruturado (permite observação editada pelo operador)
     const input = buildContentGenerationInput({ package: pkg });
-    const contentValidation = validateStructuredContent(finalizedContent, input);
+    const contentValidation = validateStructuredContent(finalizedContent, input, {
+      allowCustomPaymentNote: true,
+    });
 
     if (!contentValidation.valid) {
       setValidationErrors(contentValidation.errors);
@@ -225,9 +254,9 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({ source }
     }
 
     try {
-      // 3. Geração determinística de Markdown via markdownService
+      // 3. Geração determinística de Markdown via markdownService com opções de generalização
       const validContent = contentValidation.data || finalizedContent;
-      const md = generatePackageMarkdown(validContent);
+      const md = generatePackageMarkdown(validContent, { packageData: pkg.data });
       const filename = getMarkdownFileName(validContent);
 
       // 4. Validação estrita do arquivo Markdown via markdownValidationService

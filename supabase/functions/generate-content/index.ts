@@ -11,7 +11,10 @@ export const corsHeaders = {
 };
 
 const OBRIGATORIO_PAGAMENTO_OBSERVACAO =
-  'Valor por pessoa. Consulte-nos sobre personalizações, pagamento parcelado ou em outras moedas.';
+  'Valor por pessoa em quarto duplo. Consulte-nos sobre personalizações.';
+
+const S23_DESTINATION_DISCLAIMER =
+  'Anúncio gerado por rotina informática. Confirme informações e condições junto à S23 antes da contratação.';
 
 const OBRIGATORIO_ITEM_INCLUSO_S23 = {
   icon: 'gift',
@@ -66,7 +69,7 @@ serve(async (req) => {
     // 2. Montagem do prompt comercial S23 com Google Search Grounding (Fase 6A)
     const salePrice = input.publicSalePrice !== undefined ? input.publicSalePrice : input.salePrice;
     const servicesList = Array.isArray(input.services) && input.services.length > 0
-      ? input.services.map((s: any) => `- [${s.type}] ${s.description}${s.mealPlan ? ` (Regime: ${s.mealPlan})` : ''}${s.carrier ? ` (Cia: ${s.carrier})` : ''}${s.departureTime ? ` (Partida: ${s.departureTime})` : ''}`).join('\n')
+      ? input.services.map((s: any) => `- [${s.type}] ${s.description}${s.mealPlan ? ` (Regime: ${s.mealPlan})` : ''}`).join('\n')
       : (input.includedServices || []).map((s: string) => `- ${s}`).join('\n');
 
     const systemPrompt = `
@@ -78,7 +81,7 @@ REGRAS DE OURO — DADOS COMERCIAIS SOBERANOS (NÍVEL 1):
 1. Preço de Venda ao Público: O valor comercial deve ser exatamente ${salePrice}. NUNCA altere ou deduza custos/margens.
 2. Moeda: ${input.currency}.
 3. Destino Comercial: ${input.destination}.
-4. Hotel: ${input.hotelName || 'Hospedagem selecionada'}. Não invente outro hotel.
+4. Hotel: Use sempre descrição genérica (ex: "Hospedagem selecionada" ou "Hospedagem em hotel"). NUNCA invente nem mencione nome específico de hotel.
 5. Serviços Contratados (Fonte Autoritativa):
 ${servicesList}
 6. Itens Inclusos: Baseie-se estritamente nos serviços contratados acima e nos itens fornecidos: ${JSON.stringify(input.includedServices || [])}.
@@ -87,6 +90,11 @@ ${servicesList}
    { "icon": "gift", "title": "Guia exclusivo S23", "desc": "Nossas dicas práticas." }
 8. No bloco 'pagamento', a observação DEVE SER EXATAMENTE:
    "${OBRIGATORIO_PAGAMENTO_OBSERVACAO}"
+
+REGRAS DE GENERALIZAÇÃO PARA O WEBSITE PÚBLICO:
+- PROIBIÇÃO DE COMPANHIAS AÉREAS: NUNCA mencione nomes explícitos de companhias aéreas (ex: Ryanair, TAP, Latam). Escreva de forma genérica: "voo de ida", "voo de volta", "transporte aéreo".
+- PROIBIÇÃO DE HORÁRIOS DE VOOS: NUNCA mencione horários específicos de partida ou chegada (ex: 15:05 → 19:20). Descreva genericamente o transporte aéreo.
+- PROIBIÇÃO DE NOME EXPLÍCITO DE HOTEL: NUNCA cite o nome do hotel no texto ou itens inclusos. Use termos genéricos como "hospedagem selecionada", "hospedagem em hotel" ou "acomodação em hotel".
 
 PESQUISA WEB (GOOGLE SEARCH GROUNDING - NÍVEL 2):
 Pesquise informações reais e públicas sobre o destino (${input.destination}) para enriquecer o bloco 'sobre' e 'infoDestino' (clima, cultura, documentação para brasileiros, atrativos principais).
@@ -248,16 +256,24 @@ Estrutura JSON obrigatória:
       parsed.incluso.unshift(OBRIGATORIO_ITEM_INCLUSO_S23);
     }
 
-    // Assegura observação de pagamento obrigatória
+    // Assegura preservação do aviso padrão na descrição do destino (sem duplicar)
+    if (parsed.sobre && typeof parsed.sobre.text === 'string') {
+      const trimmedText = parsed.sobre.text.trim();
+      if (!trimmedText.includes(S23_DESTINATION_DISCLAIMER)) {
+        parsed.sobre.text = `${trimmedText}\n\n${S23_DESTINATION_DISCLAIMER}`;
+      }
+    }
+
+    // Assegura observação de pagamento obrigatória (padrão se não vier preenchida)
     if (!parsed.pagamento) {
       parsed.pagamento = { observacao: OBRIGATORIO_PAGAMENTO_OBSERVACAO };
-    } else {
+    } else if (!parsed.pagamento.observacao || !parsed.pagamento.observacao.trim()) {
       parsed.pagamento.observacao = OBRIGATORIO_PAGAMENTO_OBSERVACAO;
     }
 
     // Garante coerência do preço com dados comerciais
-    if (input.salePrice > 0) {
-      parsed.price = input.salePrice;
+    if (salePrice > 0) {
+      parsed.price = salePrice;
     }
 
     // Retorna dados estruturados validados

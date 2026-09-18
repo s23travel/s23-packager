@@ -17,10 +17,189 @@ export const S23_FIXED_INCLUSO_ITEM = {
 };
 
 /**
- * Observação comercial obrigatória para o bloco 'pagamento'.
+ * Observação comercial obrigatória padrão para o bloco 'pagamento'.
  */
 export const S23_OBLIGATORY_PAYMENT_NOTE =
-  'Valor por pessoa. Consulte-nos sobre personalizações, pagamento parcelado ou em outras moedas.';
+  'Valor por pessoa em quarto duplo. Consulte-nos sobre personalizações.';
+
+/**
+ * Aviso padrão para o final da descrição do destino (Apresentação Geral).
+ */
+export const S23_DESTINATION_DISCLAIMER =
+  'Anúncio gerado por rotina informática. Confirme informações e condições junto à S23 antes da contratação.';
+
+/**
+ * Anexa o aviso padrão de rotina informática ao final do texto sem duplicar.
+ */
+export function appendDestinationDisclaimer(text?: string): string {
+  if (!text || !text.trim()) {
+    return S23_DESTINATION_DISCLAIMER;
+  }
+  const trimmed = text.trim();
+  if (trimmed.includes(S23_DESTINATION_DISCLAIMER)) {
+    return trimmed;
+  }
+  return `${trimmed}\n\n${S23_DESTINATION_DISCLAIMER}`;
+}
+
+export interface MarkdownGenerationOptions {
+  packageData?: any;
+  carriers?: string[];
+  hotelNames?: string[];
+  flightTimes?: string[];
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Sanitiza e generaliza deterministicamente o conteúdo público antes da geração de Markdown.
+ * NUNCA altera o pacote original ou os dados internos do sistema.
+ */
+export function sanitizePublicMarkdownContent(
+  content: StructuredPackageContent,
+  options?: MarkdownGenerationOptions
+): StructuredPackageContent {
+  // Extrai lista de cias aéreas, horários e hotéis a partir das opções ou de packageData
+  const carriersToSanitize = new Set<string>();
+  const hotelNamesToSanitize = new Set<string>();
+  const flightTimesToSanitize = new Set<string>();
+
+  // Cias comuns
+  ['ryanair', 'tap', 'latam', 'azul', 'gol', 'iberia', 'lufthansa', 'easyjet', 'emirates', 'air france', 'klm'].forEach(c => carriersToSanitize.add(c.toLowerCase()));
+
+  if (options?.carriers) {
+    options.carriers.forEach(c => c && carriersToSanitize.add(c.trim().toLowerCase()));
+  }
+
+  if (options?.hotelNames) {
+    options.hotelNames.forEach(h => h && hotelNamesToSanitize.add(h.trim().toLowerCase()));
+  }
+
+  if (options?.flightTimes) {
+    options.flightTimes.forEach(t => t && flightTimesToSanitize.add(t.trim().toLowerCase()));
+  }
+
+  if (options?.packageData) {
+    const pd = options.packageData;
+    if (Array.isArray(pd.services)) {
+      pd.services.forEach((s: any) => {
+        if (s.carrier) carriersToSanitize.add(String(s.carrier).trim().toLowerCase());
+        if (s.departureTime) flightTimesToSanitize.add(String(s.departureTime).trim().toLowerCase());
+        if (s.arrivalTime) flightTimesToSanitize.add(String(s.arrivalTime).trim().toLowerCase());
+        if (s.type === 'accommodation' && s.description) {
+          hotelNamesToSanitize.add(String(s.description).trim().toLowerCase());
+        }
+      });
+    }
+    if (Array.isArray(pd.lodging)) {
+      pd.lodging.forEach((l: any) => {
+        if (l.name) hotelNamesToSanitize.add(String(l.name).trim().toLowerCase());
+      });
+    }
+  }
+
+  const sanitizeGeneralText = (text?: string): string => {
+    if (!text || typeof text !== 'string') return '';
+    let result = text;
+
+    // 1. Remove faixas de horários de voos (ex: 15:05 → 19:20 ou 15:05 - 19:20)
+    result = result.replace(/\b[0-2]?[0-9]:[0-5][0-9]\s*(?:→|->|-|à|a)\s*[0-2]?[0-9]:[0-5][0-9]\b/gi, '');
+
+    // 2. Remove horários específicos cadastrados ou em contexto de voo
+    for (const timeStr of flightTimesToSanitize) {
+      if (!timeStr) continue;
+      const timeRegex = new RegExp(`\\b${escapeRegex(timeStr)}\\b`, 'gi');
+      result = result.replace(timeRegex, '');
+    }
+    // Remove horários isolados remanescentes de partida/chegada
+    result = result.replace(/(?:partida|chegada|saída|pouso|às|as)\s+[0-2]?[0-9]:[0-5][0-9]/gi, '');
+    result = result.replace(/\b[0-2]?[0-9]:[0-5][0-9]\b/g, (match) => {
+      // Se for um horário específico rastreado nos serviços
+      if (flightTimesToSanitize.has(match.toLowerCase())) return '';
+      return match;
+    });
+
+    // 3. Remove/generaliza nomes de companhias aéreas
+    for (const carrier of carriersToSanitize) {
+      if (!carrier) continue;
+      const carrierRegex = new RegExp(`\\b${escapeRegex(carrier)}\\b`, 'gi');
+      result = result.replace(carrierRegex, 'transporte aéreo');
+    }
+
+    // 4. Remove/generaliza nomes específicos de hotel
+    for (const hotel of hotelNamesToSanitize) {
+      if (!hotel) continue;
+      const hotelRegex = new RegExp(escapeRegex(hotel), 'gi');
+      result = result.replace(hotelRegex, 'hospedagem selecionada');
+    }
+
+    // Limpa pontuações órfãs como parênteses vazios ou espaços duplos
+    result = result
+      .replace(/\(\s*\)/g, '')
+      .replace(/\[\s*\]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+([.,;:])/g, '$1')
+      .trim();
+
+    return result;
+  };
+
+  // Sanitiza itens inclusos
+  const cleanIncluso = (content.incluso || []).map((item) => {
+    let cleanTitle = sanitizeGeneralText(item.title);
+    let cleanDesc = sanitizeGeneralText(item.desc);
+
+    // Se for item de hospedagem, garantir generalização do título
+    if (item.icon === 'bed' || cleanTitle.toLowerCase().includes('hotel')) {
+      for (const hotel of hotelNamesToSanitize) {
+        if (cleanTitle.toLowerCase().includes(hotel)) {
+          cleanTitle = 'Hospedagem em hotel';
+        }
+      }
+      if (/^hotel\s+/i.test(cleanTitle)) {
+        cleanTitle = 'Hospedagem em hotel';
+      }
+    }
+
+    // Se for item de voo, garantir que não sobre companhia aérea ou horários
+    if (item.icon === 'plane') {
+      cleanTitle = cleanTitle
+        .replace(/transporte aéreo\s+transporte aéreo/gi, 'transporte aéreo')
+        .replace(/voo da transporte aéreo/gi, 'voo')
+        .trim();
+    }
+
+    return {
+      ...item,
+      title: cleanTitle || item.title,
+      desc: cleanDesc,
+    };
+  });
+
+  // Sanitiza bloco sobre e anexa o aviso padrão
+  const cleanSobreText = appendDestinationDisclaimer(sanitizeGeneralText(content.sobre?.text));
+
+  return {
+    ...content,
+    title: sanitizeGeneralText(content.title),
+    subtitle: content.subtitle ? sanitizeGeneralText(content.subtitle) : undefined,
+    excerpt: sanitizeGeneralText(content.excerpt),
+    incluso: cleanIncluso,
+    roteiro: content.roteiro?.map((dia) => ({
+      ...dia,
+      title: sanitizeGeneralText(dia.title),
+      desc: sanitizeGeneralText(dia.desc),
+    })),
+    sobre: {
+      ...content.sobre,
+      title: sanitizeGeneralText(content.sobre?.title),
+      text: cleanSobreText,
+    },
+    customInfo: content.customInfo ? sanitizeGeneralText(content.customInfo) : undefined,
+  };
+}
 
 /**
  * Serializa uma string em formato seguro para YAML (usando aspas duplas e escape padrão JSON/YAML).
@@ -42,65 +221,71 @@ export function getMarkdownFileName(content: { slug: string }): string {
  * Gera de forma 100% determinística o conteúdo do arquivo Markdown (.md)
  * com frontmatter YAML e corpo descritivo a partir do StructuredPackageContent validado.
  */
-export function generatePackageMarkdown(content: StructuredPackageContent): string {
+export function generatePackageMarkdown(
+  content: StructuredPackageContent,
+  options?: MarkdownGenerationOptions
+): string {
+  // Aplica generalização determinística para o Markdown público sem afetar dados originais
+  const cleanContent = sanitizePublicMarkdownContent(content, options);
+
   const lines: string[] = [];
 
   // Delimitador inicial do frontmatter
   lines.push('---');
 
   // 1. Metadados Principais (Ordem recomendada em docs/COMO_ADICIONAR_PACOTE.md)
-  lines.push(`title: ${formatYamlString(content.title)}`);
-  lines.push(`slug: ${formatYamlString(content.slug)}`);
-  lines.push(`category: ${formatYamlString(content.category)}`);
+  lines.push(`title: ${formatYamlString(cleanContent.title)}`);
+  lines.push(`slug: ${formatYamlString(cleanContent.slug)}`);
+  lines.push(`category: ${formatYamlString(cleanContent.category)}`);
 
   // Imagens
-  lines.push(`heroImage: ${formatYamlString(content.heroImage || '')}`);
-  lines.push(`cardImage: ${formatYamlString(content.cardImage || '')}`);
+  lines.push(`heroImage: ${formatYamlString(cleanContent.heroImage || '')}`);
+  lines.push(`cardImage: ${formatYamlString(cleanContent.cardImage || '')}`);
 
   // Preço (numérico sem aspas, ou string com moeda entre aspas)
-  if (typeof content.price === 'number') {
-    lines.push(`price: ${content.price}`);
+  if (typeof cleanContent.price === 'number') {
+    lines.push(`price: ${cleanContent.price}`);
   } else {
     // Se for string numérica pura, converte se apropriado, ou formata com aspas
-    const num = Number(content.price);
-    if (!isNaN(num) && !String(content.price).includes(' ') && !String(content.price).includes('€') && !String(content.price).includes('R$')) {
+    const num = Number(cleanContent.price);
+    if (!isNaN(num) && !String(cleanContent.price).includes(' ') && !String(cleanContent.price).includes('€') && !String(cleanContent.price).includes('R$')) {
       lines.push(`price: ${num}`);
     } else {
-      lines.push(`price: ${formatYamlString(String(content.price))}`);
+      lines.push(`price: ${formatYamlString(String(cleanContent.price))}`);
     }
   }
 
   // Data e Excerpt
-  if (content.date) {
-    lines.push(`date: ${formatYamlString(content.date)}`);
+  if (cleanContent.date) {
+    lines.push(`date: ${formatYamlString(cleanContent.date)}`);
   }
-  lines.push(`excerpt: ${formatYamlString(content.excerpt)}`);
+  lines.push(`excerpt: ${formatYamlString(cleanContent.excerpt)}`);
 
   // Booleans de publicação
-  lines.push(`published: ${content.published ? 'true' : 'false'}`);
-  lines.push(`featured: ${content.featured ? 'true' : 'false'}`);
+  lines.push(`published: ${cleanContent.published ? 'true' : 'false'}`);
+  lines.push(`featured: ${cleanContent.featured ? 'true' : 'false'}`);
 
   // 2. Campos Avançados da Página Interna
-  if (content.subtitle) {
-    lines.push(`subtitle: ${formatYamlString(content.subtitle)}`);
+  if (cleanContent.subtitle) {
+    lines.push(`subtitle: ${formatYamlString(cleanContent.subtitle)}`);
   }
-  if (content.duracao) {
-    lines.push(`duracao: ${formatYamlString(content.duracao)}`);
+  if (cleanContent.duracao) {
+    lines.push(`duracao: ${formatYamlString(cleanContent.duracao)}`);
   }
-  if (content.origem) {
-    lines.push(`origem: ${formatYamlString(content.origem)}`);
+  if (cleanContent.origem) {
+    lines.push(`origem: ${formatYamlString(cleanContent.origem)}`);
   }
-  if (content.ctaLabel) {
-    lines.push(`ctaLabel: ${formatYamlString(content.ctaLabel)}`);
+  if (cleanContent.ctaLabel) {
+    lines.push(`ctaLabel: ${formatYamlString(cleanContent.ctaLabel)}`);
   }
-  if (content.imagemDestaque) {
-    lines.push(`imagemDestaque: ${formatYamlString(content.imagemDestaque)}`);
+  if (cleanContent.imagemDestaque) {
+    lines.push(`imagemDestaque: ${formatYamlString(cleanContent.imagemDestaque)}`);
   }
 
   // 3. Bloco 'incluso'
   // Garante a presença e preservação do item fixo S23
   lines.push('incluso:');
-  const items = [...(content.incluso || [])];
+  const items = [...(cleanContent.incluso || [])];
   const hasFixed = items.some((i) => i.title.trim() === S23_FIXED_INCLUSO_ITEM.title);
   if (!hasFixed) {
     items.push(S23_FIXED_INCLUSO_ITEM);
@@ -119,50 +304,50 @@ export function generatePackageMarkdown(content: StructuredPackageContent): stri
   }
 
   // 4. Bloco 'naoIncluso'
-  if (content.naoIncluso && content.naoIncluso.length > 0) {
+  if (cleanContent.naoIncluso && cleanContent.naoIncluso.length > 0) {
     lines.push('naoIncluso:');
-    for (const item of content.naoIncluso) {
+    for (const item of cleanContent.naoIncluso) {
       lines.push(`  - ${formatYamlString(item)}`);
     }
   }
 
   // 5. Bloco 'sobre' (Obrigatório)
   lines.push('sobre:');
-  lines.push(`  title: ${formatYamlString(content.sobre.title)}`);
-  lines.push(`  text: ${formatYamlString(content.sobre.text)}`);
-  if (content.sobre.image) {
-    lines.push(`  image: ${formatYamlString(content.sobre.image)}`);
+  lines.push(`  title: ${formatYamlString(cleanContent.sobre.title)}`);
+  lines.push(`  text: ${formatYamlString(cleanContent.sobre.text)}`);
+  if (cleanContent.sobre.image) {
+    lines.push(`  image: ${formatYamlString(cleanContent.sobre.image)}`);
   }
 
   // 6. Bloco 'infoDestino' (Opcional)
-  if (content.infoDestino) {
+  if (cleanContent.infoDestino) {
     const hasInfo =
-      content.infoDestino.localizacao ||
-      content.infoDestino.idiomaCultura ||
-      content.infoDestino.clima ||
-      content.infoDestino.documentacao;
+      cleanContent.infoDestino.localizacao ||
+      cleanContent.infoDestino.idiomaCultura ||
+      cleanContent.infoDestino.clima ||
+      cleanContent.infoDestino.documentacao;
 
     if (hasInfo) {
       lines.push('infoDestino:');
-      if (content.infoDestino.localizacao) {
-        lines.push(`  localizacao: ${formatYamlString(content.infoDestino.localizacao)}`);
+      if (cleanContent.infoDestino.localizacao) {
+        lines.push(`  localizacao: ${formatYamlString(cleanContent.infoDestino.localizacao)}`);
       }
-      if (content.infoDestino.idiomaCultura) {
-        lines.push(`  idiomaCultura: ${formatYamlString(content.infoDestino.idiomaCultura)}`);
+      if (cleanContent.infoDestino.idiomaCultura) {
+        lines.push(`  idiomaCultura: ${formatYamlString(cleanContent.infoDestino.idiomaCultura)}`);
       }
-      if (content.infoDestino.clima) {
-        lines.push(`  clima: ${formatYamlString(content.infoDestino.clima)}`);
+      if (cleanContent.infoDestino.clima) {
+        lines.push(`  clima: ${formatYamlString(cleanContent.infoDestino.clima)}`);
       }
-      if (content.infoDestino.documentacao) {
-        lines.push(`  documentacao: ${formatYamlString(content.infoDestino.documentacao)}`);
+      if (cleanContent.infoDestino.documentacao) {
+        lines.push(`  documentacao: ${formatYamlString(cleanContent.infoDestino.documentacao)}`);
       }
     }
   }
 
   // 7. Bloco 'roteiro' (Opcional, somente se houver programação real)
-  if (content.roteiro && content.roteiro.length > 0) {
+  if (cleanContent.roteiro && cleanContent.roteiro.length > 0) {
     lines.push('roteiro:');
-    for (const dia of content.roteiro) {
+    for (const dia of cleanContent.roteiro) {
       lines.push(`  - title: ${formatYamlString(dia.title)}`);
       if (dia.desc) {
         lines.push(`    desc: ${formatYamlString(dia.desc)}`);
@@ -172,33 +357,37 @@ export function generatePackageMarkdown(content: StructuredPackageContent): stri
 
   // 8. Bloco 'pagamento' (Obrigatório)
   lines.push('pagamento:');
-  if (content.pagamento?.valor) {
-    lines.push(`  valor: ${formatYamlString(content.pagamento.valor)}`);
+  if (cleanContent.pagamento?.valor) {
+    lines.push(`  valor: ${formatYamlString(cleanContent.pagamento.valor)}`);
   }
-  if (content.pagamento?.formas && content.pagamento.formas.length > 0) {
+  if (cleanContent.pagamento?.formas && cleanContent.pagamento.formas.length > 0) {
     lines.push('  formas:');
-    for (const forma of content.pagamento.formas) {
+    for (const forma of cleanContent.pagamento.formas) {
       lines.push(`    - ${formatYamlString(forma)}`);
     }
   }
-  // Preserva estritamente a observação oficial da S23
-  lines.push(`  observacao: ${formatYamlString(S23_OBLIGATORY_PAYMENT_NOTE)}`);
+  // Utiliza a observação salva/editada pelo operador, ou o padrão oficial da S23
+  const paymentNote =
+    (cleanContent.pagamento?.observacao && cleanContent.pagamento.observacao.trim())
+      ? cleanContent.pagamento.observacao.trim()
+      : S23_OBLIGATORY_PAYMENT_NOTE;
+  lines.push(`  observacao: ${formatYamlString(paymentNote)}`);
 
   // 9. Custom Info (se houver)
-  if (content.customInfo) {
-    lines.push(`customInfo: ${formatYamlString(content.customInfo)}`);
+  if (cleanContent.customInfo) {
+    lines.push(`customInfo: ${formatYamlString(cleanContent.customInfo)}`);
   }
 
   // 10. SEO
-  lines.push(`seoTitle: ${formatYamlString(content.seoTitle)}`);
-  lines.push(`seoDescription: ${formatYamlString(content.seoDescription)}`);
+  lines.push(`seoTitle: ${formatYamlString(cleanContent.seoTitle)}`);
+  lines.push(`seoDescription: ${formatYamlString(cleanContent.seoDescription)}`);
 
   // Delimitador final do frontmatter
   lines.push('---');
 
   // 11. Corpo do Markdown
-  // O corpo representa o texto de apresentação do pacote
-  const bodyText = content.sobre?.text || content.excerpt || '';
+  // O corpo representa o texto de apresentação do pacote (com aviso no final)
+  const bodyText = cleanContent.sobre?.text || cleanContent.excerpt || '';
   lines.push('');
   lines.push(bodyText);
   lines.push('');

@@ -292,6 +292,8 @@ export const PackageContentEditor: React.FC<PackageContentEditorProps> = ({
 
   const isPaymentNoteConform =
     content.pagamento?.observacao?.trim() === S23_OBLIGATORY_PAYMENT_NOTE.trim();
+  const isPaymentNoteCustom =
+    Boolean(content.pagamento?.observacao?.trim()) && !isPaymentNoteConform;
 
   return (
     <div
@@ -774,7 +776,7 @@ export const PackageContentEditor: React.FC<PackageContentEditorProps> = ({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
           <div className="form-group">
             <label className="form-label" style={{ color: 'var(--text-muted)' }}>
-              Preço de Venda do Pacote (Soberano)
+              Preço de Venda do Pacote
             </label>
             <div
               style={{
@@ -1353,9 +1355,13 @@ export const PackageContentEditor: React.FC<PackageContentEditorProps> = ({
               <span style={{ fontSize: '0.6875rem', color: '#16a34a', fontWeight: 600 }}>
                 ✓ Conforme regra oficial S23
               </span>
+            ) : isPaymentNoteCustom ? (
+              <span style={{ fontSize: '0.6875rem', color: '#3b82f6', fontWeight: 600 }}>
+                ✓ Editado pelo operador
+              </span>
             ) : (
               <span style={{ fontSize: '0.6875rem', color: '#ef4444', fontWeight: 600 }}>
-                ⚠️ Deve corresponder à frase oficial
+                ⚠️ Campo obrigatório
               </span>
             )}
           </div>
@@ -1372,7 +1378,7 @@ export const PackageContentEditor: React.FC<PackageContentEditorProps> = ({
             }
             required
           />
-          {!isPaymentNoteConform && (
+          {isPaymentNoteCustom && (
             <button
               type="button"
               onClick={() =>
