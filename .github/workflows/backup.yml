@@ -1,0 +1,67 @@
+name: Supabase Backup
+
+on:
+  schedule:
+    - cron: '0 23 * * 5' # Executa toda sexta-feira às 23:00 (UTC)
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+  workflow_dispatch: # Permite disparar manualmente pela interface do GitHub
+
+jobs:
+  run_db_backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Necessário para fazer o commit dos ficheiros
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_ENABLED: ${{ vars.BACKUP_ENABLED }}
+
+    steps:
+      # 1. Verifica se a variável de controlo está ativa
+      - name: Check if backup is enabled
+        if: env.BACKUP_ENABLED != 'true'
+        run: |
+          echo "Backup is disabled via BACKUP_ENABLED variable. Exiting..."
+          exit 0
+
+      # 2. Clona o repositório
+      - name: Checkout repository
+        if: env.BACKUP_ENABLED == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      # 3. Instala a CLI do Supabase
+      - name: Setup Supabase CLI
+        if: env.BACKUP_ENABLED == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # 4. Cria o diretório de destino
+      - name: Create backup directory
+        if: env.BACKUP_ENABLED == 'true'
+        run: mkdir -p backups
+
+      # 5. Exporta Roles, Schema e Dados separadamente
+      - name: Backup roles
+        if: env.BACKUP_ENABLED == 'true'
+        run: supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/roles.sql --role-only
+
+      - name: Backup schema
+        if: env.BACKUP_ENABLED == 'true'
+        run: supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/schema.sql
+
+      - name: Backup data
+        if: env.BACKUP_ENABLED == 'true'
+        run: supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/data.sql --data-only --use-copy
+
+      # 6. Commit automático dos ficheiros gerados
+      - name: Commit and push backup files
+        if: env.BACKUP_ENABLED == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Supabase backup [skip ci]"
+          file_pattern: "backups/*.sql"
