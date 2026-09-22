@@ -3,22 +3,29 @@ name: Supabase Backup
 on:
   schedule:
     - cron: '0 23 * * 5' # Executa toda sexta-feira às 23:00 (UTC)
+
   push:
     branches: [ main, dev ]
+
   pull_request:
     branches: [ main, dev ]
-  workflow_dispatch: # Permite disparar manualmente pela interface do GitHub
+
+  workflow_dispatch:
+    # Permite disparar manualmente pela interface do GitHub
 
 jobs:
   run_db_backup:
     runs-on: ubuntu-latest
+
     permissions:
-      contents: write # Necessário para fazer o commit dos ficheiros
+      contents: write
+
     env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       BACKUP_ENABLED: ${{ vars.BACKUP_ENABLED }}
+      BACKUP_BRANCH: Bkp-Supabase-Weekly
 
     steps:
+
       # 1. Verifica se a variável de controlo está ativa
       - name: Check if backup is enabled
         if: env.BACKUP_ENABLED != 'true'
@@ -31,37 +38,103 @@ jobs:
         if: env.BACKUP_ENABLED == 'true'
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: true
 
-      # 3. Instala a CLI do Supabase
+      # 3. Prepara a branch exclusiva para os backups
+      - name: Prepare backup branch
+        if: env.BACKUP_ENABLED == 'true'
+        run: |
+          git fetch origin
+
+          if git ls-remote --exit-code --heads origin "$BACKUP_BRANCH" > /dev/null 2>&1; then
+            echo "Branch $BACKUP_BRANCH already exists."
+            git checkout -B "$BACKUP_BRANCH" "origin/$BACKUP_BRANCH"
+          else
+            echo "Branch $BACKUP_BRANCH does not exist. Creating it..."
+            git checkout --orphan "$BACKUP_BRANCH"
+            git rm -rf . 2>/dev/null || true
+          fi
+
+      # 4. Instala a CLI do Supabase
       - name: Setup Supabase CLI
         if: env.BACKUP_ENABLED == 'true'
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      # 4. Cria o diretório de destino
+      # 5. Cria o diretório de destino
       - name: Create backup directory
         if: env.BACKUP_ENABLED == 'true'
-        run: mkdir -p backups
+        run: |
+          mkdir -p backups
 
-      # 5. Exporta Roles, Schema e Dados separadamente
+      # 6. Backup das Roles
+      # O segredo fica disponível SOMENTE neste passo
       - name: Backup roles
         if: env.BACKUP_ENABLED == 'true'
-        run: supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/roles.sql --role-only
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            -f backups/roles.sql \
+            --role-only
 
+      # 7. Backup do Schema
+      # O segredo fica disponível SOMENTE neste passo
       - name: Backup schema
         if: env.BACKUP_ENABLED == 'true'
-        run: supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/schema.sql
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            -f backups/schema.sql
 
+      # 8. Backup dos Dados
+      # O segredo fica disponível SOMENTE neste passo
       - name: Backup data
         if: env.BACKUP_ENABLED == 'true'
-        run: supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/data.sql --data-only --use-copy
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            -f backups/data.sql \
+            --data-only \
+            --use-copy
 
-      # 6. Commit automático dos ficheiros gerados
-      - name: Commit and push backup files
+      # 9. Configura a identidade do commit
+      - name: Configure Git
         if: env.BACKUP_ENABLED == 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Supabase backup [skip ci]"
-          file_pattern: "backups/*.sql"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # 10. Verifica se existem alterações
+      - name: Check for backup changes
+        if: env.BACKUP_ENABLED == 'true'
+        id: changes
+        run: |
+          git add backups/*.sql
+
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No backup changes detected."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Backup changes detected."
+          fi
+
+      # 11. Cria o commit do backup
+      - name: Commit backup
+        if: env.BACKUP_ENABLED == 'true' && steps.changes.outputs.changed == 'true'
+        run: |
+          git commit -m "Supabase backup [skip ci]"
+
+      # 12. Envia o backup para a branch exclusiva
+      - name: Push backup branch
+        if: env.BACKUP_ENABLED == 'true' && steps.changes.outputs.changed == 'true'
+        run: |
+          git push origin "$BACKUP_BRANCH"
