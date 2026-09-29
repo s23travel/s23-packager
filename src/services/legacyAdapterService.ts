@@ -388,6 +388,7 @@ export function normalizeLegacyToNewStructure(
   // 6. Montar o NormalizedPackageData preservando todos os campos
   const normalized: NormalizedPackageData = {
     ...copy,
+    origin: legacyData.origin || (copy.origin as string | undefined),
     destination: destResolution.destination,
     destinationConflict: destResolution.destinationConflict,
     destinationConflictDetails: destResolution.destinationConflictDetails,

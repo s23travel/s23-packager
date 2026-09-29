@@ -100,7 +100,7 @@ runTest('1. Quotation completa com todos os dados comerciais', () => {
   assert(msg.includes('⏰ Partida: 18:20 → 19:40'));
   assert(msg.includes('🏨 15/07/2026 – 7 noites em Iberostar Selection Playa de Palma, com Tudo Incluído.'));
   assert(msg.includes('🚗 Transfer privativo aeroporto / hotel / aeroporto incluído'));
-  assert(msg.includes('💶 Preço por pessoa: *€ 950,00*'));
+  assert(msg.includes('💵 Investimento: *2.850,00€*'));
   assert(msg.includes('💳 Entrada: 30% no ato da reserva + saldo até 20 dias antes da partida'));
   assert(msg.includes('Opção com quarto vista mar'));
   assert(msg.includes('Taxa local a pagar diretamente na hospedagem: 3,30€ por pessoa/noite'));
@@ -271,7 +271,7 @@ runTest('8. Quotation em EUR formata com símbolo e emoji de euro', () => {
   };
 
   const msg = generateWhatsAppMessage(quote);
-  assert(msg.includes('💶 Preço por pessoa: *€ 725,25*'));
+  assert(msg.includes('💵 Investimento: *1.450,50€*'));
 });
 
 // 9. Quotation em BRL.
@@ -293,7 +293,7 @@ runTest('9. Quotation em BRL formata com símbolo e moeda brasileira', () => {
   };
 
   const msg = generateWhatsAppMessage(quote);
-  assert(msg.includes('💰 Preço por pessoa: *R$ 3.945,00*'));
+  assert(msg.includes('💵 Investimento: *R$ 7.890,00*'));
 });
 
 // 10. Dados opcionais ausentes não geram placeholders.
@@ -387,7 +387,7 @@ runTest('12. Mensagem usa estritamente os dados da quotation e ignora package de
   const msg = generateWhatsAppMessage(quote);
   // Deve refletir a rota customizada da quotation
   assert(msg.includes('Porto → Funchal (Customizado na Quotation)'));
-  assert(msg.includes('€ 1.100,00'));
+  assert(msg.includes('1.100,00€'));
 });
 
 // 13. Alteração posterior no package não altera a mensagem da quotation.
@@ -419,7 +419,7 @@ runTest('13. Alteração posterior no package não altera a mensagem da quotatio
 
   // Gera mensagem inicial
   const msgBefore = generateWhatsAppMessage(quotation);
-  assert(msgBefore.includes('€ 425,00'));
+  assert(msgBefore.includes('850,00€'));
   assert(msgBefore.includes('Porto → Ponta Delgada'));
 
   // Modifica drasticamente o pacote de origem
@@ -433,14 +433,14 @@ runTest('13. Alteração posterior no package não altera a mensagem da quotatio
   assert.strictEqual(msgBefore, msgAfter);
   assert(!msgAfter.includes('ALTERADO NO PACOTE'));
   assert(!msgAfter.includes('1.600,00'));
-  assert(msgAfter.includes('€ 425,00'));
+  assert(msgAfter.includes('850,00€'));
 });
 
 // 14. Valores monetários formatados corretamente.
 runTest('14. Valores monetários com formatação decimal portuguesa (ponto e vírgula)', () => {
-  assert.strictEqual(formatPriceText(1234.56, 'EUR'), '💶 Preço por pessoa: *€ 1.234,56*');
-  assert.strictEqual(formatPriceText(5000, 'EUR'), '💶 Preço por pessoa: *€ 5.000,00*');
-  assert.strictEqual(formatPriceText(9876.5, 'BRL'), '💰 Preço por pessoa: *R$ 9.876,50*');
+  assert.strictEqual(formatPriceText(1234.56, 'EUR'), '💵 Investimento: *1.234,56€*');
+  assert.strictEqual(formatPriceText(5000, 'EUR'), '💵 Investimento: *5.000,00€*');
+  assert.strictEqual(formatPriceText(9876.5, 'BRL'), '💵 Investimento: *R$ 9.876,50*');
 });
 
 // 15. Teste Explícito de Isolamento de Snapshot Workflow.
@@ -487,7 +487,7 @@ runTest('15. Teste Explícito de Isolamento de Snapshot Workflow', () => {
   // 5. Confirmar que a mensagem continua refletindo a quotation original
   assert(message.includes('Lisboa → Atenas'));
   assert(message.includes('01/06/2026 a 08/06/2026'));
-  assert(message.includes('€ 995,00'));
+  assert(message.includes('1.990,00€'));
   assert(!message.includes('Creta'));
   assert(!message.includes('10/2026'));
   assert(!message.includes('3.500,00'));
@@ -795,9 +795,59 @@ runTest('25. O restante da mensagem WhatsApp permanece inalterado', () => {
   assert(msg.includes('⏰ Partida: 10:00 → 13:15'));
   assert(msg.includes('🏨 28/12/2026 – 5 noites em Novotel Paris, com Café da manhã (BB).'));
   assert(msg.includes('🚗 Transfer privativo incluído'));
-  assert(msg.includes('💶 Preço por pessoa: *€ 800,00*'));
+  assert(msg.includes('💵 Investimento: *1.600,00€*'));
   assert(msg.includes('💳 Entrada: 50% na reserva + 50% 15 dias antes'));
   assert(msg.includes('Até a data da contratação podem ocorrer alterações sem controle da agência.'));
+});
+
+// 26. Cotação avulsa com cliente, origem e destino
+runTest('26. Cotação avulsa com cliente, origem e destino gera título com rota comercial "✨ Cliente – Origem → Destino"', () => {
+  const quote: Quotation = {
+    id: 'quote-origin-1',
+    reference: 'COT-2026-ORI1',
+    client_name: 'Mariana Costa',
+    package_id: null,
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      origin: 'Porto',
+      destination: 'Madrid',
+      services: [],
+      financials: { salePrice: 400, totalCost: 250, currency: 'EUR', components: [], pricePerPerson: 400, profit: 150, profitPercent: 37.5, taxesAndFeesTotal: 0 },
+    },
+  };
+
+  const msg = generateWhatsAppMessage(quote);
+  assert(msg.startsWith('✨ Mariana Costa – Porto → Madrid'), 'Título deve conter rota com Origem → Destino');
+});
+
+// 27. Cotação avulsa sem cliente, com origem e destino
+runTest('27. Cotação avulsa sem cliente com origem e destino gera título "✨ Origem → Destino"', () => {
+  const quote: Quotation = {
+    id: 'quote-origin-2',
+    reference: 'COT-2026-ORI2',
+    client_name: null,
+    package_id: null,
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      origin: 'Lisboa',
+      destination: 'Roma',
+      services: [],
+      financials: { salePrice: 600, totalCost: 400, currency: 'EUR', components: [], pricePerPerson: 600, profit: 200, profitPercent: 33.33, taxesAndFeesTotal: 0 },
+    },
+  };
+
+  const msg = generateWhatsAppMessage(quote);
+  assert(msg.startsWith('✨ Lisboa → Roma'), 'Título sem cliente deve ser "✨ Origem → Destino"');
 });
 
 console.log(`\n=== RESULTADO: ${testsPassed} PASSOU, ${testsFailed} FALHOU ===`);

@@ -476,10 +476,10 @@ runTest('TESTE 8: Geração de WhatsApp permanece 100% funcional e preserva dado
 
   const waMessage = generateWhatsAppMessage(quote);
 
-  // O WhatsApp deve continuar contendo o título comercial do pacote, detalhes de hotel e preço por pessoa
+  // O WhatsApp deve continuar contendo o título comercial do pacote, detalhes de hotel e preço de venda (investimento)
   assert(waMessage.includes('Pacote Viena & Budapeste'), 'Título do WhatsApp preservado');
   assert(waMessage.includes('Hotel Brixen Viena'), 'WhatsApp preserva hotel operacional');
-  assert(waMessage.includes('€ 600,00'), 'WhatsApp formata preço por pessoa corretamente');
+  assert(waMessage.includes('1.200,00€'), 'WhatsApp formata investimento/preço de venda corretamente');
   assert(waMessage.includes('2 adultos'), 'WhatsApp formata passageiros');
 });
 

@@ -213,6 +213,7 @@ export interface ServiceItem {
  */
 export interface NormalizedPackageData {
   destination?: string;
+  origin?: string;
   destinationConflict?: boolean;
   destinationConflictDetails?: string[];
   dates?: TravelDates;
@@ -251,6 +252,7 @@ export interface FinancialSummary {
  */
 export interface PackageData {
   destination?: string;
+  origin?: string;
   services?: ServiceItem[];
   destinationConflict?: boolean;
   destinationConflictDetails?: string[];
@@ -452,6 +454,7 @@ export interface WebsiteContentPayload {
   packageName: string;
   reference?: string;
   destination: string;
+  origin?: string;
   dates?: TravelDates;
   passengers?: PassengerConfig;
   durationDays?: number;
@@ -568,6 +571,7 @@ export interface PackageDraft {
   adults: number | '';
   children: number | '';
   destination?: string;
+  origin?: string;
   services?: ServiceItem[];
   outboundRoute?: string;
   outboundCarrier?: string;
@@ -603,6 +607,7 @@ export interface QuoteDraft {
   children: number | '';
   infants: number | '';
   destination?: string;
+  origin?: string;
   services?: ServiceItem[];
   salePrice: number;
   paymentConditions?: string;

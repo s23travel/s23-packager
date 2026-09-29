@@ -93,6 +93,7 @@ export const QuoteDetailPage: React.FC = () => {
   // Normalização transparente de legados vs. novos dados
   let services: ServiceItem[] = [];
   let destination = rawData.destination || '';
+  let origin = rawData.origin || '';
   let paymentConditions = rawData.paymentConditions || '';
   let localTaxNotes = rawData.localTaxNotes || '';
   let extraServicesNotes = rawData.extraServicesNotes || '';
@@ -105,6 +106,9 @@ export const QuoteDetailPage: React.FC = () => {
     services = normalized.services || [];
     if (!destination && normalized.destination) {
       destination = normalized.destination;
+    }
+    if (!origin && normalized.origin) {
+      origin = normalized.origin;
     }
     if (!paymentConditions && normalized.paymentConditions) paymentConditions = normalized.paymentConditions;
     if (!localTaxNotes && normalized.localTaxNotes) localTaxNotes = normalized.localTaxNotes;
@@ -198,6 +202,14 @@ export const QuoteDetailPage: React.FC = () => {
               {quote.client_name || 'Não informado'}
             </span>
           </div>
+          {origin && (
+            <div className="detail-row">
+              <span className="detail-label">Origem:</span>
+              <span className="detail-value" style={{ fontWeight: 600 }}>
+                {origin}
+              </span>
+            </div>
+          )}
           <div className="detail-row">
             <span className="detail-label">Destino Principal:</span>
             <span className="detail-value" style={{ fontWeight: 600 }}>

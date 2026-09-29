@@ -72,8 +72,9 @@ export function buildWebsiteContentPayload(
   packageData: PackageData,
   metadata?: { id?: string; name?: string; reference?: string; currency?: Currency }
 ): WebsiteContentPayload {
-  // 1. Determina destination e services: se novo, usa direto; se legado, normaliza em memória
+  // 1. Determina destination, origin e services: se novo, usa direto; se legado, normaliza em memória
   let destination = packageData.destination?.trim() || '';
+  let origin = packageData.origin?.trim() || '';
   let services = Array.isArray(packageData.services) ? packageData.services : [];
 
   if (services.length === 0) {
@@ -81,6 +82,9 @@ export function buildWebsiteContentPayload(
     services = normalized.services || [];
     if (!destination && normalized.destination) {
       destination = normalized.destination;
+    }
+    if (!origin && normalized.origin) {
+      origin = normalized.origin;
     }
   }
 
@@ -113,6 +117,7 @@ export function buildWebsiteContentPayload(
     packageName: metadata?.name || '',
     reference: metadata?.reference || '',
     destination,
+    origin: origin || undefined,
     dates: packageData.dates,
     passengers: packageData.passengers,
     durationDays: packageData.dates?.durationDays,
@@ -146,6 +151,7 @@ export function buildContentGenerationInput(source: {
       q.reference;
 
     const origin =
+      d.origin?.trim() ||
       d.outboundTransport?.route?.split('→')[0]?.trim() ||
       d.outboundTransport?.route?.split('-')[0]?.trim() ||
       '';
@@ -234,9 +240,9 @@ export function buildContentGenerationInput(source: {
     const lodgingServices = payload.services.filter((s) => s.type === 'accommodation');
     const primaryLodging = lodgingServices[0];
 
-    // Origem extraída do transporte de ida
-    let origin = '';
-    if (outboundService?.description) {
+    // Origem: prioriza packageData.origin / payload.origin, com fallback para extração do transporte
+    let origin = d.origin?.trim() || payload.origin?.trim() || '';
+    if (!origin && outboundService?.description) {
       const parts = outboundService.description.split(/→|-/);
       if (parts.length > 1) {
         origin = parts[0].trim();

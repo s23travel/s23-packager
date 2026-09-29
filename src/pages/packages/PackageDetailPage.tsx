@@ -110,6 +110,7 @@ export const PackageDetailPage: React.FC = () => {
   // Normalização transparente de legados vs. novos dados
   let services: ServiceItem[] = [];
   let destination = rawData.destination || '';
+  let origin = rawData.origin || '';
 
   if (Array.isArray(rawData.services) && rawData.services.length > 0) {
     services = rawData.services;
@@ -118,6 +119,9 @@ export const PackageDetailPage: React.FC = () => {
     services = normalized.services || [];
     if (!destination && normalized.destination) {
       destination = normalized.destination;
+    }
+    if (!origin && normalized.origin) {
+      origin = normalized.origin;
     }
   }
 
@@ -187,6 +191,14 @@ export const PackageDetailPage: React.FC = () => {
       <div className="card" style={{ marginTop: '1.25rem' }}>
         <h3 className="card-title">Datas, Passageiros e Destino</h3>
         <div className="detail-rows">
+          {origin && (
+            <div className="detail-row">
+              <span className="detail-label">Origem:</span>
+              <span className="detail-value" style={{ fontWeight: 600 }}>
+                {origin}
+              </span>
+            </div>
+          )}
           <div className="detail-row">
             <span className="detail-label">Destino Principal:</span>
             <span className="detail-value" style={{ fontWeight: 600 }}>

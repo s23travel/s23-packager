@@ -44,6 +44,7 @@ export const QuoteFormPage: React.FC = () => {
   const [originPackageName, setOriginPackageName] = useState<string>('');
 
   // SEÇÃO 2: Datas, Passageiros e Destino
+  const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -122,6 +123,7 @@ export const QuoteFormPage: React.FC = () => {
         setCustomNotes(draft.customNotes || '');
         setTransferService(draft.transferService || '');
 
+        setOrigin(draft.origin || '');
         if (Array.isArray(draft.services)) {
           setDestination(draft.destination || '');
           setServices(draft.services);
@@ -262,6 +264,7 @@ export const QuoteFormPage: React.FC = () => {
         if (isLegacyPackageData(rawData) || !Array.isArray(rawData.services)) {
           // Cotação no formato legado: normaliza em memória através do adapter determinístico
           const normalized = normalizeLegacyToNewStructure(rawData);
+          setOrigin(normalized.origin || rawData.origin || '');
           setDestination(normalized.destination || rawData.destination || '');
           setServices(normalized.services || []);
 
@@ -275,6 +278,7 @@ export const QuoteFormPage: React.FC = () => {
           });
         } else {
           // Cotação já na nova estrutura de serviços
+          setOrigin(rawData.origin || '');
           setDestination(rawData.destination || '');
           setServices(rawData.services || []);
           setLegacyExtraData({
@@ -316,6 +320,7 @@ export const QuoteFormPage: React.FC = () => {
         adults,
         children,
         infants,
+        origin,
         destination,
         services,
         salePrice,
@@ -350,6 +355,7 @@ export const QuoteFormPage: React.FC = () => {
       adults,
       children,
       infants,
+      origin,
       destination,
       services,
       salePrice,
@@ -501,6 +507,7 @@ export const QuoteFormPage: React.FC = () => {
       // Estrutura final de QuotationData (Fase 3: Nova Estrutura Unificada de Serviços)
       // Não cria estruturas operacionais legadas (outboundTransport, inboundTransport, lodging)
       const quotationData: QuotationData = {
+        origin: origin.trim() || undefined,
         destination: destination.trim(),
         services,
         dates: {
@@ -733,7 +740,24 @@ export const QuoteFormPage: React.FC = () => {
           <h3 className="form-section-title">2. Datas, Passageiros e Destino</h3>
 
           <div className="form-grid-2" style={{ marginBottom: '1rem' }}>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="origin">
+                Origem da Cotação
+              </label>
+              <input
+                id="origin"
+                type="text"
+                className="form-input"
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
+                placeholder="Ex: Porto, Lisboa, São Paulo"
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Cidade de saída ou partida principal da cotação.
+              </span>
+            </div>
+
+            <div className="form-group">
               <label className="form-label" htmlFor="destination">
                 Destino Principal da Cotação *
               </label>

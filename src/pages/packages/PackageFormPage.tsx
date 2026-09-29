@@ -47,6 +47,7 @@ export const PackageFormPage: React.FC = () => {
   const [durationNights, setDurationNights] = useState<number | ''>(0);
   const [adults, setAdults] = useState<number | ''>(2);
   const [children, setChildren] = useState<number | ''>(0);
+  const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
 
   // Seção 3: Financeiro (Lista Única de Serviços e Preço de Venda)
@@ -103,6 +104,7 @@ export const PackageFormPage: React.FC = () => {
         setChildren(draft.children);
         setSalePrice(draft.salePrice || 0);
 
+        setOrigin(draft.origin || '');
         // Se o draft já tem services, usa diretamente
         if (Array.isArray(draft.services)) {
           setDestination(draft.destination || '');
@@ -237,6 +239,7 @@ export const PackageFormPage: React.FC = () => {
         if (isLegacyPackageData(rawData) || !Array.isArray(rawData.services)) {
           // Pacote no formato legado: normaliza em memória através do adapter determinístico
           const normalized = normalizeLegacyToNewStructure(rawData);
+          setOrigin(normalized.origin || rawData.origin || '');
           setDestination(normalized.destination || rawData.destination || '');
           setServices(normalized.services || []);
 
@@ -250,6 +253,7 @@ export const PackageFormPage: React.FC = () => {
           });
         } else {
           // Pacote já na nova estrutura
+          setOrigin(rawData.origin || '');
           setDestination(rawData.destination || '');
           setServices(rawData.services || []);
           setLegacyExtraData({
@@ -289,6 +293,7 @@ export const PackageFormPage: React.FC = () => {
         durationNights,
         adults,
         children,
+        origin,
         destination,
         services,
         salePrice,
@@ -315,6 +320,7 @@ export const PackageFormPage: React.FC = () => {
       durationNights,
       adults,
       children,
+      origin,
       destination,
       services,
       salePrice,
@@ -469,6 +475,7 @@ export const PackageFormPage: React.FC = () => {
       // Estrutura final do PackageData (Fase 2: Nova Estrutura Unificada de Serviços)
       // Não cria estruturas operacionais legadas (outboundTransport, inboundTransport, lodging)
       const packageData: PackageData = {
+        origin: origin.trim() || undefined,
         destination: destination.trim(),
         services,
         dates: {
@@ -661,7 +668,24 @@ export const PackageFormPage: React.FC = () => {
           <h3 className="form-section-title">2. Datas, Passageiros e Destino</h3>
 
           <div className="form-grid-2" style={{ marginBottom: '1rem' }}>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="origin">
+                Origem da Viagem
+              </label>
+              <input
+                id="origin"
+                type="text"
+                className="form-input"
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
+                placeholder="Ex: Porto, Lisboa, São Paulo"
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Cidade de saída ou partida principal do pacote.
+              </span>
+            </div>
+
+            <div className="form-group">
               <label className="form-label" htmlFor="destination">
                 Destino Principal da Viagem *
               </label>

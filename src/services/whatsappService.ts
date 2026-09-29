@@ -64,9 +64,9 @@ export function formatPriceText(price: number, currency: Currency): string {
   });
 
   if (currency === 'EUR') {
-    return `💶 Preço por pessoa: *€ ${formatted}*`;
+    return `💵 Investimento: *${formatted}€*`;
   }
-  return `💰 Preço por pessoa: *R$ ${formatted}*`;
+  return `💵 Investimento: *R$ ${formatted}*`;
 }
 
 function getPackageBaseName(quotation: Quotation): string {
@@ -138,19 +138,43 @@ function getDestination(quotation: Quotation): string {
   return '';
 }
 
+function getOrigin(quotation: Quotation): string {
+  const d = quotation.data;
+  if (!d) return '';
+
+  // 1. Origem comercial explícita no nível da cotação
+  if (typeof d.origin === 'string' && d.origin.trim()) {
+    return d.origin.trim();
+  }
+
+  // 2. Se for formato legado, resolve através do adapter
+  if (isLegacyPackageData(d) || !Array.isArray(d.services)) {
+    const normalized = normalizeLegacyToNewStructure(d);
+    if (normalized.origin?.trim()) {
+      return normalized.origin.trim();
+    }
+  }
+
+  return '';
+}
+
 /**
  * Constrói o título comercial da mensagem para WhatsApp.
  *
  * REGRA DEFINITIVA DE PRIORIDADE:
  * 1. Cotação vinculada a Pacote Base:
  *    "✨ Pacote S23 – {Nome Comercial do Pacote Base}"
- * 2. Cotação avulsa com cliente + destino:
+ * 2. Cotação avulsa com cliente + origem + destino:
+ *    "✨ {Nome do Cliente} – {Origem} → {Destino}"
+ * 3. Cotação avulsa com cliente + destino:
  *    "✨ {Nome do Cliente} – {Destino/Cidade}"
- * 3. Sem nome do cliente, mas com destino:
+ * 4. Sem nome do cliente, com origem + destino:
+ *    "✨ {Origem} → {Destino}"
+ * 5. Sem nome do cliente, mas com destino:
  *    "✨ {Destino/Cidade}"
- * 4. Sem destino, mas com nome do cliente:
+ * 6. Sem destino, mas com nome do cliente:
  *    "✨ {Nome do Cliente}"
- * 5. Fallback neutro:
+ * 7. Fallback neutro:
  *    "✨ Pacote S23"
  *
  * NUNCA utilizar informações de transporte (ida, volta, rota, cia aérea, aeroporto/IATA)
@@ -167,23 +191,26 @@ export function getWhatsAppTitle(quotation: Quotation): string {
 
   const clientName = getClientName(quotation);
   const destination = getDestination(quotation);
+  const origin = getOrigin(quotation);
 
-  // 2. Cotação avulsa com cliente + destino
-  if (clientName && destination) {
-    return `✨ ${clientName} – ${destination}`;
+  const routeOrDest = origin && destination ? `${origin} → ${destination}` : destination;
+
+  // 2 e 3. Cotação avulsa com cliente (+ rota ou destino)
+  if (clientName && routeOrDest) {
+    return `✨ ${clientName} – ${routeOrDest}`;
   }
 
-  // 3. Sem nome do cliente, mas com destino
-  if (destination) {
-    return `✨ ${destination}`;
+  // 4 e 5. Sem nome do cliente (+ rota ou destino)
+  if (routeOrDest) {
+    return `✨ ${routeOrDest}`;
   }
 
-  // 4. Sem destino, mas com nome do cliente
+  // 6. Sem destino, mas com nome do cliente
   if (clientName) {
     return `✨ ${clientName}`;
   }
 
-  // 5. Fallback neutro
+  // 7. Fallback neutro
   return '✨ Pacote S23';
 }
 
@@ -407,16 +434,18 @@ export function generateWhatsAppMessage(quotation: Quotation): string {
 
   sections.push(inclusions.join('\n'));
 
-  // 4. Preço por Pessoa do Pacote
-  const pricePerPerson =
-    typeof d.financials?.pricePerPerson === 'number'
-      ? d.financials.pricePerPerson
-      : typeof d.financials?.pricePerPersonAmount?.amount === 'number'
-      ? d.financials.pricePerPersonAmount.amount
+  // 4. Preço de Venda do Pacote (Investimento)
+  const salePrice =
+    typeof d.financials?.salePrice === 'number'
+      ? d.financials.salePrice
+      : typeof d.financials?.priceTotal?.amount === 'number'
+      ? d.financials.priceTotal.amount
+      : typeof (d as any)?.salePrice === 'number'
+      ? (d as any).salePrice
       : 0;
 
-  if (pricePerPerson > 0) {
-    sections.push(formatPriceText(pricePerPerson, currency));
+  if (salePrice > 0) {
+    sections.push(formatPriceText(salePrice, currency));
   }
 
   // 5. Condição de Pagamento (Entrada / Parcelamento)

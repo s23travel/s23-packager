@@ -664,6 +664,52 @@ runTest('32. Mesmo PackageData produz payload idêntico bit-a-bit', () => {
   assert.strictEqual(p1, p2);
 });
 
+// 33. Propagação de origin no WebsiteContentPayload
+runTest('33. buildWebsiteContentPayload propaga origin do PackageData', () => {
+  const packageData: PackageData = {
+    origin: 'Porto (OPO)',
+    destination: 'Madrid',
+    services: [],
+    financials: { salePrice: 500, totalCost: 300, currency: 'EUR', components: [], pricePerPerson: 500, profit: 200, profitPercent: 40, taxesAndFeesTotal: 0 },
+  };
+
+  const payload = buildWebsiteContentPayload(packageData, { name: 'Madrid Express' });
+  assert.strictEqual(payload.origin, 'Porto (OPO)');
+  assert.strictEqual(payload.destination, 'Madrid');
+});
+
+// 34. buildContentGenerationInput prioriza origin do pacote
+runTest('34. buildContentGenerationInput utiliza origin do PackageData como fonte prioritária para a IA', () => {
+  const pkg: Package = {
+    id: 'pkg-origin-test',
+    reference: 'PK-ORI-001',
+    name: 'Tanzânia Safari',
+    status: 'active',
+    base_currency: 'EUR',
+    created_at: '',
+    updated_at: '',
+    data: {
+      origin: 'São Paulo (GRU)',
+      destination: 'Tanzânia',
+      services: [
+        {
+          id: 'v1',
+          type: 'outbound_transport',
+          description: 'Lisboa → Kilimanjaro', // Rota no serviço difere da origem comercial do pacote
+          currency: 'EUR',
+          amount: 800,
+          quantity: 1,
+        },
+      ],
+      financials: { salePrice: 2500, totalCost: 1500, currency: 'EUR', components: [], pricePerPerson: 2500, profit: 1000, profitPercent: 40, taxesAndFeesTotal: 0 },
+    },
+  };
+
+  const input = buildContentGenerationInput({ package: pkg });
+  assert.strictEqual(input.origin, 'São Paulo (GRU)', 'Deve priorizar a origem comercial definida no formulário do pacote');
+  assert.strictEqual(input.destination, 'Tanzânia');
+});
+
 console.log(`\n=== FIM DOS TESTES DA FASE 6A: ${testsPassed} PASSARAM, ${testsFailed} FALHARAM ===\n`);
 
 if (testsFailed > 0) {
