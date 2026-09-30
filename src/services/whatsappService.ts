@@ -64,9 +64,9 @@ export function formatPriceText(price: number, currency: Currency): string {
   });
 
   if (currency === 'EUR') {
-    return `💵 Investimento: *${formatted}€*`;
+    return `💵 Investimento total: *${formatted}€*`;
   }
-  return `💵 Investimento: *R$ ${formatted}*`;
+  return `💵 Investimento total: *R$ ${formatted}*`;
 }
 
 function getPackageBaseName(quotation: Quotation): string {
@@ -163,7 +163,7 @@ function getOrigin(quotation: Quotation): string {
  *
  * REGRA DEFINITIVA DE PRIORIDADE:
  * 1. Cotação vinculada a Pacote Base:
- *    "✨ Pacote S23 – {Nome Comercial do Pacote Base}"
+ *    "✨ Pacote S23: {Nome Comercial do Pacote Base}" (convertendo separador de rota " - " em " -> ")
  * 2. Cotação avulsa com cliente + origem + destino:
  *    "✨ {Nome do Cliente} – {Origem} → {Destino}"
  * 3. Cotação avulsa com cliente + destino:
@@ -186,7 +186,8 @@ export function getWhatsAppTitle(quotation: Quotation): string {
   // 1. Cotação vinculada a Pacote Base
   const packageBaseName = getPackageBaseName(quotation);
   if (packageBaseName) {
-    return `✨ Pacote S23 – ${packageBaseName}`;
+    const formattedPackageName = packageBaseName.replace(/\s+(?:[-–]|→|->)\s+/, ' -> ');
+    return `✨ Pacote S23: ${formattedPackageName}`;
   }
 
   const clientName = getClientName(quotation);

@@ -105,7 +105,7 @@ runTest('1. Cotação nova estruturada com services[] gera mensagem WhatsApp com
   assert(msg.includes('🏨 10/10/2026 – 5 noites em Hotel Pullman Paris Tour Eiffel, com Café da manhã (BB).'));
   assert(msg.includes('🚗 Transfer Aeroporto CDG → Hotel (Privativo)'));
   assert(msg.includes('🛡️ Seguro-viagem Internacional Mawdy'));
-  assert(msg.includes('💵 Investimento: *1.950,00€*'));
+  assert(msg.includes('💵 Investimento total: *1.950,00€*'));
   assert(msg.includes('💳 Entrada: 40% entrada + saldo em até 20 dias antes'));
   assert(msg.includes('Quarto com vista Torre Eiffel confirmado.'));
   assert(msg.includes('Taxa local a pagar diretamente na hospedagem: 5,20€ por pessoa/noite no hotel'));
@@ -144,7 +144,7 @@ runTest('2. Cotação legada com estruturas antigas gera WhatsApp idêntico via 
   assert(msg.includes('🛬 05/11/2026 – TAP MAD → LIS'));
   assert(msg.includes('⏰ Partida: 19:00 → 19:15'));
   assert(msg.includes('🏨 01/11/2026 – 4 noites em Hotel Mayorazgo Madrid, com Café da manhã (BB).'));
-  assert(msg.includes('💵 Investimento: *850,00€*'));
+  assert(msg.includes('💵 Investimento total: *850,00€*'));
 });
 
 // 3. Título de cotação vinculada a Pacote Base
@@ -168,7 +168,7 @@ runTest('3. Título de cotação vinculada a pacote usa o nome comercial do Paco
   };
 
   const title = getWhatsAppTitle(quote);
-  assert.strictEqual(title, '✨ Pacote S23 – Tanzânia & Zanzibar 10D');
+  assert.strictEqual(title, '✨ Pacote S23: Tanzânia & Zanzibar 10D');
 });
 
 // 4. Título standalone com cliente e destino
@@ -400,7 +400,7 @@ runTest('11. Mensagem WhatsApp com moeda BRL formata corretamente', () => {
   };
 
   const msg = generateWhatsAppMessage(quote);
-  assert(msg.includes('💵 Investimento: *R$ 3.200,50*'));
+  assert(msg.includes('💵 Investimento total: *R$ 3.200,50*'));
 });
 
 // 12. Confidencialidade

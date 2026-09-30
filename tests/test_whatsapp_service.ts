@@ -90,8 +90,8 @@ runTest('1. Quotation completa com todos os dados comerciais', () => {
   const msg = generateWhatsAppMessage(quote);
 
   // Verificações
-  assert(msg.includes('✨ Pacote S23 – Maiorca Verão 2026'));
-  assert(!msg.includes('✨ Pacote S23 – Porto → Maiorca'));
+  assert(msg.includes('✨ Pacote S23: Maiorca Verão 2026'));
+  assert(!msg.includes('✨ Pacote S23: Porto → Maiorca'));
   assert(msg.includes('📅 15/07/2026 a 22/07/2026'));
   assert(msg.includes('✈️ O que está incluído para 2 adultos, 1 criança e 1 bebé:'));
   assert(msg.includes('🛫 15/07/2026 – TAP Air Portugal Porto → Maiorca'));
@@ -100,7 +100,7 @@ runTest('1. Quotation completa com todos os dados comerciais', () => {
   assert(msg.includes('⏰ Partida: 18:20 → 19:40'));
   assert(msg.includes('🏨 15/07/2026 – 7 noites em Iberostar Selection Playa de Palma, com Tudo Incluído.'));
   assert(msg.includes('🚗 Transfer privativo aeroporto / hotel / aeroporto incluído'));
-  assert(msg.includes('💵 Investimento: *2.850,00€*'));
+  assert(msg.includes('💵 Investimento total: *2.850,00€*'));
   assert(msg.includes('💳 Entrada: 30% no ato da reserva + saldo até 20 dias antes da partida'));
   assert(msg.includes('Opção com quarto vista mar'));
   assert(msg.includes('Taxa local a pagar diretamente na hospedagem: 3,30€ por pessoa/noite'));
@@ -271,7 +271,7 @@ runTest('8. Quotation em EUR formata com símbolo e emoji de euro', () => {
   };
 
   const msg = generateWhatsAppMessage(quote);
-  assert(msg.includes('💵 Investimento: *1.450,50€*'));
+  assert(msg.includes('💵 Investimento total: *1.450,50€*'));
 });
 
 // 9. Quotation em BRL.
@@ -293,7 +293,7 @@ runTest('9. Quotation em BRL formata com símbolo e moeda brasileira', () => {
   };
 
   const msg = generateWhatsAppMessage(quote);
-  assert(msg.includes('💵 Investimento: *R$ 7.890,00*'));
+  assert(msg.includes('💵 Investimento total: *R$ 7.890,00*'));
 });
 
 // 10. Dados opcionais ausentes não geram placeholders.
@@ -438,9 +438,9 @@ runTest('13. Alteração posterior no package não altera a mensagem da quotatio
 
 // 14. Valores monetários formatados corretamente.
 runTest('14. Valores monetários com formatação decimal portuguesa (ponto e vírgula)', () => {
-  assert.strictEqual(formatPriceText(1234.56, 'EUR'), '💵 Investimento: *1.234,56€*');
-  assert.strictEqual(formatPriceText(5000, 'EUR'), '💵 Investimento: *5.000,00€*');
-  assert.strictEqual(formatPriceText(9876.5, 'BRL'), '💵 Investimento: *R$ 9.876,50*');
+  assert.strictEqual(formatPriceText(1234.56, 'EUR'), '💵 Investimento total: *1.234,56€*');
+  assert.strictEqual(formatPriceText(5000, 'EUR'), '💵 Investimento total: *5.000,00€*');
+  assert.strictEqual(formatPriceText(9876.5, 'BRL'), '💵 Investimento total: *R$ 9.876,50*');
 });
 
 // 15. Teste Explícito de Isolamento de Snapshot Workflow.
@@ -521,13 +521,13 @@ runTest('16. Cotação vinculada a Pacote Base: usa nome comercial do Pacote Bas
   };
 
   const title = getWhatsAppTitle(quote);
-  assert.strictEqual(title, '✨ Pacote S23 – Paris Réveillon 2027');
+  assert.strictEqual(title, '✨ Pacote S23: Paris Réveillon 2027');
   assert(!title.includes('Easyjet'));
   assert(!title.includes('OPO'));
 
   const msg = generateWhatsAppMessage(quote);
-  assert(msg.startsWith('✨ Pacote S23 – Paris Réveillon 2027'));
-  assert(!msg.includes('✨ Pacote S23 – Easyjet (OPO)'));
+  assert(msg.startsWith('✨ Pacote S23: Paris Réveillon 2027'));
+  assert(!msg.includes('✨ Pacote S23: Easyjet (OPO)'));
 });
 
 // 17. Cotação vinculada a Pacote Base com transporte diferente
@@ -556,7 +556,7 @@ runTest('17. Cotação vinculada a Pacote Base com transporte diferente continua
   };
 
   const title = getWhatsAppTitle(quote);
-  assert.strictEqual(title, '✨ Pacote S23 – Paris Réveillon 2027');
+  assert.strictEqual(title, '✨ Pacote S23: Paris Réveillon 2027');
 });
 
 // 18. Cotação avulsa com cliente + destino
@@ -732,7 +732,7 @@ runTest('24. Alterar o transporte NÃO altera o título de uma cotação vincula
   };
 
   const title1 = getWhatsAppTitle(quote);
-  assert.strictEqual(title1, '✨ Pacote S23 – Roma Histórica');
+  assert.strictEqual(title1, '✨ Pacote S23: Roma Histórica');
 
   // Altera transporte para outro completamente diferente
   if (quote.data.outboundTransport) {
@@ -741,7 +741,7 @@ runTest('24. Alterar o transporte NÃO altera o título de uma cotação vincula
   }
 
   const title2 = getWhatsAppTitle(quote);
-  assert.strictEqual(title2, '✨ Pacote S23 – Roma Histórica');
+  assert.strictEqual(title2, '✨ Pacote S23: Roma Histórica');
   assert.strictEqual(title1, title2);
 });
 
@@ -787,7 +787,7 @@ runTest('25. O restante da mensagem WhatsApp permanece inalterado', () => {
 
   const msg = generateWhatsAppMessage(quote);
   // Título segue a nova regra
-  assert(msg.startsWith('✨ Pacote S23 – Paris Réveillon 2027'));
+  assert(msg.startsWith('✨ Pacote S23: Paris Réveillon 2027'));
   // Restante da mensagem preservado
   assert(msg.includes('📅 28/12/2026 a 02/01/2027'));
   assert(msg.includes('✈️ O que está incluído para 2 adultos:'));
@@ -795,7 +795,7 @@ runTest('25. O restante da mensagem WhatsApp permanece inalterado', () => {
   assert(msg.includes('⏰ Partida: 10:00 → 13:15'));
   assert(msg.includes('🏨 28/12/2026 – 5 noites em Novotel Paris, com Café da manhã (BB).'));
   assert(msg.includes('🚗 Transfer privativo incluído'));
-  assert(msg.includes('💵 Investimento: *1.600,00€*'));
+  assert(msg.includes('💵 Investimento total: *1.600,00€*'));
   assert(msg.includes('💳 Entrada: 50% na reserva + 50% 15 dias antes'));
   assert(msg.includes('Até a data da contratação podem ocorrer alterações sem controle da agência.'));
 });
@@ -848,6 +848,34 @@ runTest('27. Cotação avulsa sem cliente com origem e destino gera título "✨
 
   const msg = generateWhatsAppMessage(quote);
   assert(msg.startsWith('✨ Lisboa → Roma'), 'Título sem cliente deve ser "✨ Origem → Destino"');
+});
+
+// 28. Cotação vinculada a Pacote Base com traço no nome (Porto - Madrid + Warner) e preço de investimento
+runTest('28. Cotação com pacote "Porto - Madrid + Warner" gera "✨ Pacote S23: Porto -> Madrid + Warner" e "💵 Investimento total:"', () => {
+  const quote: Quotation = {
+    id: 'quote-warner',
+    reference: 'COT-2026-WAR',
+    client_name: 'Cliente Teste',
+    package_id: 'pkg-warner',
+    origin_package_name: 'Porto - Madrid + Warner',
+    status: 'draft',
+    currency: 'EUR',
+    exchange_rate: null,
+    exchange_rate_date: null,
+    created_at: '',
+    updated_at: '',
+    data: {
+      originPackageName: 'Porto - Madrid + Warner',
+      financials: { salePrice: 525, totalCost: 400, currency: 'EUR', components: [], pricePerPerson: 525, profit: 125, profitPercent: 23.8, taxesAndFeesTotal: 0 },
+    },
+  };
+
+  const title = getWhatsAppTitle(quote);
+  assert.strictEqual(title, '✨ Pacote S23: Porto -> Madrid + Warner');
+
+  const msg = generateWhatsAppMessage(quote);
+  assert(msg.startsWith('✨ Pacote S23: Porto -> Madrid + Warner'));
+  assert(msg.includes('💵 Investimento total: *525,00€*'));
 });
 
 console.log(`\n=== RESULTADO: ${testsPassed} PASSOU, ${testsFailed} FALHOU ===`);
