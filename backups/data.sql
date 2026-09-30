@@ -4,7 +4,7 @@ SET session_replication_role = replica;
 -- PostgreSQL database dump
 --
 
--- \restrict VL7xUVglRDSapC6BlDivfViBFb9UYTZNaHopVaAwfKzW1ysbdTcovkCMmnU1I6B
+-- \restrict Pzi7skXlhnipblVHIV57iLCxFos0tXrsJuRXwUnno4laSrULX2vRLVuWmhobLZd
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -307,7 +307,7 @@ bf5e1e28-9d67-4ad0-b16f-b58403b85551	6bff0f7a-4d8f-4e38-b4c0-e32190412d54	COT-20
 -- Data for Name: buckets; Type: TABLE DATA; Schema: storage; Owner: supabase_storage_admin
 --
 
-COPY "storage"."buckets" ("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id", "type", "versioning_status") FROM stdin;
+COPY "storage"."buckets" ("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id", "type", "versioning_status", "lifecycle_configuration", "lifecycle_configuration_generation") FROM stdin;
 \.
 
 
@@ -370,6 +370,6 @@ SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 1, false);
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict VL7xUVglRDSapC6BlDivfViBFb9UYTZNaHopVaAwfKzW1ysbdTcovkCMmnU1I6B
+-- \unrestrict Pzi7skXlhnipblVHIV57iLCxFos0tXrsJuRXwUnno4laSrULX2vRLVuWmhobLZd
 
 RESET ALL;
