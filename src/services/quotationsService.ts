@@ -123,6 +123,12 @@ export const quotationsService = {
       throw new Error('Esta referência já está em uso. Informe outra referência.');
     }
 
+    if (input.status === 'accepted') {
+      throw new Error(
+        'Não é permitido criar cotação diretamente com status aprovado. Salve como rascunho e utilize approveQuotationAndCreateOperation.'
+      );
+    }
+
     const payload = {
       package_id: input.package_id || null,
       reference,
@@ -233,7 +239,22 @@ export const quotationsService = {
       payload.reference = reference;
     }
     if (input.client_name !== undefined) payload.client_name = input.client_name ? input.client_name.trim() : null;
-    if (input.status !== undefined) payload.status = input.status;
+    if (input.status !== undefined) {
+      if (input.status === 'accepted') {
+        const { data: op } = await supabase
+          .from('financial_operations')
+          .select('id')
+          .eq('quotation_id', id)
+          .maybeSingle();
+
+        if (!op) {
+          throw new Error(
+            'Não é permitido aprovar cotação por atualização simples de status. Utilize approveQuotationAndCreateOperation.'
+          );
+        }
+      }
+      payload.status = input.status;
+    }
     if (input.data !== undefined) payload.data = input.data;
     if (input.currency !== undefined) payload.currency = input.currency;
     if (input.exchange_rate !== undefined) payload.exchange_rate = input.exchange_rate;

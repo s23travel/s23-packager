@@ -718,3 +718,6 @@ export interface ImageImportResponse {
   details?: string;
 }
 
+// Módulo Financeiro (Fase 1)
+export * from './financial';
+

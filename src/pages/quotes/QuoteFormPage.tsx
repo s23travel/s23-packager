@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
+import { financialService } from '../../services/financialService';
 import {
   Currency,
   QuotationStatus,
@@ -532,34 +533,110 @@ export const QuoteFormPage: React.FC = () => {
       };
 
       if (isEditing && id) {
-        await quotationsService.updateQuotation(id, {
-          reference,
-          client_name: clientName || null,
-          status,
-          currency,
-          exchange_rate: exchangeRate ? Number(exchangeRate) : null,
-          exchange_rate_date: exchangeRateDate || null,
-          data: quotationData,
-        });
-        clearQuoteDraft();
-        navigate(`/cotacoes/${id}`, {
-          state: { message: 'Cotação atualizada com sucesso na nova estrutura de serviços!' },
-        });
+        if (status === 'accepted') {
+          const existingOp = await financialService.getOperationByQuotationId(id);
+          if (existingOp) {
+            // Ao editar uma cotação aprovada que já tenha operação, não tente criar outra
+            await quotationsService.updateQuotation(id, {
+              reference,
+              client_name: clientName || null,
+              status: 'accepted',
+              currency,
+              exchange_rate: exchangeRate ? Number(exchangeRate) : null,
+              exchange_rate_date: exchangeRateDate || null,
+              data: quotationData,
+            });
+            clearQuoteDraft();
+            navigate(`/cotacoes/${id}`, {
+              state: { message: 'Cotação atualizada com sucesso!' },
+            });
+          } else {
+            // Salva primeiro os dados comerciais sem aprovação simples
+            await quotationsService.updateQuotation(id, {
+              reference,
+              client_name: clientName || null,
+              currency,
+              exchange_rate: exchangeRate ? Number(exchangeRate) : null,
+              exchange_rate_date: exchangeRateDate || null,
+              data: quotationData,
+            });
+
+            // Executa aprovação atômica
+            try {
+              await financialService.approveQuotationAndCreateOperation(id);
+              clearQuoteDraft();
+              navigate(`/cotacoes/${id}`, {
+                state: { message: 'Cotação aprovada. Financeiro preparado.' },
+              });
+            } catch (err: any) {
+              setFeedback({ type: 'error', message: err.message || 'Erro ao aprovar cotação.' });
+              setSaving(false);
+              return;
+            }
+          }
+        } else {
+          await quotationsService.updateQuotation(id, {
+            reference,
+            client_name: clientName || null,
+            status,
+            currency,
+            exchange_rate: exchangeRate ? Number(exchangeRate) : null,
+            exchange_rate_date: exchangeRateDate || null,
+            data: quotationData,
+          });
+          clearQuoteDraft();
+          navigate(`/cotacoes/${id}`, {
+            state: { message: 'Cotação atualizada com sucesso!' },
+          });
+        }
       } else {
-        const created = await quotationsService.createQuotation({
-          package_id: originPackageId || null,
-          reference,
-          client_name: clientName || null,
-          status,
-          currency,
-          exchange_rate: exchangeRate ? Number(exchangeRate) : null,
-          exchange_rate_date: exchangeRateDate || null,
-          data: quotationData,
-        });
-        clearQuoteDraft();
-        navigate(`/cotacoes/${created.id}`, {
-          state: { message: 'Cotação criada com sucesso!' },
-        });
+        // Nova cotação
+        if (status === 'accepted') {
+          // Salva primeiro os dados comerciais como rascunho
+          const created = await quotationsService.createQuotation({
+            package_id: originPackageId || null,
+            reference,
+            client_name: clientName || null,
+            status: 'draft',
+            currency,
+            exchange_rate: exchangeRate ? Number(exchangeRate) : null,
+            exchange_rate_date: exchangeRateDate || null,
+            data: quotationData,
+          });
+
+          // Em seguida executa a aprovação atômica
+          try {
+            await financialService.approveQuotationAndCreateOperation(created.id);
+            clearQuoteDraft();
+            navigate(`/cotacoes/${created.id}`, {
+              state: { message: 'Cotação aprovada. Financeiro preparado.' },
+            });
+          } catch (err: any) {
+            // Mantém a cotação sem aprovação parcial (como rascunho) e notifica o erro
+            clearQuoteDraft();
+            navigate(`/cotacoes/${created.id}`, {
+              state: {
+                type: 'error',
+                message: `Cotação salva como rascunho, mas houve erro na aprovação financeira: ${err.message}`,
+              },
+            });
+          }
+        } else {
+          const created = await quotationsService.createQuotation({
+            package_id: originPackageId || null,
+            reference,
+            client_name: clientName || null,
+            status,
+            currency,
+            exchange_rate: exchangeRate ? Number(exchangeRate) : null,
+            exchange_rate_date: exchangeRateDate || null,
+            data: quotationData,
+          });
+          clearQuoteDraft();
+          navigate(`/cotacoes/${created.id}`, {
+            state: { message: 'Cotação criada com sucesso!' },
+          });
+        }
       }
     } catch (err: any) {
       setFeedback({ type: 'error', message: `Erro ao salvar cotação: ${err.message}` });

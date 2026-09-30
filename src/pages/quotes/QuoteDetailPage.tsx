@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
+import { financialService } from '../../services/financialService';
 import { Quotation, QuotationStatus, ServiceItem } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
@@ -19,7 +20,10 @@ export const QuoteDetailPage: React.FC = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     (location.state as any)?.message
-      ? { type: 'success', message: (location.state as any).message }
+      ? {
+          type: (location.state as any)?.type === 'error' ? 'error' : 'success',
+          message: (location.state as any).message,
+        }
       : null
   );
 
@@ -44,11 +48,23 @@ export const QuoteDetailPage: React.FC = () => {
     if (!quote) return;
     try {
       setUpdatingStatus(true);
-      const updated = await quotationsService.updateQuotation(quote.id, { status: newStatus });
-      setQuote(updated);
-      setFeedback({ type: 'success', message: `Status da cotação atualizado para "${newStatus}".` });
+      if (newStatus === 'accepted') {
+        const existingOp = await financialService.getOperationByQuotationId(quote.id);
+        if (existingOp) {
+          setFeedback({ type: 'success', message: 'Cotação aprovada. Financeiro preparado.' });
+          return;
+        }
+        await financialService.approveQuotationAndCreateOperation(quote.id);
+        const updated = await quotationsService.getQuotationById(quote.id);
+        if (updated) setQuote(updated);
+        setFeedback({ type: 'success', message: 'Cotação aprovada. Financeiro preparado.' });
+      } else {
+        const updated = await quotationsService.updateQuotation(quote.id, { status: newStatus });
+        setQuote(updated);
+        setFeedback({ type: 'success', message: `Status da cotação atualizado para "${newStatus}".` });
+      }
     } catch (err: any) {
-      setFeedback({ type: 'error', message: `Erro ao atualizar status: ${err.message}` });
+      setFeedback({ type: 'error', message: err.message || 'Erro ao atualizar status da cotação.' });
     } finally {
       setUpdatingStatus(false);
     }
