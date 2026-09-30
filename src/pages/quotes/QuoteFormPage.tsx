@@ -38,6 +38,7 @@ export const QuoteFormPage: React.FC = () => {
   const [reference, setReference] = useState('');
   const [clientName, setClientName] = useState('');
   const [status, setStatus] = useState<QuotationStatus>('draft');
+  const [hasFinancialOperation, setHasFinancialOperation] = useState(false);
   const [currency, setCurrency] = useState<Currency>('EUR');
   const [exchangeRate, setExchangeRate] = useState<string>('');
   const [exchangeRateDate, setExchangeRateDate] = useState<string>('');
@@ -226,6 +227,9 @@ export const QuoteFormPage: React.FC = () => {
         setExchangeRateDate(quote.exchange_rate_date || '');
         setOriginPackageId(quote.package_id);
         setOriginPackageName(quote.origin_package_name || quote.data?.originPackageName || '');
+
+        const op = await financialService.getOperationByQuotationId(quote.id);
+        setHasFinancialOperation(Boolean(op));
 
         const rawData = quote.data || {};
         setCustomNotes(rawData.customNotes || '');
@@ -757,13 +761,20 @@ export const QuoteFormPage: React.FC = () => {
                 id="status"
                 className="form-select"
                 value={status}
+                disabled={hasFinancialOperation || (isEditing && status === 'accepted')}
                 onChange={(e) => setStatus(e.target.value as QuotationStatus)}
               >
-                <option value="draft">Rascunho (Draft)</option>
-                <option value="sent">Enviada ao Cliente</option>
-                <option value="accepted">Aceita / Aprovada</option>
-                <option value="rejected">Rejeitada / Expirada</option>
-                <option value="archived">Arquivada</option>
+                {hasFinancialOperation || (isEditing && status === 'accepted') ? (
+                  <option value="accepted">Aceita / Aprovada</option>
+                ) : (
+                  <>
+                    <option value="draft">Rascunho (Draft)</option>
+                    <option value="sent">Enviada ao Cliente</option>
+                    <option value="accepted">Aceita / Aprovada</option>
+                    <option value="rejected">Rejeitada / Expirada</option>
+                    <option value="archived">Arquivada</option>
+                  </>
+                )}
               </select>
             </div>
 

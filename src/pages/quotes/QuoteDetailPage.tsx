@@ -18,6 +18,7 @@ export const QuoteDetailPage: React.FC = () => {
   const [quote, setQuote] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [hasFinancialOperation, setHasFinancialOperation] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     (location.state as any)?.message
       ? {
@@ -33,6 +34,10 @@ export const QuoteDetailPage: React.FC = () => {
       setLoading(true);
       const data = await quotationsService.getQuotationById(id);
       setQuote(data);
+      if (data) {
+        const op = await financialService.getOperationByQuotationId(data.id);
+        setHasFinancialOperation(Boolean(op));
+      }
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Erro ao carregar cotação.' });
     } finally {
@@ -51,12 +56,14 @@ export const QuoteDetailPage: React.FC = () => {
       if (newStatus === 'accepted') {
         const existingOp = await financialService.getOperationByQuotationId(quote.id);
         if (existingOp) {
+          setHasFinancialOperation(true);
           setFeedback({ type: 'success', message: 'Cotação aprovada. Financeiro preparado.' });
           return;
         }
         await financialService.approveQuotationAndCreateOperation(quote.id);
         const updated = await quotationsService.getQuotationById(quote.id);
         if (updated) setQuote(updated);
+        setHasFinancialOperation(true);
         setFeedback({ type: 'success', message: 'Cotação aprovada. Financeiro preparado.' });
       } else {
         const updated = await quotationsService.updateQuotation(quote.id, { status: newStatus });
@@ -184,9 +191,12 @@ export const QuoteDetailPage: React.FC = () => {
 
       {/* Barra de Status Rápida */}
       <div className="card quick-status-bar">
-        <span>Alterar Status Comercial:</span>
+        <span>Status Comercial:</span>
         <div className="btn-group">
-          {(['draft', 'sent', 'accepted', 'rejected', 'archived'] as QuotationStatus[]).map((st) => (
+          {(hasFinancialOperation || quote.status === 'accepted'
+            ? (['accepted'] as QuotationStatus[])
+            : (['draft', 'sent', 'accepted', 'rejected', 'archived'] as QuotationStatus[])
+          ).map((st) => (
             <button
               key={st}
               type="button"

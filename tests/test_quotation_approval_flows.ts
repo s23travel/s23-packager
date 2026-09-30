@@ -184,6 +184,59 @@ async function runApprovalFlowsTests() {
   const formQuoteFinal = await quotationsService.getQuotationById(newFormQuote.id);
   assert(formQuoteFinal?.status === 'accepted', '19. Formulário: Cotação finalizada com status "accepted"');
 
+  // -------------------------------------------------------------
+  // Teste 7: Proteção no quotationsService contra regressão de status
+  // Quando cotação possui operação financeira, ela deve permanecer com status 'accepted'
+  // Bloqueia alterações para draft, sent, rejected ou archived no serviço
+  // -------------------------------------------------------------
+  const invalidStatuses: ('draft' | 'sent' | 'rejected' | 'archived')[] = ['draft', 'sent', 'rejected', 'archived'];
+  for (const invStatus of invalidStatuses) {
+    let serviceBlockError: any = null;
+    try {
+      await quotationsService.updateQuotation(formQuoteFinal!.id, { status: invStatus });
+    } catch (err: any) {
+      serviceBlockError = err;
+    }
+    assert(Boolean(serviceBlockError), `20. Serviço bloqueia alteração de cotação aprovada para status "${invStatus}"`);
+    assert(
+      serviceBlockError?.message?.includes('Cotação possui operação financeira vinculada e deve permanecer com status "accepted"'),
+      `21. Mensagem de erro correta no serviço para bloqueio de status "${invStatus}"`
+    );
+  }
+
+  // -------------------------------------------------------------
+  // Teste 8: Proteção no Banco de Dados (Trigger PostgreSQL)
+  // Bloqueia alterações diretas no banco para draft, sent, rejected ou archived
+  // -------------------------------------------------------------
+  for (const invStatus of invalidStatuses) {
+    const { error: dbUpdateError } = await supabase
+      .from('quotations')
+      .update({ status: invStatus })
+      .eq('id', formQuoteFinal!.id);
+
+    assert(Boolean(dbUpdateError), `22. Trigger do banco bloqueia UPDATE direto para status "${invStatus}"`);
+    assert(
+      dbUpdateError?.message?.includes('Cotação possui operação financeira vinculada e deve permanecer com status "accepted"'),
+      `23. Trigger Postgres rejeita com mensagem clara para status "${invStatus}"`
+    );
+  }
+
+  // -------------------------------------------------------------
+  // Teste 9: Confirmação de integridade: status permanece 'accepted'
+  // -------------------------------------------------------------
+  const quoteAfterAttacks = await quotationsService.getQuotationById(formQuoteFinal!.id);
+  assert(quoteAfterAttacks?.status === 'accepted', '24. Cotação permanece estritamente com status "accepted" após tentativas');
+
+  // -------------------------------------------------------------
+  // Teste 10: Atualização de dados comerciais sem alterar status continua permitida
+  // -------------------------------------------------------------
+  const quoteUpdatedCommercial = await quotationsService.updateQuotation(formQuoteFinal!.id, {
+    client_name: 'Cliente Seguro Confirmado',
+    data: { ...newFormQuote.data, customNotes: 'Notas seguras' },
+  });
+  assert(quoteUpdatedCommercial.client_name === 'Cliente Seguro Confirmado', '25. Edição comercial permitida');
+  assert(quoteUpdatedCommercial.status === 'accepted', '26. Status comercial permanece "accepted"');
+
   // Limpeza de registros de teste
   try {
     await supabase.from('financial_commitments').delete().in('operation_id', [approvalRes.operation_id, formApproval.operation_id]);
@@ -195,7 +248,7 @@ async function runApprovalFlowsTests() {
   }
 
   console.log('\n====================================================');
-  console.log(' RESULTADO FINAL FLUXOS DE APROVAÇÃO: 19 PASSOU / 0 FALHOU');
+  console.log(' RESULTADO FINAL FLUXOS DE APROVAÇÃO: 26 PASSOU / 0 FALHOU');
   console.log('====================================================\n');
 }
 

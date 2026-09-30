@@ -252,6 +252,19 @@ export const quotationsService = {
             'Não é permitido aprovar cotação por atualização simples de status. Utilize approveQuotationAndCreateOperation.'
           );
         }
+      } else {
+        // Bloqueia alteração para draft, sent, rejected ou archived quando a cotação possuir operação financeira
+        const { data: op } = await supabase
+          .from('financial_operations')
+          .select('id')
+          .eq('quotation_id', id)
+          .maybeSingle();
+
+        if (op) {
+          throw new Error(
+            `Cotação possui operação financeira vinculada e deve permanecer com status "accepted". Alterações para "${input.status}" não são permitidas.`
+          );
+        }
       }
       payload.status = input.status;
     }
