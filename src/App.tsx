@@ -8,6 +8,7 @@ import { PackageDetailPage } from './pages/packages/PackageDetailPage';
 import { QuotesListPage } from './pages/quotes/QuotesListPage';
 import { QuoteFormPage } from './pages/quotes/QuoteFormPage';
 import { QuoteDetailPage } from './pages/quotes/QuoteDetailPage';
+import { QuotationFinancialPage } from './pages/quotes/QuotationFinancialPage';
 import { ServicesListPage } from './pages/services/ServicesListPage';
 import { ServiceFormPage } from './pages/services/ServiceFormPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -32,6 +33,7 @@ export const App: React.FC = () => {
           <Route path="/cotacoes/novo" element={<QuoteFormPage />} />
           <Route path="/cotacoes/:id" element={<QuoteDetailPage />} />
           <Route path="/cotacoes/:id/editar" element={<QuoteFormPage />} />
+          <Route path="/cotacoes/:id/financeiro" element={<QuotationFinancialPage />} />
 
           {/* Rotas de Serviços (Catálogo) */}
           <Route path="/servicos" element={<ServicesListPage />} />

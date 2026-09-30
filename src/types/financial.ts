@@ -83,6 +83,23 @@ export interface CreateFinancialOperationServiceInput {
 export type FinancialCommitmentType = 'receivable' | 'payable';
 export type FinancialCommitmentStatus = 'planned' | 'partially_settled' | 'settled' | 'cancelled';
 export type FinancialCounterpartyType = 'client' | 'supplier' | 'other';
+export type FinancialPaymentMethod = 'transfer' | 'card' | 'payment_link' | 'cash' | 'other';
+
+export const PAYMENT_METHOD_LABELS: Record<FinancialPaymentMethod, string> = {
+  transfer: 'Transferência',
+  card: 'Cartão',
+  payment_link: 'Link de pagamento',
+  cash: 'Dinheiro',
+  other: 'Outro',
+};
+
+export const SERVICE_STATUS_LABELS: Record<FinancialOperationServiceStatus, string> = {
+  planned: 'Previsto',
+  reserved: 'Reservado',
+  contracted: 'Contratado',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
+};
 
 export interface FinancialCommitment {
   id: string;
@@ -94,6 +111,7 @@ export interface FinancialCommitment {
   amount: number;
   currency: Currency;
   status: FinancialCommitmentStatus;
+  payment_method?: FinancialPaymentMethod | null;
   expected_date: string | null; // YYYY-MM-DD ou null
   expected_account_id: string | null;
   description: string | null;
@@ -111,10 +129,24 @@ export interface CreateFinancialCommitmentInput {
   amount: number;
   currency: Currency;
   status?: FinancialCommitmentStatus;
+  payment_method?: FinancialPaymentMethod | null;
   expected_date?: string | null;
   expected_account_id?: string | null;
   description?: string | null;
   notes?: string | null;
+}
+
+export interface UpdateFinancialCommitmentInput {
+  amount?: number;
+  currency?: Currency;
+  status?: FinancialCommitmentStatus;
+  payment_method?: FinancialPaymentMethod | null;
+  expected_date?: string | null;
+  expected_account_id?: string | null;
+  description?: string | null;
+  notes?: string | null;
+  counterparty_name?: string;
+  counterparty_type?: FinancialCounterpartyType;
 }
 
 // 5. Tipos para Movimentações Reais de Caixa (com suporte a transferências cambiais)

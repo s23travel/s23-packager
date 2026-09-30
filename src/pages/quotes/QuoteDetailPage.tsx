@@ -160,6 +160,11 @@ export const QuoteDetailPage: React.FC = () => {
         </div>
 
         <div className="header-actions">
+          {hasFinancialOperation && (
+            <Link to={`/cotacoes/${quote.id}/financeiro`} className="btn btn-secondary">
+              Financeiro
+            </Link>
+          )}
           <Link to={`/cotacoes/${quote.id}/editar`} className="btn btn-primary">
             Editar Cotação
           </Link>

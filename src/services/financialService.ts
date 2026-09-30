@@ -380,6 +380,54 @@ export const financialService = {
     return data as FinancialOperationService;
   },
 
+  /**
+   * Cancela atomicamente um serviço da operação e todos os seus pagamentos previstos abertos vinculados.
+   * Executa em transação única no banco de dados via RPC cancel_operation_service:
+   * - Bloqueia o serviço e seus pagamentos vinculados (FOR UPDATE);
+   * - Recusa o cancelamento caso exista pagamento parcial, liquidado ou movimentação financeira real;
+   * - Altera o status do serviço para 'cancelled';
+   * - Altera o status de todos os pagamentos previstos abertos vinculados para 'cancelled';
+   * - Garante rollback automático completo caso ocorra qualquer falha.
+   */
+  async cancelOperationService(
+    serviceId: string
+  ): Promise<{ service: FinancialOperationService; cancelledCommitmentsCount: number }> {
+    const { data, error } = await supabase.rpc('cancel_operation_service', {
+      p_service_id: serviceId,
+    });
+
+    if (error) {
+      console.error('Erro no cancelamento atômico do serviço:', error);
+      throw new Error(error.message);
+    }
+
+    // Carregar o registro atualizado do serviço para retornar ao consumidor
+    const { data: updatedService, error: srvErr } = await supabase
+      .from('financial_operation_services')
+      .select('*')
+      .eq('id', serviceId)
+      .single();
+
+    if (srvErr) throw new Error(srvErr.message);
+
+    return {
+      service: updatedService as FinancialOperationService,
+      cancelledCommitmentsCount: Number(data?.cancelled_commitments_count || 0),
+    };
+  },
+
+  /**
+   * Exclui um serviço avulso da operação (apenas utilitário técnico / limpeza de testes)
+   */
+  async deleteOperationService(serviceId: string): Promise<void> {
+    const { error } = await supabase
+      .from('financial_operation_services')
+      .delete()
+      .eq('id', serviceId);
+
+    if (error) throw new Error(error.message);
+  },
+
   // ==========================================
   // 4. COMPROMISSOS PREVISTOS
   // ==========================================
@@ -412,6 +460,7 @@ export const financialService = {
         amount: input.amount,
         currency: input.currency,
         status: input.status ?? 'planned',
+        payment_method: input.payment_method ?? null,
         expected_date: input.expected_date ?? null,
         expected_account_id: input.expected_account_id ?? null,
         description: input.description ?? null,
@@ -440,6 +489,67 @@ export const financialService = {
 
     if (error) throw new Error(error.message);
     return data as FinancialCommitment;
+  },
+
+  /**
+   * Cancela uma parcela ou compromisso financeiro previsto, preservando o histórico com status 'cancelled'.
+   * Regra preventiva: Itens com pagamentos reais (liquidado ou parcialmente liquidado,
+   * ou com movimentações registradas) não podem ser cancelados sem tratamento de reembolso ou multa.
+   */
+  async cancelCommitment(commitmentId: string): Promise<FinancialCommitment> {
+    // 1. Carregar compromisso
+    const { data: commitment, error: getErr } = await supabase
+      .from('financial_commitments')
+      .select('*')
+      .eq('id', commitmentId)
+      .maybeSingle();
+
+    if (getErr) throw new Error(getErr.message);
+    if (!commitment) throw new Error('Compromisso informado não foi encontrado.');
+
+    // 2. Validação preventiva contra cancelamento indevido de itens com pagamento real
+    if (commitment.status === 'settled' || commitment.status === 'partially_settled') {
+      throw new Error(
+        'Não é possível cancelar uma parcela ou compromisso com pagamento já realizado ou parcialmente liquidado sem tratar reembolso ou multa.'
+      );
+    }
+
+    // 3. Validação preventiva contra transações reais já registradas
+    const { data: txs, error: txErr } = await supabase
+      .from('financial_transactions')
+      .select('id')
+      .eq('commitment_id', commitmentId)
+      .limit(1);
+
+    if (txErr) throw new Error(txErr.message);
+    if (txs && txs.length > 0) {
+      throw new Error(
+        'Não é possível cancelar um compromisso com movimentações financeiras já registradas sem tratar reembolso ou multa.'
+      );
+    }
+
+    // 4. Efetuar cancelamento lógico preservando o registro
+    const { data: updated, error: updateErr } = await supabase
+      .from('financial_commitments')
+      .update({ status: 'cancelled' })
+      .eq('id', commitmentId)
+      .select()
+      .single();
+
+    if (updateErr) throw new Error(updateErr.message);
+    return updated as FinancialCommitment;
+  },
+
+  /**
+   * Remove um compromisso previsto (apenas utilitário técnico / limpeza de testes)
+   */
+  async deleteCommitment(commitmentId: string): Promise<void> {
+    const { error } = await supabase
+      .from('financial_commitments')
+      .delete()
+      .eq('id', commitmentId);
+
+    if (error) throw new Error(error.message);
   },
 
   // ==========================================
