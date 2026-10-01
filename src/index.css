@@ -1325,10 +1325,13 @@ textarea::placeholder {
     width: 100%;
     overflow-x: auto;
     padding-bottom: 0.25rem;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
   }
   .nav-menu::-webkit-scrollbar { display: none; }
+  @supports (scrollbar-width: none) {
+    .nav-menu {
+      scrollbar-width: none;
+    }
+  }
   .nav-link {
     white-space: nowrap;
     flex-shrink: 0;
