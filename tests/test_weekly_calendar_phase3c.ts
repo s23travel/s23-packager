@@ -139,7 +139,7 @@ async function runWeeklyCalendarPhase3CTests() {
     // - Venda: 2.500,00 EUR (recebível)
     // - Custo: 1.200,00 EUR (pagável)
     const quoteEur = await quotationsService.createQuotation({
-      reference: `COT-CAL-EUR-${Date.now().toString().slice(-5)}`,
+      reference: `TEST-COT-CAL-EUR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       client_name: 'Cliente Teste Calendário EUR',
       currency: 'EUR',
       status: 'draft',
@@ -197,7 +197,7 @@ async function runWeeklyCalendarPhase3CTests() {
     // - Venda: 10.000,00 BRL
     // - Custo: 4.000,00 BRL
     const quoteBrl = await quotationsService.createQuotation({
-      reference: `COT-CAL-BRL-${Date.now().toString().slice(-5)}`,
+      reference: `TEST-COT-CAL-BRL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       client_name: 'Cliente Teste Calendário BRL',
       currency: 'BRL',
       status: 'draft',
@@ -412,17 +412,18 @@ async function runWeeklyCalendarPhase3CTests() {
     console.log('\n--- Limpeza de registros de teste da Fase 3C ---');
     for (const quoteId of createdQuoteIds) {
       try {
-        const { data: op } = await supabase
+        const { data: ops } = await supabase
           .from('financial_operations')
           .select('id')
-          .eq('quotation_id', quoteId)
-          .maybeSingle();
+          .eq('quotation_id', quoteId);
 
-        if (op) {
-          await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
-          await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
-          await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
-          await supabase.from('financial_operations').delete().eq('id', op.id);
+        if (ops && ops.length > 0) {
+          for (const op of ops) {
+            await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
+            await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
+            await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
+            await supabase.from('financial_operations').delete().eq('id', op.id);
+          }
         }
         await supabase.from('quotations').delete().eq('id', quoteId);
       } catch (err) {
@@ -432,14 +433,10 @@ async function runWeeklyCalendarPhase3CTests() {
 
     for (const accId of createdAccountIds) {
       try {
-        await supabase
-          .from('financial_transactions')
-          .delete()
-          .or(`account_id.eq.${accId},destination_account_id.eq.${accId}`);
-        await supabase
-          .from('financial_commitments')
-          .delete()
-          .or(`expected_account_id.eq.${accId},credit_card_account_id.eq.${accId}`);
+        await supabase.from('financial_transactions').delete().eq('account_id', accId);
+        await supabase.from('financial_transactions').delete().eq('destination_account_id', accId);
+        await supabase.from('financial_commitments').delete().eq('expected_account_id', accId);
+        await supabase.from('financial_commitments').delete().eq('credit_card_account_id', accId);
         await supabase.from('financial_accounts').delete().eq('id', accId);
       } catch (err) {
         console.warn('Erro ao limpar conta:', err);

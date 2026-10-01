@@ -46,42 +46,44 @@ async function runApprovalFlowsTests() {
   const { financialService } = await import('../src/services/financialService');
 
   const SUCCESS_MESSAGE = 'Cotação aprovada. Financeiro preparado.';
+  const createdQuoteIds: string[] = [];
 
-  // -------------------------------------------------------------
-  // Teste 1: Bloqueio de criação direta de cotação com status 'accepted'
-  // -------------------------------------------------------------
-  const refDirect = `COT-TEST-DIR-${Date.now().toString().slice(-5)}`;
-  let directCreateError: any = null;
   try {
-    await quotationsService.createQuotation({
-      reference: refDirect,
-      client_name: 'Teste Bloqueio Direto',
-      status: 'accepted',
-      currency: 'EUR',
-      data: {},
-    });
-  } catch (err: any) {
-    directCreateError = err;
-  }
-  assert(Boolean(directCreateError), '1. Bloqueia criação direta de cotação com status "accepted"');
-  assert(
-    directCreateError?.message?.includes('Não é permitido criar cotação diretamente com status aprovado'),
-    '2. Mensagem explicativa instrui a usar approveQuotationAndCreateOperation'
-  );
+    // -------------------------------------------------------------
+    // Teste 1: Bloqueio de criação direta de cotação com status 'accepted'
+    // -------------------------------------------------------------
+    const refDirect = `TEST-COT-DIR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    let directCreateError: any = null;
+    try {
+      await quotationsService.createQuotation({
+        reference: refDirect,
+        client_name: 'Teste Bloqueio Direto',
+        status: 'accepted',
+        currency: 'EUR',
+        data: {},
+      });
+    } catch (err: any) {
+      directCreateError = err;
+    }
+    assert(Boolean(directCreateError), '1. Bloqueia criação direta de cotação com status "accepted"');
+    assert(
+      directCreateError?.message?.includes('Não é permitido criar cotação diretamente com status aprovado'),
+      '2. Mensagem explicativa instrui a usar approveQuotationAndCreateOperation'
+    );
 
-  // -------------------------------------------------------------
-  // Teste 2: Criação de cotação em 'draft' e bloqueio de updateQuotation simples para 'accepted'
-  // -------------------------------------------------------------
-  const refDraft = `COT-TEST-APP-${Date.now().toString().slice(-5)}`;
-  const draftQuote = await quotationsService.createQuotation({
-    reference: refDraft,
-    client_name: 'Cliente Teste Fluxo Aprovação',
-    status: 'draft',
-    currency: 'EUR',
-    data: {
-      destination: 'Lisboa & Porto',
-      financials: { salePrice: 3500 },
-      services: [
+    // -------------------------------------------------------------
+    // Teste 2: Criação de cotação em 'draft' e bloqueio de updateQuotation simples para 'accepted'
+    // -------------------------------------------------------------
+    const refDraft = `TEST-COT-APP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const draftQuote = await quotationsService.createQuotation({
+      reference: refDraft,
+      client_name: 'Cliente Teste Fluxo Aprovação',
+      status: 'draft',
+      currency: 'EUR',
+      data: {
+        destination: 'Lisboa & Porto',
+        financials: { salePrice: 3500 },
+        services: [
         {
           id: 'srv-flw-1',
           type: 'tour',
@@ -93,7 +95,8 @@ async function runApprovalFlowsTests() {
       ],
     },
   });
-  assert(draftQuote.status === 'draft', '3. Cotação criada com sucesso em status "draft"');
+    createdQuoteIds.push(draftQuote.id);
+    assert(draftQuote.status === 'draft', '3. Cotação criada com sucesso em status "draft"');
 
   let simpleUpdateError: any = null;
   try {
@@ -160,28 +163,29 @@ async function runApprovalFlowsTests() {
   // Teste 6: Fluxo simulado de formulário: Nova cotação salva marcada como 'accepted'
   // Regra: salva primeiro dados comerciais (em rascunho) e em seguida executa aprovação atômica
   // -------------------------------------------------------------
-  const refFormNew = `COT-TEST-FORM-${Date.now().toString().slice(-5)}`;
-  // 1. Salva dados comerciais como draft
-  const newFormQuote = await quotationsService.createQuotation({
-    reference: refFormNew,
-    client_name: 'Cliente Formulário Aprovada',
-    status: 'draft',
-    currency: 'EUR',
-    data: {
-      destination: 'Roma & Florença',
-      financials: { salePrice: 4200 },
-      services: [
-        {
-          id: 'srv-rome-1',
-          type: 'tour',
-          description: 'Coliseu Tour VIP',
-          amount: 80,
-          quantity: 2,
-          currency: 'EUR',
-        },
-      ],
-    },
-  });
+    const refFormNew = `TEST-COT-FORM-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    // 1. Salva dados comerciais como draft
+    const newFormQuote = await quotationsService.createQuotation({
+      reference: refFormNew,
+      client_name: 'Cliente Formulário Aprovada',
+      status: 'draft',
+      currency: 'EUR',
+      data: {
+        destination: 'Roma & Florença',
+        financials: { salePrice: 4200 },
+        services: [
+          {
+            id: 'srv-rome-1',
+            type: 'tour',
+            description: 'Coliseu Tour VIP',
+            amount: 80,
+            quantity: 2,
+            currency: 'EUR',
+          },
+        ],
+      },
+    });
+    createdQuoteIds.push(newFormQuote.id);
   assert(newFormQuote.status === 'draft', '17. Formulário: Nova cotação salva inicialmente como rascunho com dados comerciais');
 
   // 2. Executa aprovação atômica
@@ -244,19 +248,31 @@ async function runApprovalFlowsTests() {
   assert(quoteUpdatedCommercial.client_name === 'Cliente Seguro Confirmado', '25. Edição comercial permitida');
   assert(quoteUpdatedCommercial.status === 'accepted', '26. Status comercial permanece "accepted"');
 
-  // Limpeza de registros de teste
-  try {
-    await supabase.from('financial_commitments').delete().in('operation_id', [approvalRes.operation_id, formApproval.operation_id]);
-    await supabase.from('financial_operation_services').delete().in('operation_id', [approvalRes.operation_id, formApproval.operation_id]);
-    await supabase.from('financial_operations').delete().in('id', [approvalRes.operation_id, formApproval.operation_id]);
-    await supabase.from('quotations').delete().in('id', [draftQuote.id, newFormQuote.id]);
-  } catch (cleanErr) {
-    // Ignora erro de limpeza
-  }
+    console.log('\n====================================================');
+    console.log(' RESULTADO FINAL FLUXOS DE APROVAÇÃO: 26 PASSOU / 0 FALHOU');
+    console.log('====================================================\n');
+  } finally {
+    // Limpeza determinística de fixtures de teste
+    for (const quoteId of createdQuoteIds) {
+      try {
+        const { data: op } = await supabase
+          .from('financial_operations')
+          .select('id')
+          .eq('quotation_id', quoteId)
+          .maybeSingle();
 
-  console.log('\n====================================================');
-  console.log(' RESULTADO FINAL FLUXOS DE APROVAÇÃO: 26 PASSOU / 0 FALHOU');
-  console.log('====================================================\n');
+        if (op) {
+          await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
+          await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
+          await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
+          await supabase.from('financial_operations').delete().eq('id', op.id);
+        }
+        await supabase.from('quotations').delete().eq('id', quoteId);
+      } catch (cleanErr) {
+        console.warn('Erro ao limpar cotação de teste:', cleanErr);
+      }
+    }
+  }
 }
 
 runApprovalFlowsTests().catch((err) => {

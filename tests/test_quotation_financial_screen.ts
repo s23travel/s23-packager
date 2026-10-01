@@ -46,52 +46,58 @@ async function runQuotationFinancialTests() {
   const { financialService } = await import('../src/services/financialService');
   const { PAYMENT_METHOD_LABELS, SERVICE_STATUS_LABELS } = await import('../src/types/financial');
 
-  // 1. Validar labels amigáveis das formas de pagamento
-  assert(PAYMENT_METHOD_LABELS.transfer === 'Transferência', '1. Label Transferência verificado');
-  assert(PAYMENT_METHOD_LABELS.card === 'Cartão', '2. Label Cartão verificado');
-  assert(PAYMENT_METHOD_LABELS.payment_link === 'Link de pagamento', '3. Label Link de pagamento verificado');
-  assert(PAYMENT_METHOD_LABELS.cash === 'Dinheiro', '4. Label Dinheiro verificado');
-  assert(PAYMENT_METHOD_LABELS.other === 'Outro', '5. Label Outro verificado');
+  const createdAccountIds: string[] = [];
+  const createdQuoteIds: string[] = [];
 
-  // 2. Validar labels dos estados de serviço
-  assert(SERVICE_STATUS_LABELS.planned === 'Previsto', '6. Estado Previsto verificado');
-  assert(SERVICE_STATUS_LABELS.reserved === 'Reservado', '7. Estado Reservado verificado');
-  assert(SERVICE_STATUS_LABELS.contracted === 'Contratado', '8. Estado Contratado verificado');
-  assert(SERVICE_STATUS_LABELS.completed === 'Concluído', '9. Estado Concluído verificado');
-  assert(SERVICE_STATUS_LABELS.cancelled === 'Cancelado', '10. Estado Cancelado verificado');
+  try {
+    // 1. Validar labels amigáveis das formas de pagamento
+    assert(PAYMENT_METHOD_LABELS.transfer === 'Transferência', '1. Label Transferência verificado');
+    assert(PAYMENT_METHOD_LABELS.card === 'Cartão', '2. Label Cartão verificado');
+    assert(PAYMENT_METHOD_LABELS.payment_link === 'Link de pagamento', '3. Label Link de pagamento verificado');
+    assert(PAYMENT_METHOD_LABELS.cash === 'Dinheiro', '4. Label Dinheiro verificado');
+    assert(PAYMENT_METHOD_LABELS.other === 'Outro', '5. Label Outro verificado');
 
-  // 3. Criar uma conta bancária de teste para associar aos compromissos
-  const testAccount = await financialService.createAccount({
-    name: 'Conta Teste BCP EUR',
-    type: 'bank_account',
-    currency: 'EUR',
-    initial_balance: 5000,
-  });
-  assert(Boolean(testAccount.id), '11. Conta bancária para testes criada');
+    // 2. Validar labels dos estados de serviço
+    assert(SERVICE_STATUS_LABELS.planned === 'Previsto', '6. Estado Previsto verificado');
+    assert(SERVICE_STATUS_LABELS.reserved === 'Reservado', '7. Estado Reservado verificado');
+    assert(SERVICE_STATUS_LABELS.contracted === 'Contratado', '8. Estado Contratado verificado');
+    assert(SERVICE_STATUS_LABELS.completed === 'Concluído', '9. Estado Concluído verificado');
+    assert(SERVICE_STATUS_LABELS.cancelled === 'Cancelado', '10. Estado Cancelado verificado');
 
-  // 4. Criar e aprovar cotação de teste
-  const testRef = `COT-FIN-${Date.now().toString().slice(-5)}`;
-  const quote = await quotationsService.createQuotation({
-    reference: testRef,
-    client_name: 'Cliente VIP Financeiro',
-    status: 'draft',
-    currency: 'EUR',
-    data: {
-      destination: 'Porto',
-      financials: { salePrice: 3000 },
-      services: [
-        {
-          id: 'srv-p1',
-          type: 'lodging',
-          description: 'Hotel Porto Palácio',
-          amount: 500,
-          quantity: 2,
-          currency: 'EUR',
-          carrier: 'Porto Palácio',
-        },
-      ],
-    },
-  });
+    // 3. Criar uma conta bancária de teste para associar aos compromissos
+    const testAccount = await financialService.createAccount({
+      name: `Conta Teste BCP EUR ${Date.now()}`,
+      type: 'bank_account',
+      currency: 'EUR',
+      initial_balance: 5000,
+    });
+    createdAccountIds.push(testAccount.id);
+    assert(Boolean(testAccount.id), '11. Conta bancária para testes criada');
+
+    // 4. Criar e aprovar cotação de teste
+    const testRef = `TEST-COT-FIN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const quote = await quotationsService.createQuotation({
+      reference: testRef,
+      client_name: 'Cliente VIP Financeiro',
+      status: 'draft',
+      currency: 'EUR',
+      data: {
+        destination: 'Porto',
+        financials: { salePrice: 3000 },
+        services: [
+          {
+            id: 'srv-p1',
+            type: 'lodging',
+            description: 'Hotel Porto Palácio',
+            amount: 500,
+            quantity: 2,
+            currency: 'EUR',
+            carrier: 'Porto Palácio',
+          },
+        ],
+      },
+    });
+    createdQuoteIds.push(quote.id);
 
   const approval = await financialService.approveQuotationAndCreateOperation(quote.id);
   assert(Boolean(approval.operation_id), '12. Cotação aprovada atomicamente com operação financeira criada');
@@ -325,13 +331,14 @@ async function runQuotationFinancialTests() {
 
   // 16.1 Gestão de Contas: cadastrar e editar conta
   const brlAccount = await financialService.createAccount({
-    name: 'Nubank PJ BRL',
+    name: `Nubank PJ BRL Test ${Date.now()}`,
     type: 'bank_account',
     currency: 'BRL',
     initial_balance: 15000,
     initial_balance_date: '2026-09-01',
     description: 'Conta principal para transações no Brasil',
   });
+  createdAccountIds.push(brlAccount.id);
   assert(Boolean(brlAccount.id), '53. Conta em BRL criada com sucesso');
   assert(brlAccount.currency === 'BRL', '54. Moeda da conta BRL validada');
 
@@ -496,24 +503,26 @@ async function runQuotationFinancialTests() {
 
   // 17.1 Criação de conta do tipo Cartão de Crédito
   const cardAccount = await financialService.createAccount({
-    name: 'Cartão Corporativo Visa S23',
+    name: `Cartão Corporativo Visa S23 Test ${Date.now()}`,
     type: 'credit_card',
     currency: 'EUR',
     initial_balance: 0,
     initial_balance_date: '2026-10-01',
     description: 'Cartão corporativo para despesas e reservas com fornecedores',
   });
+  createdAccountIds.push(cardAccount.id);
   assert(Boolean(cardAccount.id), '81. Conta do tipo cartão de crédito criada com sucesso');
   assert(cardAccount.type === 'credit_card', '82. Tipo da conta validado como "credit_card"');
 
   // Criação de segundo cartão para teste de bloqueio de fatura
   const cardAccount2 = await financialService.createAccount({
-    name: 'Cartão Secundário Mastercard',
+    name: `Cartão Secundário Mastercard Test ${Date.now()}`,
     type: 'credit_card',
     currency: 'EUR',
     initial_balance: 0,
     initial_balance_date: '2026-10-01',
   });
+  createdAccountIds.push(cardAccount2.id);
 
   // 17.2 Bloqueio: Não permitir usar conta de cartão para registrar recebimento de cliente
   // Criar um recebível aberto para o teste
@@ -648,12 +657,13 @@ async function runQuotationFinancialTests() {
 
   // Criar segunda conta bancária EUR para teste de transferência interna mesma moeda
   const eurAccount2 = await financialService.createAccount({
-    name: 'Caixa Secundário Lisboa EUR',
+    name: `Caixa Secundário Lisboa EUR Test ${Date.now()}`,
     type: 'cash',
     currency: 'EUR',
     initial_balance: 100,
     initial_balance_date: '2026-10-01',
   });
+  createdAccountIds.push(eurAccount2.id);
   assert(Boolean(eurAccount2.id), '106. Segunda conta em EUR criada para testes de transferência');
 
   // 18.1 Bloqueio: Contas de origem e destino idênticas
@@ -1006,25 +1016,44 @@ async function runQuotationFinancialTests() {
   const totalTxsAfterOpCancel = (await supabase.from('financial_transactions').select('id', { count: 'exact' }).eq('operation_id', approval.operation_id)).count;
   assert(totalTxsAfterOpCancel! > 0, '177. Todas as movimentações reais permanecem intactas após cancelamento da operação');
 
-  // Limpeza de todos os dados de teste criados
-  try {
-    await supabase.from('financial_transactions').delete().eq('operation_id', approval.operation_id);
-    await supabase.from('financial_commitments').delete().eq('operation_id', approval.operation_id);
-    await supabase.from('financial_operation_services').delete().eq('operation_id', approval.operation_id);
-    await supabase.from('financial_operations').delete().eq('id', approval.operation_id);
-    await supabase.from('quotations').delete().eq('id', quote.id);
-    await supabase.from('financial_accounts').delete().eq('id', testAccount.id);
-    await supabase.from('financial_accounts').delete().eq('id', brlAccount.id);
-    await supabase.from('financial_accounts').delete().eq('id', cardAccount.id);
-    await supabase.from('financial_accounts').delete().eq('id', cardAccount2.id);
-    await supabase.from('financial_accounts').delete().eq('id', eurAccount2.id);
-  } catch (cleanErr) {
-    // Ignora erro de limpeza
-  }
+    console.log('\n====================================================');
+    console.log(' RESULTADO FINAL FINANCEIRO ATÔMICO FASE 2C: 177 PASSOU / 0 FALHOU');
+    console.log('====================================================\n');
+  } finally {
+    // Limpeza determinística de fixtures de teste
+    for (const quoteId of createdQuoteIds) {
+      try {
+        const { data: ops } = await supabase
+          .from('financial_operations')
+          .select('id')
+          .eq('quotation_id', quoteId);
 
-  console.log('\n====================================================');
-  console.log(' RESULTADO FINAL FINANCEIRO ATÔMICO FASE 2C: 177 PASSOU / 0 FALHOU');
-  console.log('====================================================\n');
+        if (ops && ops.length > 0) {
+          for (const op of ops) {
+            await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
+            await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
+            await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
+            await supabase.from('financial_operations').delete().eq('id', op.id);
+          }
+        }
+        await supabase.from('quotations').delete().eq('id', quoteId);
+      } catch (cleanErr) {
+        console.warn('Erro ao limpar cotação de teste:', cleanErr);
+      }
+    }
+
+    for (const accId of createdAccountIds) {
+      try {
+        await supabase.from('financial_transactions').delete().eq('account_id', accId);
+        await supabase.from('financial_transactions').delete().eq('destination_account_id', accId);
+        await supabase.from('financial_commitments').delete().eq('expected_account_id', accId);
+        await supabase.from('financial_commitments').delete().eq('credit_card_account_id', accId);
+        await supabase.from('financial_accounts').delete().eq('id', accId);
+      } catch (cleanErr) {
+        console.warn('Erro ao limpar conta de teste:', cleanErr);
+      }
+    }
+  }
 }
 
 runQuotationFinancialTests().catch((err) => {

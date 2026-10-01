@@ -35,7 +35,7 @@ async function runDashboardPhase3BTests() {
   }
 
   try {
-    await fetch(process.env.VITE_SUPABASE_URL, { signal: AbortSignal.timeout(1500) });
+    await fetch(process.env.VITE_SUPABASE_URL, { signal: AbortSignal.timeout(6000) });
   } catch {
     console.log('ℹ️  Supabase remoto inacessível na rede atual. Pulando testes remotos.');
     return;
@@ -135,7 +135,7 @@ async function runDashboardPhase3BTests() {
     console.log('\n--- 3. Criando operação com compromissos pendentes e vinculados ---');
 
     const quote = await quotationsService.createQuotation({
-      reference: `COT-DASH-F3B-${Date.now().toString().slice(-5)}`,
+      reference: `TEST-COT-DASH-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       client_name: 'Cliente Dashboard Fase 3B',
       currency: 'EUR',
       status: 'draft',
@@ -323,17 +323,18 @@ async function runDashboardPhase3BTests() {
 
     for (const quoteId of createdQuoteIds) {
       try {
-        const { data: op } = await supabase
+        const { data: ops } = await supabase
           .from('financial_operations')
           .select('id')
-          .eq('quotation_id', quoteId)
-          .maybeSingle();
+          .eq('quotation_id', quoteId);
 
-        if (op) {
-          await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
-          await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
-          await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
-          await supabase.from('financial_operations').delete().eq('id', op.id);
+        if (ops && ops.length > 0) {
+          for (const op of ops) {
+            await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
+            await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
+            await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
+            await supabase.from('financial_operations').delete().eq('id', op.id);
+          }
         }
         await supabase.from('quotations').delete().eq('id', quoteId);
       } catch (err) {
@@ -343,14 +344,10 @@ async function runDashboardPhase3BTests() {
 
     for (const accId of createdAccountIds) {
       try {
-        await supabase
-          .from('financial_transactions')
-          .delete()
-          .or(`account_id.eq.${accId},destination_account_id.eq.${accId}`);
-        await supabase
-          .from('financial_commitments')
-          .delete()
-          .or(`expected_account_id.eq.${accId},credit_card_account_id.eq.${accId}`);
+        await supabase.from('financial_transactions').delete().eq('account_id', accId);
+        await supabase.from('financial_transactions').delete().eq('destination_account_id', accId);
+        await supabase.from('financial_commitments').delete().eq('expected_account_id', accId);
+        await supabase.from('financial_commitments').delete().eq('credit_card_account_id', accId);
         await supabase.from('financial_accounts').delete().eq('id', accId);
       } catch (err) {
         console.warn('Erro ao limpar conta:', err);

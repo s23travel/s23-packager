@@ -136,7 +136,7 @@ async function runPhase3ATests() {
 
     // Criar cotação de rascunho para gerar operação financeira via aprovação
     const testQuote = await quotationsService.createQuotation({
-      reference: `COT-TEST-F3A-${Date.now().toString().slice(-5)}`,
+      reference: `TEST-COT-F3A-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       client_name: 'Cliente Teste Fase 3A',
       currency: 'EUR',
       status: 'draft',
@@ -518,22 +518,23 @@ async function runPhase3ATests() {
 
     for (const quoteId of createdQuoteIds) {
       try {
-        // Obter operation_id vinculado
-        const { data: op } = await supabase
+        // Obter operation_ids vinculados
+        const { data: ops } = await supabase
           .from('financial_operations')
           .select('id')
-          .eq('quotation_id', quoteId)
-          .maybeSingle();
+          .eq('quotation_id', quoteId);
 
-        if (op) {
-          // Deletar transações vinculadas à operação
-          await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
-          // Deletar compromissos vinculados
-          await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
-          // Deletar serviços vinculados
-          await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
-          // Deletar operação
-          await supabase.from('financial_operations').delete().eq('id', op.id);
+        if (ops && ops.length > 0) {
+          for (const op of ops) {
+            // Deletar transações vinculadas à operação
+            await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
+            // Deletar compromissos vinculados
+            await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
+            // Deletar serviços vinculados
+            await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
+            // Deletar operação
+            await supabase.from('financial_operations').delete().eq('id', op.id);
+          }
         }
         await supabase.from('quotations').delete().eq('id', quoteId);
       } catch (err) {
@@ -543,16 +544,14 @@ async function runPhase3ATests() {
 
     for (const accId of createdAccountIds) {
       try {
-        // Deletar transações vinculadas à conta (incluindo transferências)
-        await supabase
-          .from('financial_transactions')
-          .delete()
-          .or(`account_id.eq.${accId},destination_account_id.eq.${accId}`);
+        // Deletar transações vinculadas à conta como origem
+        await supabase.from('financial_transactions').delete().eq('account_id', accId);
+        // Deletar transações vinculadas à conta como destino (transferências)
+        await supabase.from('financial_transactions').delete().eq('destination_account_id', accId);
         // Deletar compromissos com expected_account_id
-        await supabase
-          .from('financial_commitments')
-          .delete()
-          .or(`expected_account_id.eq.${accId},credit_card_account_id.eq.${accId}`);
+        await supabase.from('financial_commitments').delete().eq('expected_account_id', accId);
+        // Deletar compromissos com credit_card_account_id
+        await supabase.from('financial_commitments').delete().eq('credit_card_account_id', accId);
         await supabase.from('financial_accounts').delete().eq('id', accId);
       } catch (err) {
         console.warn(`Aviso ao limpar conta ${accId}:`, err);

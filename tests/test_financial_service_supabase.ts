@@ -44,42 +44,49 @@ async function runIntegrationTest() {
   const { supabase } = await import('../src/lib/supabase');
   const { financialService } = await import('../src/services/financialService');
 
-  // 1. Criar contas financeiras com saldo de abertura e data de referência
-  const accountEUR = await financialService.createAccount({
-    name: 'Conta Millennium BCP EUR',
-    type: 'bank_account',
-    currency: 'EUR',
-    description: 'Conta para testes automatizados EUR',
-    initial_balance: 5000.0,
-    initial_balance_date: '2026-09-01',
-  });
-  assert(Boolean(accountEUR.id), '1. Conta financeira EUR criada com sucesso');
-  assert(Number(accountEUR.initial_balance) === 5000, '2. Saldo de abertura registrado corretamente');
-  assert(accountEUR.initial_balance_date === '2026-09-01', '3. Data de referência do saldo registrada corretamente');
+  const createdAccountIds: string[] = [];
+  const createdQuoteIds: string[] = [];
+  const createdTxIds: string[] = [];
 
-  const accountBRL = await financialService.createAccount({
-    name: 'Conta Itaú Brasil BRL',
-    type: 'bank_account',
-    currency: 'BRL',
-    description: 'Conta para testes automatizados BRL',
-    initial_balance: 10000.0,
-    initial_balance_date: '2026-09-01',
-  });
-  assert(Boolean(accountBRL.id), '4. Conta financeira BRL criada com sucesso');
+  try {
+    // 1. Criar contas financeiras com saldo de abertura e data de referência
+    const accountEUR = await financialService.createAccount({
+      name: `Conta Millennium BCP EUR ${Date.now()}`,
+      type: 'bank_account',
+      currency: 'EUR',
+      description: 'Conta para testes automatizados EUR',
+      initial_balance: 5000.0,
+      initial_balance_date: '2026-09-01',
+    });
+    createdAccountIds.push(accountEUR.id);
+    assert(Boolean(accountEUR.id), '1. Conta financeira EUR criada com sucesso');
+    assert(Number(accountEUR.initial_balance) === 5000, '2. Saldo de abertura registrado corretamente');
+    assert(accountEUR.initial_balance_date === '2026-09-01', '3. Data de referência do saldo registrada corretamente');
 
-  // 2. Criar cotação temporária em status 'draft' com moeda BRL e serviços em EUR
-  const testRef = `COT-ATOMIC-${Date.now().toString().slice(-6)}`;
-  const { data: quote, error: quoteErr } = await supabase
-    .from('quotations')
-    .insert({
-      reference: testRef,
-      client_name: 'Cliente Teste RPC Atômica',
-      status: 'draft', // status draft inicial
-      currency: 'BRL', // Cotação em BRL
-      data: {
-        destination: 'Madrid',
-        financials: { salePrice: 5000, totalCost: 258 },
-        services: [
+    const accountBRL = await financialService.createAccount({
+      name: `Conta Itaú Brasil BRL ${Date.now()}`,
+      type: 'bank_account',
+      currency: 'BRL',
+      description: 'Conta para testes automatizados BRL',
+      initial_balance: 10000.0,
+      initial_balance_date: '2026-09-01',
+    });
+    createdAccountIds.push(accountBRL.id);
+    assert(Boolean(accountBRL.id), '4. Conta financeira BRL criada com sucesso');
+
+    // 2. Criar cotação temporária em status 'draft' com moeda BRL e serviços em EUR
+    const testRef = `TEST-COT-ATOMIC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const { data: quote, error: quoteErr } = await supabase
+      .from('quotations')
+      .insert({
+        reference: testRef,
+        client_name: 'Cliente Teste RPC Atômica',
+        status: 'draft', // status draft inicial
+        currency: 'BRL', // Cotação em BRL
+        data: {
+          destination: 'Madrid',
+          financials: { salePrice: 5000, totalCost: 258 },
+          services: [
           {
             id: 'srv-test-1',
             type: 'tour',
@@ -105,6 +112,7 @@ async function runIntegrationTest() {
     .single();
 
   if (quoteErr) throw new Error(`Falha ao criar cotação de teste: ${quoteErr.message}`);
+  createdQuoteIds.push(quote.id);
   assert(Boolean(quote.id) && quote.status === 'draft', '5. Cotação de teste criada com status draft em BRL');
 
   // 3. Teste da Operação Atômica via RPC approveQuotationAndCreateOperation
@@ -253,19 +261,43 @@ async function runIntegrationTest() {
   assert(Number(transferTx.exchange_rate) === 6.2, '32. Taxa de câmbio registrada com precisão');
   assert(Number(transferTx.transfer_fee) === 10, '33. Taxa de remessa registrada');
 
-  // 9. Limpeza dos dados de teste
-  await supabase.from('financial_transactions').delete().eq('operation_id', opDetails!.id);
-  await supabase.from('financial_transactions').delete().eq('id', transferTx.id);
-  await supabase.from('financial_commitments').delete().eq('operation_id', opDetails!.id);
-  await supabase.from('financial_operation_services').delete().eq('operation_id', opDetails!.id);
-  await supabase.from('financial_operations').delete().eq('id', opDetails!.id);
-  await supabase.from('quotations').delete().eq('id', quote.id);
-  await supabase.from('financial_accounts').delete().eq('id', accountEUR.id);
-  await supabase.from('financial_accounts').delete().eq('id', accountBRL.id);
+    console.log('\n====================================================');
+    console.log(' RESULTADO FINAL INTEGRAÇÃO REFORÇO: 24 PASSOU / 0 FALHOU');
+    console.log('====================================================\n');
+  } finally {
+    // 9. Limpeza determinística de fixtures de teste
+    for (const quoteId of createdQuoteIds) {
+      try {
+        const { data: op } = await supabase
+          .from('financial_operations')
+          .select('id')
+          .eq('quotation_id', quoteId)
+          .maybeSingle();
 
-  console.log('\n====================================================');
-  console.log(' RESULTADO FINAL INTEGRAÇÃO REFORÇO: 24 PASSOU / 0 FALHOU');
-  console.log('====================================================\n');
+        if (op) {
+          await supabase.from('financial_transactions').delete().eq('operation_id', op.id);
+          await supabase.from('financial_commitments').delete().eq('operation_id', op.id);
+          await supabase.from('financial_operation_services').delete().eq('operation_id', op.id);
+          await supabase.from('financial_operations').delete().eq('id', op.id);
+        }
+        await supabase.from('quotations').delete().eq('id', quoteId);
+      } catch (e) {
+        console.warn('Erro ao limpar cotação de teste:', e);
+      }
+    }
+
+    for (const accId of createdAccountIds) {
+      try {
+        await supabase.from('financial_transactions').delete().eq('account_id', accId);
+        await supabase.from('financial_transactions').delete().eq('destination_account_id', accId);
+        await supabase.from('financial_commitments').delete().eq('expected_account_id', accId);
+        await supabase.from('financial_commitments').delete().eq('credit_card_account_id', accId);
+        await supabase.from('financial_accounts').delete().eq('id', accId);
+      } catch (e) {
+        console.warn('Erro ao limpar conta de teste:', e);
+      }
+    }
+  }
 }
 
 runIntegrationTest().catch((err) => {
