@@ -8,6 +8,7 @@ const NAV_ITEMS: NavigationItem[] = [
   { label: 'Pacotes', path: '/pacotes' },
   { label: 'Cotações', path: '/cotacoes' },
   { label: 'Serviços', path: '/servicos' },
+  { label: 'Financeiro', path: '/financeiro' },
 ];
 
 export const Header: React.FC = () => {
