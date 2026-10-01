@@ -454,7 +454,7 @@ export const FinancialPage: React.FC = () => {
         <div>
           <h1 className="page-title">Ambiente Financeiro Global</h1>
           <p className="page-subtitle">
-            Posição consolidada, contas bancárias, cartões, transferências e compromissos operacionais.
+            Posição consolidada de tesouraria, administração cadastral de contas, compromissos operacionais e extrato contábil.
           </p>
         </div>
 
@@ -464,6 +464,7 @@ export const FinancialPage: React.FC = () => {
             className="btn btn-secondary"
             onClick={handleOpenTransferModal}
             disabled={loading || saving}
+            title="Transferir recursos entre contas gerando lançamentos históricos"
           >
             ⇄ Transferir entre contas
           </button>
@@ -472,8 +473,9 @@ export const FinancialPage: React.FC = () => {
             className="btn btn-primary"
             onClick={handleOpenAccountModal}
             disabled={loading || saving}
+            title="Cadastrar nova conta ou gerenciar dados cadastrais"
           >
-            🏦 Gerenciar Contas ({allAccounts.length})
+            🏦 Administrar Contas ({allAccounts.length})
           </button>
           <button
             type="button"
@@ -503,7 +505,7 @@ export const FinancialPage: React.FC = () => {
           className={`btn ${activeTab === 'visao_geral' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
-          📊 Visão Geral &amp; Caixa
+          📊 Visão Geral
         </button>
         <button
           type="button"
@@ -511,7 +513,7 @@ export const FinancialPage: React.FC = () => {
           className={`btn ${activeTab === 'contas' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
-          🏦 Cadastro de Contas ({allAccounts.length})
+          🏦 Contas ({allAccounts.length})
         </button>
         <button
           type="button"
@@ -536,6 +538,18 @@ export const FinancialPage: React.FC = () => {
       {/* ============================================================ */}
       {activeTab === 'visao_geral' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Header da Aba Visão Geral */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>
+                Visão Geral do Caixa &amp; Alertas Operacionais
+              </h3>
+              <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Posição financeira consolidada em tempo real por moeda, projeções de curto prazo e alertas de tesouraria.
+              </p>
+            </div>
+          </div>
+
           {/* Bento KPI Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
             {/* Bloco EUR */}
@@ -639,10 +653,10 @@ export const FinancialPage: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>
-                Cadastro e Configuração de Contas
+                Contas — Cadastro, Status e Dados de Abertura
               </h3>
               <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                Gestão administrativa das contas bancárias, caixas e cartões da agência.
+                Administração cadastral de contas bancárias, caixas e cartões da agência. Esta área não realiza lançamentos contábeis.
               </p>
             </div>
             <button
@@ -655,15 +669,20 @@ export const FinancialPage: React.FC = () => {
           </div>
 
           {/* Banner Explicativo da Camada Administrativa */}
-          <div className="card" style={{ padding: '0.85rem 1.25rem', background: 'var(--bg-surface-elevated)', borderLeft: '4px solid var(--accent-primary)', fontSize: '0.85rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <span>
-                🏛️ <strong>Camada Administrativa:</strong> Esta tabela é focada exclusivamente no cadastro e configuração das contas (nome, tipo, moeda, saldo inicial de abertura, data de referência e status). Para registrar transferências ou conciliações com histórico de ajuste, utilize a aba <strong>Movimentações &amp; Ajustes</strong>.
-              </span>
+          <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface-elevated)', borderLeft: '4px solid var(--accent-primary)', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ flex: '1 1 520px' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                  🏛️ Painel Administrativo de Cadastro &amp; Saldos de Abertura
+                </div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                  Esta tela destina-se <strong>exclusivamente ao cadastro de contas, edição de nomes, ativação/desativação e fixação dos dados de abertura</strong> (saldo inicial e data de referência). Ela <strong>não processa lançamentos nem registra movimentações</strong>. Para transferências entre contas ou conciliações com lançamento histórico de ajuste, utilize a aba <strong>Movimentações &amp; Ajustes</strong>.
+                </div>
+              </div>
               <button
                 type="button"
                 className="btn btn-sm btn-secondary"
-                style={{ fontSize: '0.78rem' }}
+                style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}
                 onClick={() => setActiveTab('movimentacoes')}
               >
                 Ir para Movimentações &amp; Ajustes →
@@ -684,10 +703,10 @@ export const FinancialPage: React.FC = () => {
                     <th>Nome da Conta</th>
                     <th>Tipo</th>
                     <th>Moeda</th>
-                    <th style={{ textAlign: 'right' }}>Saldo Inicial</th>
-                    <th>Data de Referência</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'center' }}>Ações Administrativas</th>
+                    <th style={{ textAlign: 'right' }}>Saldo de Abertura</th>
+                    <th>Data de Abertura</th>
+                    <th>Status Cadastral</th>
+                    <th style={{ textAlign: 'center' }}>Ações Cadastrais</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -803,10 +822,10 @@ export const FinancialPage: React.FC = () => {
                     <th>Nome da Conta</th>
                     <th>Tipo</th>
                     <th>Moeda</th>
-                    <th style={{ textAlign: 'right' }}>Saldo Inicial</th>
-                    <th>Data de Referência</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'center' }}>Ações Administrativas</th>
+                    <th style={{ textAlign: 'right' }}>Saldo de Abertura</th>
+                    <th>Data de Abertura</th>
+                    <th>Status Cadastral</th>
+                    <th style={{ textAlign: 'center' }}>Ações Cadastrais</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -908,6 +927,21 @@ export const FinancialPage: React.FC = () => {
               </table>
             </div>
           </div>
+
+          {/* Nota de rodapé da camada administrativa */}
+          <div
+            style={{
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-surface-elevated)',
+              border: '1px solid var(--border-subtle)',
+              fontSize: '0.82rem',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.45,
+            }}
+          >
+            ℹ️ <strong>Entendimento Contábil:</strong> O <em>Saldo de Abertura</em> representa o saldo inicial informado no momento do cadastro ou abertura da conta. Ele é uma referência estática e <strong>não é alterado</strong> por transferências, pagamentos, recebimentos ou ajustes. O saldo disponível e consolidado em tempo real é apurado na aba <strong>Visão Geral</strong>, e qualquer conciliação deve ser lançada na aba <strong>Movimentações &amp; Ajustes</strong>.
+          </div>
         </div>
       )}
 
@@ -916,6 +950,18 @@ export const FinancialPage: React.FC = () => {
       {/* ============================================================ */}
       {activeTab === 'compromissos' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Header da Aba */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>
+                Recebimentos &amp; Pagamentos Operacionais
+              </h3>
+              <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Gestão e acompanhamento dos compromissos operacionais a receber (clientes) e a pagar (fornecedores) vinculados às cotações.
+              </p>
+            </div>
+          </div>
+
           {/* Barra de Filtros */}
           <div className="card" style={{ padding: '0.85rem 1.25rem' }}>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1065,15 +1111,15 @@ export const FinancialPage: React.FC = () => {
       {/* ABA 4: MOVIMENTAÇÕES & AJUSTES                               */}
       {/* ============================================================ */}
       {activeTab === 'movimentacoes' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Header da Aba Movimentações */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>
-                Movimentações Financeiras &amp; Ajustes
+                Movimentações &amp; Ajustes
               </h3>
               <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                Extrato contábil de entradas, saídas, transferências e conciliações de saldo.
+                Extrato contábil do livro-razão. Transferências entre contas e conciliações criam movimentos históricos no extrato.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1091,18 +1137,48 @@ export const FinancialPage: React.FC = () => {
                 className="btn btn-sm btn-secondary"
                 onClick={handleOpenTransferModal}
                 disabled={loading || saving || activeAccounts.length < 2}
-                title="Transferir entre contas"
+                title="Transferir entre contas gerando movimentações históricas"
               >
                 ⇄ Transferir entre contas
               </button>
             </div>
           </div>
 
-          {/* Banner Explicativo de Transações Históricas */}
-          <div className="card" style={{ padding: '0.75rem 1rem', background: 'var(--bg-surface-elevated)', borderLeft: '4px solid var(--accent-primary)', fontSize: '0.85rem' }}>
-            <span>
-              💡 <strong>Lançamentos Históricos:</strong> Todas as movimentações nesta área — incluindo <strong>Transferências</strong> e <strong>Ajustes de Saldo</strong> — constituem transações financeiras históricas que alimentam o motor contábil e recalculam os saldos em tempo real, sem alterar o saldo inicial ou as configurações de cadastro das contas.
-            </span>
+          {/* Destaque Explicativo de Transações Históricas (Cards em grid) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0.85rem' }}>
+            <div
+              className="card"
+              style={{
+                padding: '0.85rem 1rem',
+                background: 'var(--bg-surface-elevated)',
+                borderLeft: '4px solid var(--accent-primary)',
+                fontSize: '0.83rem',
+              }}
+            >
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span>📜</span> Lançamentos Históricos Imutáveis
+              </div>
+              <div style={{ color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                Tanto <strong>Ajustes de Saldo</strong> quanto <strong>Transferências</strong> geram transações financeiras permanentes no histórico contábil (livro-razão), associadas a data, valor, referência e justificativa para conciliação e auditoria.
+              </div>
+            </div>
+
+            <div
+              className="card"
+              style={{
+                padding: '0.85rem 1rem',
+                background: 'var(--bg-surface-elevated)',
+                borderLeft: '4px solid var(--color-success, #10b981)',
+                fontSize: '0.83rem',
+              }}
+            >
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span>🔒</span> Saldo de Abertura Inalterado
+              </div>
+              <div style={{ color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                Movimentações e conciliações <strong>não alteram os dados de abertura</strong> das contas. O saldo disponível apurado pelo sistema resulta da soma estrita entre o saldo de abertura cadastrado e a totalidade das transações históricas executadas.
+              </div>
+            </div>
           </div>
 
           {/* Filtros */}
@@ -1254,10 +1330,10 @@ export const FinancialPage: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
-                  Gestão de Contas Financeiras
+                  Cadastro e Configuração de Contas
                 </h3>
                 <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  Cadastre e gerencie as contas bancárias, caixas e cartões da agência
+                  Administração cadastral de contas bancárias, caixas e cartões da agência.
                 </p>
               </div>
               <button
@@ -1268,6 +1344,24 @@ export const FinancialPage: React.FC = () => {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Aviso de Camada Administrativa */}
+            <div
+              style={{
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: 'var(--radius-md)',
+                padding: '0.75rem 1rem',
+                marginBottom: '1.25rem',
+                fontSize: '0.82rem',
+                lineHeight: '1.45',
+              }}
+            >
+              <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '0.15rem' }}>
+                🏛️ Painel Administrativo de Cadastro
+              </strong>
+              Este painel destina-se exclusivamente ao cadastro de contas, edição de nomes, ativação/desativação e fixação do saldo e data de abertura. <strong>Não realiza lançamentos ou movimentações financeiras.</strong> Para conciliações de saldo ou transferências, utilize a aba <strong>Movimentações &amp; Ajustes</strong>.
             </div>
 
             {/* Formulário de Nova / Editar Conta */}
@@ -1414,13 +1508,13 @@ export const FinancialPage: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border-subtle)', textAlign: 'left' }}>
-                    <th style={{ padding: '0.5rem' }}>Nome</th>
+                    <th style={{ padding: '0.5rem' }}>Nome da Conta</th>
                     <th style={{ padding: '0.5rem' }}>Tipo</th>
                     <th style={{ padding: '0.5rem' }}>Moeda</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'right' }}>Saldo Inicial</th>
-                    <th style={{ padding: '0.5rem' }}>Data Ref.</th>
-                    <th style={{ padding: '0.5rem' }}>Status</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Ações</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'right' }}>Saldo de Abertura</th>
+                    <th style={{ padding: '0.5rem' }}>Data de Abertura</th>
+                    <th style={{ padding: '0.5rem' }}>Status Cadastral</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Ações Cadastrais</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1579,6 +1673,24 @@ export const FinancialPage: React.FC = () => {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Aviso de Movimento Histórico */}
+            <div
+              style={{
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: 'var(--radius-md)',
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                fontSize: '0.82rem',
+                lineHeight: '1.45',
+              }}
+            >
+              <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '0.15rem' }}>
+                ℹ️ Lançamento de Movimento Histórico
+              </strong>
+              Esta transferência cria duas movimentações no extrato histórico: uma saída na conta de origem e uma entrada na conta de destino. Os saldos de abertura e configurações de cadastro de ambas as contas permanecem inalterados.
             </div>
 
             <form onSubmit={handleExecuteTransfer}>
@@ -1848,7 +1960,7 @@ export const FinancialPage: React.FC = () => {
               <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '0.2rem' }}>
                 ℹ️ Criação de Transação Histórica
               </strong>
-              Este ajuste registrará um lançamento financeiro histórico permanente no extrato contábil (<code>balance_adjustment</code>). O <strong>saldo atual</strong> é recalculado pelo motor contábil, mantendo o <strong>Saldo Inicial de Abertura</strong> e os dados cadastrais da conta rigorosamente inalterados.
+              Este ajuste registrará um lançamento financeiro histórico permanente no extrato contábil (<code>balance_adjustment</code>). O <strong>saldo atual</strong> é recalculado pelo motor contábil, mantendo o <strong>Saldo de Abertura</strong> e os dados cadastrais da conta rigorosamente inalterados.
             </div>
 
             <form onSubmit={handleSaveBalanceAdjustment}>
