@@ -170,6 +170,15 @@ export const FinancialPage: React.FC = () => {
   const [transferDesc, setTransferDesc] = useState('');
   const [transferRef, setTransferRef] = useState('');
 
+  // Estado do Modal de Liquidação Operacional (Compromissos Pendentes)
+  const [settlementTarget, setSettlementTarget] = useState<PendingCommitmentItem | null>(null);
+  const [settlementAmount, setSettlementAmount] = useState('');
+  const [settlementAccountId, setSettlementAccountId] = useState('');
+  const [settlementDate, setSettlementDate] = useState(new Date().toISOString().slice(0, 10));
+  const [settlementReference, setSettlementReference] = useState('');
+  const [settlementDescription, setSettlementDescription] = useState('');
+  const [settlementInvoiceDueDate, setSettlementInvoiceDueDate] = useState('');
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -569,6 +578,119 @@ export const FinancialPage: React.FC = () => {
       await loadData();
     } catch (err: any) {
       setFeedback({ type: 'error', message: `Erro ao realizar transferência: ${err.message}` });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handlers de Liquidação Operacional de Compromissos (Recebimentos e Pagamentos)
+  const handleOpenSettlement = (c: PendingCommitmentItem) => {
+    const isCreditCardBlocked = c.type === 'receivable' || Boolean(c.is_credit_card_invoice);
+    const matchingAccounts = allAccounts.filter(
+      (a) => a.currency === c.currency && a.active && (!isCreditCardBlocked || a.type !== 'credit_card')
+    );
+    // Prioriza conta esperada se existir e for compatível
+    const defaultAcc = matchingAccounts.find((a) => a.id === c.expected_account_id) || matchingAccounts[0];
+
+    setSettlementTarget(c);
+    setSettlementAccountId(defaultAcc?.id || '');
+    setSettlementAmount(c.pending_amount.toFixed(2));
+    setSettlementDate(new Date().toISOString().slice(0, 10));
+    setSettlementReference('');
+    setSettlementDescription('');
+
+    // Sugere vencimento da fatura do cartão daqui a 30 dias se for pagamento com cartão
+    const invoiceDate = new Date();
+    invoiceDate.setDate(invoiceDate.getDate() + 30);
+    setSettlementInvoiceDueDate(invoiceDate.toISOString().slice(0, 10));
+  };
+
+  const handleSubmitSettlement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!settlementTarget) return;
+
+    const amountNum = Number(settlementAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setFeedback({ type: 'error', message: 'O valor da liquidação deve ser maior que zero.' });
+      return;
+    }
+
+    if (amountNum > settlementTarget.pending_amount + 0.001) {
+      setFeedback({
+        type: 'error',
+        message: `O valor informado (${formatMoney(amountNum, settlementTarget.currency)}) excede o saldo pendente deste compromisso (${formatMoney(settlementTarget.pending_amount, settlementTarget.currency)}).`,
+      });
+      return;
+    }
+
+    if (!settlementAccountId) {
+      setFeedback({ type: 'error', message: 'Selecione a conta financeira utilizada para a liquidação.' });
+      return;
+    }
+
+    const selectedAcc = allAccounts.find((a) => a.id === settlementAccountId);
+    if (!selectedAcc || selectedAcc.currency !== settlementTarget.currency) {
+      setFeedback({
+        type: 'error',
+        message: `A moeda da conta selecionada deve ser idêntica à do compromisso (${settlementTarget.currency}).`,
+      });
+      return;
+    }
+
+    if (settlementTarget.type === 'receivable' && selectedAcc.type === 'credit_card') {
+      setFeedback({
+        type: 'error',
+        message: 'Não é permitido utilizar conta do tipo cartão de crédito para registrar recebimentos de clientes.',
+      });
+      return;
+    }
+
+    if (settlementTarget.is_credit_card_invoice && selectedAcc.type === 'credit_card') {
+      setFeedback({
+        type: 'error',
+        message: 'Não é permitido pagar a fatura de um cartão com outro cartão de crédito.',
+      });
+      return;
+    }
+
+    if (selectedAcc.type === 'credit_card' && !settlementInvoiceDueDate) {
+      setFeedback({
+        type: 'error',
+        message: 'A data de vencimento da fatura é obrigatória para pagamentos com cartão de crédito.',
+      });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const res = await financialService.recordCommitmentSettlement({
+        commitment_id: settlementTarget.id,
+        account_id: settlementAccountId,
+        amount: amountNum,
+        transacted_at: settlementDate ? new Date(settlementDate + 'T12:00:00').toISOString() : new Date().toISOString(),
+        reference: settlementReference.trim() || undefined,
+        description: settlementDescription.trim() || undefined,
+        invoice_due_date: selectedAcc.type === 'credit_card' ? settlementInvoiceDueDate : undefined,
+      });
+
+      await loadData();
+      setSettlementTarget(null);
+
+      const actionName = settlementTarget.type === 'receivable' ? 'Recebimento' : 'Pagamento';
+      const isFull = res.commitment_status === 'settled';
+      const invoiceNotice = res.invoice_commitment_id
+        ? ' A fatura correspondente do cartão foi programada e adicionada aos compromissos futuros.'
+        : '';
+      const residualNotice = !isFull
+        ? ` Saldo residual restante: ${formatMoney(res.pending_balance, res.currency)} (permanece pendente).`
+        : ' Compromisso 100% quitado e baixado da lista de pendências.';
+
+      setFeedback({
+        type: 'success',
+        message: `${actionName} de ${formatMoney(res.amount, res.currency)} liquidado com sucesso.${residualNotice}${invoiceNotice}`,
+      });
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao registrar liquidação: ${err.message}` });
     } finally {
       setSaving(false);
     }
@@ -1320,12 +1442,13 @@ export const FinancialPage: React.FC = () => {
                       <th>Status</th>
                       <th>Conta Esperada</th>
                       <th style={{ textAlign: 'center' }}>Origem</th>
+                      <th style={{ textAlign: 'center' }}>Ação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredReceivables.length === 0 ? (
                       <tr>
-                        <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                        <td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                           Nenhum recebimento de cliente encontrado para os filtros selecionados.
                         </td>
                       </tr>
@@ -1418,6 +1541,18 @@ export const FinancialPage: React.FC = () => {
                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
                               )}
                             </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', whiteSpace: 'nowrap' }}
+                                onClick={() => handleOpenSettlement(c)}
+                                disabled={saving}
+                                title="Registrar recebimento real (parcial ou total)"
+                              >
+                                ✓ Liquidar
+                              </button>
+                            </td>
                           </tr>
                         );
                       })
@@ -1469,12 +1604,13 @@ export const FinancialPage: React.FC = () => {
                       <th>Status</th>
                       <th>Conta / Cartão Previsto</th>
                       <th style={{ textAlign: 'center' }}>Origem</th>
+                      <th style={{ textAlign: 'center' }}>Ação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredPayables.length === 0 ? (
                       <tr>
-                        <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                        <td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                           Nenhum pagamento a fornecedor encontrado para os filtros selecionados.
                         </td>
                       </tr>
@@ -1574,6 +1710,18 @@ export const FinancialPage: React.FC = () => {
                               ) : (
                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
                               )}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', whiteSpace: 'nowrap' }}
+                                onClick={() => handleOpenSettlement(c)}
+                                disabled={saving}
+                                title={c.is_credit_card_invoice ? 'Registrar pagamento de fatura do cartão' : 'Registrar pagamento real (parcial ou total)'}
+                              >
+                                ✓ Liquidar
+                              </button>
                             </td>
                           </tr>
                         );
@@ -2561,6 +2709,394 @@ export const FinancialPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL DE LIQUIDAÇÃO OPERACIONAL (RECEBIMENTOS & PAGAMENTOS)  */}
+      {/* ============================================================ */}
+      {settlementTarget && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.55)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-lg, 8px)',
+              padding: '1.5rem',
+              maxWidth: '560px',
+              width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            {/* Header do Modal */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {settlementTarget.type === 'receivable' ? (
+                    <><span>📥</span> Registrar Recebimento</>
+                  ) : settlementTarget.is_credit_card_invoice ? (
+                    <><span>💳</span> Registrar Pagamento da Fatura do Cartão</>
+                  ) : (
+                    <><span>📤</span> Registrar Pagamento a Fornecedor</>
+                  )}
+                </h3>
+                <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  Liquidação operacional em caixa com registro de movimentação permanente
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                onClick={() => setSettlementTarget(null)}
+                disabled={saving}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Card de Resumo do Compromisso */}
+            {(() => {
+              const isCreditCardBlocked = settlementTarget.type === 'receivable' || Boolean(settlementTarget.is_credit_card_invoice);
+              const eligibleAccounts = allAccounts.filter(
+                (a) => a.currency === settlementTarget.currency && a.active && (!isCreditCardBlocked || a.type !== 'credit_card')
+              );
+              const selectedAcc = allAccounts.find((a) => a.id === settlementAccountId);
+              const isCardAccountSelected = selectedAcc?.type === 'credit_card';
+
+              const enteredAmount = Number(settlementAmount) || 0;
+              const pendingBal = settlementTarget.pending_amount;
+              const residual = Math.max(0, pendingBal - enteredAmount);
+              const isFull = enteredAmount > 0 && Math.abs(enteredAmount - pendingBal) < 0.005;
+              const isPartial = enteredAmount > 0 && enteredAmount < pendingBal - 0.005;
+              const isOver = enteredAmount > pendingBal + 0.005;
+
+              return (
+                <form onSubmit={handleSubmitSettlement}>
+                  <div
+                    style={{
+                      background: 'var(--bg-surface-elevated)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.85rem 1rem',
+                      marginBottom: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <div>
+                        <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          {settlementTarget.type === 'receivable' ? 'Cliente' : 'Fornecedor'}
+                        </span>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                          {settlementTarget.counterparty_name || 'Contraparte'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <span className="badge badge-neutral" style={{ fontWeight: 700 }}>
+                          {settlementTarget.currency}
+                        </span>
+                        {settlementTarget.quotation_id && (
+                          <Link
+                            to={`/cotacoes/${settlementTarget.quotation_id}/financeiro`}
+                            className="badge badge-primary"
+                            style={{ textDecoration: 'none' }}
+                            title="Abrir ambiente financeiro desta cotação"
+                          >
+                            {settlementTarget.quotation_reference || 'Cotação'}
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+
+                    {settlementTarget.description && (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        <strong>Item / Parcela:</strong> {settlementTarget.description}
+                      </div>
+                    )}
+
+                    {settlementTarget.quotation_client_name && (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        <strong>Cliente da Viagem:</strong> {settlementTarget.quotation_client_name}
+                      </div>
+                    )}
+
+                    {settlementTarget.notes && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        Obs: {settlementTarget.notes}
+                      </div>
+                    )}
+
+                    {/* Bento de Valores */}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '0.5rem',
+                        marginTop: '0.35rem',
+                        paddingTop: '0.5rem',
+                        borderTop: '1px solid var(--border-subtle)',
+                      }}
+                    >
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Previsto</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem', marginTop: '0.15rem' }}>
+                          {formatMoney(settlementTarget.amount, settlementTarget.currency)}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Já Liquidado</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                          {formatMoney(settlementTarget.already_paid, settlementTarget.currency)}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'center', background: 'rgba(59, 130, 246, 0.08)', borderRadius: 'var(--radius-sm)', padding: '0.2rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>Saldo Pendente</div>
+                        <div style={{ fontWeight: 800, fontSize: '0.92rem', color: settlementTarget.type === 'receivable' ? 'var(--success)' : 'var(--danger)', marginTop: '0.15rem' }}>
+                          {formatMoney(settlementTarget.pending_amount, settlementTarget.currency)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {eligibleAccounts.length === 0 ? (
+                    <div className="card" style={{ background: 'rgba(239, 68, 68, 0.08)', borderColor: 'var(--danger)', marginBottom: '1rem', padding: '1rem' }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 600 }}>
+                        ⚠️ Não há contas financeiras ativas elegíveis cadastradas na moeda {settlementTarget.currency}.
+                      </p>
+                      <p style={{ margin: '0.35rem 0 0.75rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Para liquidar este compromisso sem conversão indevida, cadastre ou ative previamente uma conta em {settlementTarget.currency}.
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        onClick={() => {
+                          setSettlementTarget(null);
+                          handleTabChange('contas');
+                          handleStartNewAccount();
+                          setAccCurrency(settlementTarget.currency);
+                        }}
+                      >
+                        + Cadastrar Conta em {settlementTarget.currency}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                      {/* Campo 1: Valor a Liquidar */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, margin: 0 }}>
+                            Valor da Liquidação ({settlementTarget.currency}) *
+                          </label>
+                          <div style={{ display: 'flex', gap: '0.35rem' }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem' }}
+                              onClick={() => setSettlementAmount(pendingBal.toFixed(2))}
+                              title="Preencher valor total pendente"
+                            >
+                              Total ({formatMoney(pendingBal, settlementTarget.currency)})
+                            </button>
+                            {pendingBal > 1 && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-secondary"
+                                style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem' }}
+                                onClick={() => setSettlementAmount((pendingBal / 2).toFixed(2))}
+                                title="Preencher 50% do saldo pendente"
+                              >
+                                50%
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          max={pendingBal}
+                          required
+                          className={`form-control ${isOver ? 'is-invalid' : ''}`}
+                          placeholder="0.00"
+                          value={settlementAmount}
+                          onChange={(e) => setSettlementAmount(e.target.value)}
+                        />
+
+                        {/* Indicador visual de Liquidação Parcial vs Total */}
+                        <div style={{ marginTop: '0.35rem', fontSize: '0.78rem' }}>
+                          {isOver && (
+                            <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                              ⚠️ O valor excede o saldo pendente de {formatMoney(pendingBal, settlementTarget.currency)}.
+                            </span>
+                          )}
+                          {isFull && (
+                            <span style={{ color: 'var(--success)', fontWeight: 600 }}>
+                              ✨ Liquidação Total: o compromisso será 100% quitado e baixado da lista de pendências.
+                            </span>
+                          )}
+                          {isPartial && (
+                            <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>
+                              ⚡ Liquidação Parcial: restará saldo pendente de <strong>{formatMoney(residual, settlementTarget.currency)}</strong> que continuará ativo nesta central.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Campo 2: Conta Financeira Utilizada */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                          Conta Financeira Utilizada ({settlementTarget.currency}) *
+                        </label>
+                        <select
+                          className="form-select"
+                          value={settlementAccountId}
+                          onChange={(e) => setSettlementAccountId(e.target.value)}
+                          required
+                        >
+                          <option value="">Selecione a conta...</option>
+                          {eligibleAccounts.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name} ({a.currency}) — {ACCOUNT_TYPE_LABELS[a.type] || a.type}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Aviso e Data de Vencimento da Fatura se for Cartão de Crédito */}
+                      {isCardAccountSelected && settlementTarget.type === 'payable' && (
+                        <div
+                          style={{
+                            background: 'rgba(99, 102, 241, 0.08)',
+                            border: '1px solid rgba(99, 102, 241, 0.25)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '0.85rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.6rem',
+                          }}
+                        >
+                          <div style={{ fontSize: '0.8rem', lineHeight: '1.4', color: 'var(--text-primary)' }}>
+                            <strong style={{ color: '#6366f1', display: 'block', marginBottom: '0.15rem' }}>
+                              💳 Pagamento via Cartão de Crédito
+                            </strong>
+                            A quitação com o fornecedor é realizada pelo cartão. Uma nova fatura do cartão será programada nos pagamentos pendentes para a data de vencimento indicada abaixo, <strong>sem débito bancário antecipado</strong>.
+                          </div>
+
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                              Data de Vencimento da Fatura do Cartão *
+                            </label>
+                            <input
+                              type="date"
+                              required
+                              className="form-control"
+                              value={settlementInvoiceDueDate}
+                              onChange={(e) => setSettlementInvoiceDueDate(e.target.value)}
+                            />
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                              Data em que a fatura deste cartão vencerá para liquidação via conta bancária.
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                        {/* Campo 3: Data Efetiva */}
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                            Data Efetiva da Movimentação *
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            className="form-control"
+                            value={settlementDate}
+                            onChange={(e) => setSettlementDate(e.target.value)}
+                          />
+                        </div>
+
+                        {/* Campo 4: Referência / Documento */}
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                            Referência / Documento (opcional)
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Ex: Comprovante PIX, TED, NSU..."
+                            value={settlementReference}
+                            onChange={(e) => setSettlementReference(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Campo 5: Observações / Descrição */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                          Observações / Descrição (opcional)
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Ex: Liquidação autorizada por..."
+                          value={settlementDescription}
+                          onChange={(e) => setSettlementDescription(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ações do Modal */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => setSettlementTarget(null)}
+                      disabled={saving}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-sm btn-primary"
+                      disabled={
+                        saving ||
+                        eligibleAccounts.length === 0 ||
+                        !settlementAccountId ||
+                        !settlementAmount ||
+                        isOver ||
+                        enteredAmount <= 0 ||
+                        (isCardAccountSelected && settlementTarget.type === 'payable' && !settlementInvoiceDueDate)
+                      }
+                    >
+                      {saving
+                        ? 'Processando Liquidação...'
+                        : isFull
+                        ? '✓ Confirmar Liquidação Total'
+                        : '✓ Confirmar Liquidação Parcial'}
+                    </button>
+                  </div>
+                </form>
+              );
+            })()}
           </div>
         </div>
       )}
