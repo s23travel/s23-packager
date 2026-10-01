@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import {
   FinancialAccount,
   CreateFinancialAccountInput,
+  UpdateFinancialAccountInput,
   FinancialOperation,
   FinancialOperationStatus,
   FinancialOperationService,
@@ -12,6 +13,14 @@ import {
   CreateFinancialTransactionInput,
   FinancialOperationDetails,
   ApproveQuotationAndCreateOperationResult,
+  RecordCommitmentSettlementInput,
+  RecordCommitmentSettlementResult,
+  RecordAccountTransferInput,
+  RecordAccountTransferResult,
+  CancelFinancialOperationResult,
+  CancelOperationServiceWithAdjustmentsInput,
+  CancelOperationServiceWithAdjustmentsResult,
+  CreateCancellationAdjustmentInput,
   ServiceItem,
   Currency,
 } from '../types';
@@ -77,6 +86,27 @@ export const financialService = {
       throw new Error(error.message);
     }
     return data as FinancialAccount | null;
+  },
+
+  /**
+   * Atualiza campos de uma conta financeira (nome, tipo, moeda, saldo inicial, data de referência, active)
+   */
+  async updateAccount(
+    id: string,
+    updates: UpdateFinancialAccountInput
+  ): Promise<FinancialAccount> {
+    const { data, error } = await supabase
+      .from('financial_accounts')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erro ao atualizar conta financeira:', error);
+      throw new Error(error.message);
+    }
+    return data as FinancialAccount;
   },
 
   // ==========================================
@@ -332,6 +362,30 @@ export const financialService = {
     return data as FinancialOperation;
   },
 
+  /**
+   * Cancela atomicamente uma operação financeira com motivo obrigatório:
+   * - Altera operação para 'cancelled' e grava motivo/data
+   * - Cancela serviços ainda não concluídos
+   * - Cancela somente parcelas originais ainda previstas (sem transações reais)
+   * - Preserva parcelas parciais, liquidadas e movimentações reais
+   */
+  async cancelFinancialOperation(
+    operationId: string,
+    reason: string
+  ): Promise<CancelFinancialOperationResult> {
+    const { data, error } = await supabase.rpc('cancel_financial_operation', {
+      p_operation_id: operationId,
+      p_reason: reason,
+    });
+
+    if (error) {
+      console.error('Erro ao cancelar operação financeira:', error);
+      throw new Error(error.message);
+    }
+
+    return data as CancelFinancialOperationResult;
+  },
+
   // ==========================================
   // 3. SERVIÇOS DA OPERAÇÃO
   // ==========================================
@@ -417,6 +471,34 @@ export const financialService = {
   },
 
   /**
+   * Cancela um serviço financeiro com fluxo de ajuste (para serviços com pagamentos parciais ou liquidados):
+   * - Altera o serviço para 'cancelled'
+   * - Cancela parcelas previstas ainda abertas do serviço
+   * - Preserva histórico de pagamentos já realizados
+   * - Cria automaticamente reembolsos previstos de fornecedores e/ou multas se informados
+   */
+  async cancelOperationServiceWithAdjustments(
+    input: CancelOperationServiceWithAdjustmentsInput
+  ): Promise<CancelOperationServiceWithAdjustmentsResult> {
+    const { data, error } = await supabase.rpc('cancel_operation_service_with_adjustments', {
+      p_service_id: input.service_id,
+      p_reason: input.reason,
+      p_supplier_refund_amount: input.supplier_refund_amount ?? 0,
+      p_supplier_refund_currency: input.supplier_refund_currency ?? 'EUR',
+      p_cancellation_fee_amount: input.cancellation_fee_amount ?? 0,
+      p_cancellation_fee_currency: input.cancellation_fee_currency ?? 'EUR',
+      p_fee_counterparty_name: input.fee_counterparty_name ?? null,
+    });
+
+    if (error) {
+      console.error('Erro no cancelamento com ajustes do serviço:', error);
+      throw new Error(error.message);
+    }
+
+    return data as CancelOperationServiceWithAdjustmentsResult;
+  },
+
+  /**
    * Exclui um serviço avulso da operação (apenas utilitário técnico / limpeza de testes)
    */
   async deleteOperationService(serviceId: string): Promise<void> {
@@ -471,6 +553,40 @@ export const financialService = {
 
     if (error) throw new Error(error.message);
     return data as FinancialCommitment;
+  },
+
+  /**
+   * Cria uma previsão de ajuste de cancelamento (Reembolso ao Cliente, Reembolso do Fornecedor ou Multa)
+   */
+  async createCancellationAdjustment(
+    input: CreateCancellationAdjustmentInput
+  ): Promise<FinancialCommitment> {
+    const { data, error } = await supabase.rpc('create_cancellation_adjustment', {
+      p_operation_id: input.operation_id,
+      p_adjustment_type: input.adjustment_type,
+      p_counterparty_name: input.counterparty_name,
+      p_amount: input.amount,
+      p_currency: input.currency,
+      p_counterparty_type: input.counterparty_type ?? null,
+      p_expected_date: input.expected_date ?? null,
+      p_description: input.description ?? null,
+      p_notes: input.notes ?? null,
+      p_operation_service_id: input.operation_service_id ?? null,
+    });
+
+    if (error) {
+      console.error('Erro ao criar ajuste de cancelamento:', error);
+      throw new Error(error.message);
+    }
+
+    const { data: commitment, error: cErr } = await supabase
+      .from('financial_commitments')
+      .select('*')
+      .eq('id', data.id)
+      .single();
+
+    if (cErr) throw new Error(cErr.message);
+    return commitment as FinancialCommitment;
   },
 
   /**
@@ -663,11 +779,71 @@ export const financialService = {
   },
 
   /**
+   * Registra uma movimentação real de liquidação (recebimento ou pagamento) de forma atômica no banco de dados via RPC:
+   * - Bloqueia o compromisso e a conta com FOR UPDATE;
+   * - Recusa se o compromisso estiver cancelado ou liquidado;
+   * - Valida obrigatoriedade da conta e compatibilidade estrita de moeda;
+   * - Valida se valor > 0 e não excede saldo pendente;
+   * - Registra 'inflow' para recebíveis ou 'outflow' para pagáveis;
+   * - Atualiza status do compromisso ('settled' ou 'partially_settled');
+   * - Garante rollback automático total em caso de falha.
+   */
+  async recordCommitmentSettlement(
+    input: RecordCommitmentSettlementInput
+  ): Promise<RecordCommitmentSettlementResult> {
+    const { data, error } = await supabase.rpc('record_commitment_settlement', {
+      p_commitment_id: input.commitment_id,
+      p_account_id: input.account_id,
+      p_amount: input.amount,
+      p_transacted_at: input.transacted_at || new Date().toISOString(),
+      p_reference: input.reference ?? null,
+      p_description: input.description ?? null,
+      p_invoice_due_date: input.invoice_due_date ?? null,
+    });
+
+    if (error) {
+      console.error('Erro ao registrar liquidação de compromisso:', error);
+      throw new Error(error.message);
+    }
+
+    return data as RecordCommitmentSettlementResult;
+  },
+
+  /**
+   * Registra transferência atômica entre contas financeiras
+   */
+  async recordAccountTransfer(
+    input: RecordAccountTransferInput
+  ): Promise<RecordAccountTransferResult> {
+    const { data, error } = await supabase.rpc('record_account_transfer', {
+      p_source_account_id: input.source_account_id,
+      p_destination_account_id: input.destination_account_id,
+      p_amount: input.amount,
+      p_destination_amount: input.destination_amount ?? input.amount,
+      p_exchange_rate: input.exchange_rate ?? null,
+      p_transfer_fee: input.transfer_fee ?? 0,
+      p_transfer_fee_currency: input.transfer_fee_currency ?? null,
+      p_transacted_at: input.transacted_at || new Date().toISOString(),
+      p_reference: input.reference ?? null,
+      p_description: input.description ?? null,
+      p_operation_id: input.operation_id ?? null,
+    });
+
+    if (error) {
+      console.error('Erro ao transferir entre contas:', error);
+      throw new Error(error.message);
+    }
+
+    return data as RecordAccountTransferResult;
+  },
+
+  /**
    * Lista movimentações reais de caixa
    */
   async listTransactions(filters?: {
     accountId?: string;
     operationId?: string;
+    commitmentId?: string;
   }): Promise<FinancialTransaction[]> {
     let query = supabase
       .from('financial_transactions')
@@ -679,6 +855,9 @@ export const financialService = {
     }
     if (filters?.operationId) {
       query = query.eq('operation_id', filters.operationId);
+    }
+    if (filters?.commitmentId) {
+      query = query.eq('commitment_id', filters.commitmentId);
     }
 
     const { data, error } = await query;
