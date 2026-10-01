@@ -457,6 +457,38 @@ export interface PendingCommitmentFilters {
   referenceDate?: string;
 }
 
+export interface SettledCommitmentItem {
+  id: string;
+  operation_id: string;
+  operation_service_id: string | null;
+  quotation_id: string | null;
+  quotation_reference: string | null;
+  quotation_client_name: string | null;
+  type: FinancialCommitmentType;
+  counterparty_name: string;
+  counterparty_type: FinancialCounterpartyType;
+  original_amount: number;
+  settled_amount: number;
+  currency: Currency;
+  status: FinancialCommitmentStatus;
+  expected_date: string | null;
+  last_settled_at: string | null;
+  settled_account_id: string | null;
+  settled_account_name: string | null;
+  payment_method: FinancialPaymentMethod | null;
+  is_credit_card_invoice: boolean;
+  description: string | null;
+  notes: string | null;
+  transactions_count: number;
+  created_at: string;
+}
+
+export interface SettledCommitmentFilters {
+  currency?: Currency;
+  type?: FinancialCommitmentType;
+  search?: string;
+}
+
 export interface CashFlowForecastFilters {
   startDate: string;
   endDate: string;

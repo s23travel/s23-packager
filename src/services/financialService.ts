@@ -29,6 +29,8 @@ import {
   PeriodCashFlowForecast,
   PendingCommitmentItem,
   PendingCommitmentFilters,
+  SettledCommitmentItem,
+  SettledCommitmentFilters,
   ServiceItem,
   Currency,
 } from '../types';
@@ -1136,6 +1138,137 @@ export const financialService = {
       isOverdue: true,
       referenceDate,
       currency,
+    });
+  },
+
+  /**
+   * Obtém compromissos totalmente liquidados (histórico operacional de recebimentos e pagamentos concluídos)
+   */
+  async getSettledCommitments(
+    filters?: SettledCommitmentFilters
+  ): Promise<SettledCommitmentItem[]> {
+    let query = supabase
+      .from('financial_commitments')
+      .select(`
+        id,
+        operation_id,
+        operation_service_id,
+        type,
+        counterparty_name,
+        counterparty_type,
+        amount,
+        currency,
+        status,
+        expected_date,
+        payment_method,
+        is_credit_card_invoice,
+        description,
+        notes,
+        created_at,
+        updated_at,
+        financial_operations (
+          id,
+          quotation_id,
+          quotations (
+            id,
+            reference,
+            client_name
+          )
+        ),
+        financial_transactions (
+          id,
+          amount,
+          type,
+          transacted_at,
+          account_id,
+          account:financial_accounts!financial_transactions_account_id_fkey (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('status', 'settled')
+      .order('updated_at', { ascending: false });
+
+    if (filters?.currency) {
+      query = query.eq('currency', filters.currency);
+    }
+
+    if (filters?.type) {
+      query = query.eq('type', filters.type);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Erro ao consultar compromissos liquidados:', error);
+      throw new Error(error.message);
+    }
+
+    return ((data || []) as any[]).map((row) => {
+      const op = row.financial_operations;
+      const quote = op?.quotations;
+      const txs: any[] = row.financial_transactions || [];
+
+      // Filtrar apenas transações compatíveis com o compromisso ('inflow' para receivable, 'outflow' para payable)
+      const validTxType = row.type === 'receivable' ? 'inflow' : 'outflow';
+      const relevantTxs = txs.filter((t) => t.type === validTxType);
+
+      // Calcular montante total liquidado
+      const settledAmount = relevantTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+      // Obter data mais recente de liquidação
+      let lastSettledAt: string | null = null;
+      if (relevantTxs.length > 0) {
+        const sortedDates = relevantTxs
+          .map((t) => t.transacted_at)
+          .filter(Boolean)
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        lastSettledAt = sortedDates[0] || null;
+      }
+
+      // Obter conta utilizada na liquidação
+      let settledAccountId: string | null = null;
+      let settledAccountName: string | null = null;
+      if (relevantTxs.length > 0) {
+        const sortedTxs = [...relevantTxs].sort(
+          (a, b) => new Date(b.transacted_at).getTime() - new Date(a.transacted_at).getTime()
+        );
+        const latestTx = sortedTxs[0];
+        settledAccountId = latestTx.account_id || null;
+        settledAccountName = latestTx.account?.name || null;
+
+        const accountNames = Array.from(new Set(sortedTxs.map((t) => t.account?.name).filter(Boolean)));
+        if (accountNames.length > 1) {
+          settledAccountName = accountNames.join(', ');
+        }
+      }
+
+      return {
+        id: String(row.id),
+        operation_id: String(row.operation_id),
+        operation_service_id: row.operation_service_id ? String(row.operation_service_id) : null,
+        quotation_id: quote?.id ? String(quote.id) : (op?.quotation_id ? String(op.quotation_id) : null),
+        quotation_reference: quote?.reference ? String(quote.reference) : null,
+        quotation_client_name: quote?.client_name ? String(quote.client_name) : null,
+        type: row.type,
+        counterparty_name: String(row.counterparty_name),
+        counterparty_type: row.counterparty_type,
+        original_amount: Number(row.amount || 0),
+        settled_amount: settledAmount > 0 ? settledAmount : Number(row.amount || 0),
+        currency: row.currency,
+        status: row.status,
+        expected_date: row.expected_date ? String(row.expected_date) : null,
+        last_settled_at: lastSettledAt,
+        settled_account_id: settledAccountId,
+        settled_account_name: settledAccountName,
+        payment_method: row.payment_method || null,
+        is_credit_card_invoice: Boolean(row.is_credit_card_invoice),
+        description: row.description || null,
+        notes: row.notes || null,
+        transactions_count: relevantTxs.length,
+        created_at: String(row.created_at),
+      };
     });
   },
 };

@@ -8,6 +8,7 @@ import {
   AccountBalanceSummary,
   ConsolidatedBalancesResult,
   PendingCommitmentItem,
+  SettledCommitmentItem,
   FinancialTransaction,
   FinancialTransactionType,
   FinancialAccountType,
@@ -120,13 +121,22 @@ export const FinancialPage: React.FC = () => {
   const [accountsSummary, setAccountsSummary] = useState<AccountBalanceSummary[]>([]);
   const [allAccounts, setAllAccounts] = useState<FinancialAccount[]>([]);
   const [commitments, setCommitments] = useState<PendingCommitmentItem[]>([]);
+  const [settledCommitments, setSettledCommitments] = useState<SettledCommitmentItem[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
 
-  // Filtros de Compromissos
+  // Sub-visão de Compromissos (Pendentes vs Histórico Liquidado)
+  const [commitmentSubView, setCommitmentSubView] = useState<'pending' | 'settled'>('pending');
+
+  // Filtros de Compromissos Pendentes
   const [commitTypeFilter, setCommitTypeFilter] = useState<'ALL' | 'receivable' | 'payable'>('ALL');
   const [commitCurrFilter, setCommitCurrFilter] = useState<'ALL' | Currency>('ALL');
   const [commitStatusFilter, setCommitStatusFilter] = useState<'ALL' | 'overdue' | 'planned'>('ALL');
   const [commitSearch, setCommitSearch] = useState('');
+
+  // Filtros do Histórico Liquidado
+  const [settledTypeFilter, setSettledTypeFilter] = useState<'ALL' | 'receivable' | 'payable'>('ALL');
+  const [settledCurrFilter, setSettledCurrFilter] = useState<'ALL' | Currency>('ALL');
+  const [settledSearch, setSettledSearch] = useState('');
 
   // Filtros de Movimentações
   const [txTypeFilter, setTxTypeFilter] = useState<'ALL' | FinancialTransactionType>('ALL');
@@ -182,18 +192,20 @@ export const FinancialPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [balancesRes, accountsSumRes, allAccsRes, commitmentsRes, txRes] = await Promise.all([
+      const [balancesRes, accountsSumRes, allAccsRes, commitmentsRes, txRes, settledRes] = await Promise.all([
         financialService.getConsolidatedBalances(),
         financialService.getAccountBalances({ activeOnly: false }),
         financialService.listAccounts(false),
         financialService.getPendingCommitments(),
         supabase.from('financial_transactions').select('*').order('transacted_at', { ascending: false }).limit(60),
+        financialService.getSettledCommitments(),
       ]);
       setConsolidated(balancesRes);
       setAccountsSummary(accountsSumRes);
       setAllAccounts(allAccsRes);
       setCommitments(commitmentsRes);
       setTransactions((txRes.data || []) as FinancialTransaction[]);
+      setSettledCommitments(settledRes);
     } catch (err: any) {
       console.error('Erro ao carregar dados do ambiente financeiro global:', err);
       setFeedback({ type: 'error', message: err.message || 'Falha ao carregar dados financeiros.' });
@@ -317,6 +329,80 @@ export const FinancialPage: React.FC = () => {
     const brl = filteredPayables.filter((c) => c.currency === 'BRL').reduce((sum, c) => sum + Number(c.pending_amount || 0), 0);
     return { eur, brl };
   }, [filteredPayables]);
+
+  // Filtragem do Histórico Liquidado
+  const filteredSettledCommitments = useMemo(() => {
+    return settledCommitments.filter((item) => {
+      if (settledTypeFilter !== 'ALL' && item.type !== settledTypeFilter) return false;
+      if (settledCurrFilter !== 'ALL' && item.currency !== settledCurrFilter) return false;
+      if (settledSearch.trim()) {
+        const q = settledSearch.toLowerCase();
+        const ref = (item.quotation_reference || '').toLowerCase();
+        const client = (item.quotation_client_name || '').toLowerCase();
+        const party = (item.counterparty_name || '').toLowerCase();
+        const desc = (item.description || '').toLowerCase();
+        const notes = (item.notes || '').toLowerCase();
+        const acc = (item.settled_account_name || '').toLowerCase();
+        if (!ref.includes(q) && !client.includes(q) && !party.includes(q) && !desc.includes(q) && !notes.includes(q) && !acc.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [settledCommitments, settledTypeFilter, settledCurrFilter, settledSearch]);
+
+  const filteredSettledReceivables = useMemo(() => {
+    return filteredSettledCommitments.filter((item) => item.type === 'receivable');
+  }, [filteredSettledCommitments]);
+
+  const filteredSettledPayables = useMemo(() => {
+    return filteredSettledCommitments.filter((item) => item.type === 'payable');
+  }, [filteredSettledCommitments]);
+
+  // Métricas do Histórico Liquidado (segregação estrita EUR / BRL)
+  const settledMetrics = useMemo(() => {
+    let settledReceivablesEur = 0;
+    let settledReceivablesBrl = 0;
+    let settledPayablesEur = 0;
+    let settledPayablesBrl = 0;
+    let settledReceivablesCount = 0;
+    let settledPayablesCount = 0;
+
+    for (const c of settledCommitments) {
+      const amt = Number(c.settled_amount || c.original_amount || 0);
+      if (c.type === 'receivable') {
+        settledReceivablesCount++;
+        if (c.currency === 'EUR') settledReceivablesEur += amt;
+        else settledReceivablesBrl += amt;
+      } else {
+        settledPayablesCount++;
+        if (c.currency === 'EUR') settledPayablesEur += amt;
+        else settledPayablesBrl += amt;
+      }
+    }
+
+    return {
+      settledReceivablesEur,
+      settledReceivablesBrl,
+      settledPayablesEur,
+      settledPayablesBrl,
+      settledReceivablesCount,
+      settledPayablesCount,
+      totalCount: settledCommitments.length,
+    };
+  }, [settledCommitments]);
+
+  const filteredSettledReceivableTotals = useMemo(() => {
+    const eur = filteredSettledReceivables.filter((c) => c.currency === 'EUR').reduce((sum, c) => sum + Number(c.settled_amount || 0), 0);
+    const brl = filteredSettledReceivables.filter((c) => c.currency === 'BRL').reduce((sum, c) => sum + Number(c.settled_amount || 0), 0);
+    return { eur, brl };
+  }, [filteredSettledReceivables]);
+
+  const filteredSettledPayableTotals = useMemo(() => {
+    const eur = filteredSettledPayables.filter((c) => c.currency === 'EUR').reduce((sum, c) => sum + Number(c.settled_amount || 0), 0);
+    const brl = filteredSettledPayables.filter((c) => c.currency === 'BRL').reduce((sum, c) => sum + Number(c.settled_amount || 0), 0);
+    return { eur, brl };
+  }, [filteredSettledPayables]);
 
   // Filtragem de transações
   const filteredTransactions = useMemo(() => {
@@ -1227,19 +1313,79 @@ export const FinancialPage: React.FC = () => {
       {/* ============================================================ */}
       {activeTab === 'compromissos' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Header da Aba */}
+          {/* Header da Aba com alternância Pendentes vs Histórico Liquidado */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
                 Central Operacional de Recebimentos &amp; Pagamentos
               </h3>
               <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                Gestão e acompanhamento operacional de compromissos pendentes: recebimentos de clientes e pagamentos a fornecedores.
+                {commitmentSubView === 'pending'
+                  ? 'Gestão e acompanhamento operacional de compromissos pendentes: recebimentos de clientes e pagamentos a fornecedores.'
+                  : 'Histórico operacional de compromissos 100% quitados e baixados do fluxo financeiro.'}
               </p>
+            </div>
+
+            {/* Alternância clara entre Pendentes e Histórico Liquidado */}
+            <div
+              style={{
+                display: 'inline-flex',
+                padding: '3px',
+                background: 'var(--bg-surface-elevated, #f1f5f9)',
+                borderRadius: '8px',
+                border: '1px solid var(--border-subtle, #e2e8f0)',
+              }}
+            >
+              <button
+                type="button"
+                className={`btn btn-sm ${commitmentSubView === 'pending' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{
+                  borderRadius: '6px',
+                  fontWeight: commitmentSubView === 'pending' ? 600 : 500,
+                  fontSize: '0.85rem',
+                  padding: '0.35rem 0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                }}
+                onClick={() => setCommitmentSubView('pending')}
+              >
+                <span>⏳ Pendentes</span>
+                <span
+                  className={`badge ${commitmentSubView === 'pending' ? 'badge-primary' : 'badge-neutral'}`}
+                  style={{ fontSize: '0.72rem' }}
+                >
+                  {commitments.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${commitmentSubView === 'settled' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{
+                  borderRadius: '6px',
+                  fontWeight: commitmentSubView === 'settled' ? 600 : 500,
+                  fontSize: '0.85rem',
+                  padding: '0.35rem 0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                }}
+                onClick={() => setCommitmentSubView('settled')}
+              >
+                <span>📜 Histórico Liquidado</span>
+                <span
+                  className={`badge ${commitmentSubView === 'settled' ? 'badge-primary' : 'badge-neutral'}`}
+                  style={{ fontSize: '0.72rem' }}
+                >
+                  {settledCommitments.length}
+                </span>
+              </button>
             </div>
           </div>
 
-          {/* Cards de Resumo Operacional (Bento) */}
+          {commitmentSubView === 'pending' && (
+            <>
+              {/* Cards de Resumo Operacional (Bento) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
             {/* Recebíveis EUR */}
             <div className="card" style={{ borderLeft: '4px solid var(--success)', padding: '1rem' }}>
@@ -1732,6 +1878,414 @@ export const FinancialPage: React.FC = () => {
               </div>
             </div>
           )}
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/* SUB-VISÃO: HISTÓRICO LIQUIDADO                               */}
+      {/* ============================================================ */}
+      {commitmentSubView === 'settled' && (
+        <>
+          {/* Cards de Resumo Operacional do Histórico Liquidado (Bento) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+            {/* Recebimentos Liquidados EUR */}
+            <div className="card" style={{ borderLeft: '4px solid var(--success)', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Recebido Portugal (EUR)
+                </span>
+                <span className="badge badge-neutral">EUR</span>
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--success)' }}>
+                +{formatMoney(settledMetrics.settledReceivablesEur, 'EUR')}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {settledCommitments.filter((c) => c.type === 'receivable' && c.currency === 'EUR').length} recebimento(s) quitado(s)
+              </div>
+            </div>
+
+            {/* Recebimentos Liquidados BRL */}
+            <div className="card" style={{ borderLeft: '4px solid var(--success)', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Recebido Brasil (BRL)
+                </span>
+                <span className="badge badge-neutral">BRL</span>
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--success)' }}>
+                +{formatMoney(settledMetrics.settledReceivablesBrl, 'BRL')}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {settledCommitments.filter((c) => c.type === 'receivable' && c.currency === 'BRL').length} recebimento(s) quitado(s)
+              </div>
+            </div>
+
+            {/* Pagamentos Liquidados EUR */}
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Pago Portugal (EUR)
+                </span>
+                <span className="badge badge-neutral">EUR</span>
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--danger)' }}>
+                -{formatMoney(settledMetrics.settledPayablesEur, 'EUR')}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {settledCommitments.filter((c) => c.type === 'payable' && c.currency === 'EUR').length} pagamento(s) quitado(s)
+              </div>
+            </div>
+
+            {/* Pagamentos Liquidados BRL */}
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Pago Brasil (BRL)
+                </span>
+                <span className="badge badge-neutral">BRL</span>
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--danger)' }}>
+                -{formatMoney(settledMetrics.settledPayablesBrl, 'BRL')}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {settledCommitments.filter((c) => c.type === 'payable' && c.currency === 'BRL').length} pagamento(s) quitado(s)
+              </div>
+            </div>
+          </div>
+
+          {/* Barra de Filtros do Histórico Liquidado */}
+          <div className="card" style={{ padding: '0.85rem 1.25rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <input
+                type="text"
+                className="form-control"
+                style={{ flex: '1 1 260px', minWidth: '260px', fontSize: '0.85rem' }}
+                placeholder="Buscar cotação, cliente, fornecedor, conta, descrição..."
+                value={settledSearch}
+                onChange={(e) => setSettledSearch(e.target.value)}
+              />
+
+              <select
+                className="form-select"
+                style={{ width: 'auto', fontSize: '0.85rem' }}
+                value={settledTypeFilter}
+                onChange={(e) => setSettledTypeFilter(e.target.value as any)}
+              >
+                <option value="ALL">Todos os Tipos</option>
+                <option value="receivable">📥 Apenas Recebimentos (Clientes)</option>
+                <option value="payable">📤 Apenas Pagamentos (Fornecedores)</option>
+              </select>
+
+              <select
+                className="form-select"
+                style={{ width: 'auto', fontSize: '0.85rem' }}
+                value={settledCurrFilter}
+                onChange={(e) => setSettledCurrFilter(e.target.value as any)}
+              >
+                <option value="ALL">Todas as Moedas</option>
+                <option value="EUR">🇵🇹 EUR (€)</option>
+                <option value="BRL">🇧🇷 BRL (R$)</option>
+              </select>
+
+              {(settledSearch || settledTypeFilter !== 'ALL' || settledCurrFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  style={{ fontSize: '0.8rem' }}
+                  onClick={() => {
+                    setSettledSearch('');
+                    setSettledTypeFilter('ALL');
+                    setSettledCurrFilter('ALL');
+                  }}
+                  title="Limpar todos os filtros do histórico"
+                >
+                  Limpar Filtros
+                </button>
+              )}
+
+              <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                {filteredSettledCommitments.length} compromisso(s) quitado(s)
+                {settledTypeFilter === 'ALL' && (
+                  <> ({filteredSettledReceivables.length} recebimento(s), {filteredSettledPayables.length} pagamento(s))</>
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* SEÇÃO 1 HISTÓRICO: RECEBIMENTOS DE CLIENTES LIQUIDADOS */}
+          {(settledTypeFilter === 'ALL' || settledTypeFilter === 'receivable') && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>📥</span> Recebimentos de Clientes Liquidados
+                    <span className="badge badge-success">{filteredSettledReceivables.length}</span>
+                  </h4>
+                  <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    Recebimentos de clientes com liquidação operacional 100% concluída.
+                  </p>
+                </div>
+                <div style={{ fontSize: '0.82rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Total Liquidado:</span>
+                  {filteredSettledReceivableTotals.eur > 0 && (
+                    <strong style={{ color: 'var(--success)' }}>+{formatMoney(filteredSettledReceivableTotals.eur, 'EUR')}</strong>
+                  )}
+                  {filteredSettledReceivableTotals.brl > 0 && (
+                    <strong style={{ color: 'var(--success)' }}>+{formatMoney(filteredSettledReceivableTotals.brl, 'BRL')}</strong>
+                  )}
+                  {filteredSettledReceivableTotals.eur === 0 && filteredSettledReceivableTotals.brl === 0 && (
+                    <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="table-responsive">
+                <table className="data-table" style={{ fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr>
+                      <th>Cotação Vinculada</th>
+                      <th>Cliente / Descrição</th>
+                      <th>Moeda</th>
+                      <th style={{ textAlign: 'right' }}>Valor Original</th>
+                      <th style={{ textAlign: 'right' }}>Valor Liquidado</th>
+                      <th>Data Última Liquidação</th>
+                      <th>Conta Utilizada</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'center' }}>Origem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSettledReceivables.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          Nenhum recebimento liquidado encontrado para os filtros selecionados.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSettledReceivables.map((c) => (
+                        <tr key={c.id}>
+                          <td>
+                            {c.quotation_id ? (
+                              <Link
+                                to={`/cotacoes/${c.quotation_id}/financeiro`}
+                                style={{ fontWeight: 700, color: 'var(--accent-primary)', textDecoration: 'none' }}
+                                title="Ver ambiente financeiro da cotação"
+                              >
+                                {c.quotation_reference || 'Cotação'}
+                              </Link>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Avulso</span>
+                            )}
+                            {c.quotation_client_name && (
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                {c.quotation_client_name}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600 }}>{c.counterparty_name || 'Cliente'}</div>
+                            {c.description && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{c.description}</div>
+                            )}
+                            {c.notes && (
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                Obs: {c.notes}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className="badge badge-neutral">{c.currency}</span>
+                          </td>
+                          <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
+                            {formatMoney(c.original_amount, c.currency)}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>
+                            +{formatMoney(c.settled_amount, c.currency)}
+                          </td>
+                          <td>
+                            {c.last_settled_at ? (
+                              <span>{new Date(c.last_settled_at).toLocaleDateString('pt-PT')}</span>
+                            ) : c.expected_date ? (
+                              <span>{new Date(c.expected_date).toLocaleDateString('pt-PT')}</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)' }}>—</span>
+                            )}
+                          </td>
+                          <td>
+                            {c.settled_account_name ? (
+                              <span className="badge badge-neutral">{c.settled_account_name}</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Indefinida</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className="badge badge-success" title="Totalmente quitado">
+                              ✓ Liquidado
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {c.quotation_id ? (
+                              <Link
+                                to={`/cotacoes/${c.quotation_id}/financeiro`}
+                                className="btn btn-sm btn-secondary"
+                                style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
+                                title="Abrir ambiente financeiro desta cotação"
+                              >
+                                Ver Cotação →
+                              </Link>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SEÇÃO 2 HISTÓRICO: PAGAMENTOS A FORNECEDORES LIQUIDADOS */}
+          {(settledTypeFilter === 'ALL' || settledTypeFilter === 'payable') && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>📤</span> Pagamentos a Fornecedores Liquidados
+                    <span className="badge badge-danger">{filteredSettledPayables.length}</span>
+                  </h4>
+                  <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    Pagamentos a companhias aéreas, operadoras e hotéis totalmente liquidados.
+                  </p>
+                </div>
+                <div style={{ fontSize: '0.82rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Total Liquidado:</span>
+                  {filteredSettledPayableTotals.eur > 0 && (
+                    <strong style={{ color: 'var(--danger)' }}>-{formatMoney(filteredSettledPayableTotals.eur, 'EUR')}</strong>
+                  )}
+                  {filteredSettledPayableTotals.brl > 0 && (
+                    <strong style={{ color: 'var(--danger)' }}>-{formatMoney(filteredSettledPayableTotals.brl, 'BRL')}</strong>
+                  )}
+                  {filteredSettledPayableTotals.eur === 0 && filteredSettledPayableTotals.brl === 0 && (
+                    <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="table-responsive">
+                <table className="data-table" style={{ fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr>
+                      <th>Cotação Vinculada</th>
+                      <th>Fornecedor / Descrição</th>
+                      <th>Moeda</th>
+                      <th style={{ textAlign: 'right' }}>Valor Original</th>
+                      <th style={{ textAlign: 'right' }}>Valor Liquidado</th>
+                      <th>Data Última Liquidação</th>
+                      <th>Conta / Cartão Utilizado</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'center' }}>Origem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSettledPayables.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          Nenhum pagamento liquidado encontrado para os filtros selecionados.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSettledPayables.map((c) => (
+                        <tr key={c.id}>
+                          <td>
+                            {c.quotation_id ? (
+                              <Link
+                                to={`/cotacoes/${c.quotation_id}/financeiro`}
+                                style={{ fontWeight: 700, color: 'var(--accent-primary)', textDecoration: 'none' }}
+                                title="Ver ambiente financeiro da cotação"
+                              >
+                                {c.quotation_reference || 'Cotação'}
+                              </Link>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Avulso</span>
+                            )}
+                            {c.quotation_client_name && (
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                {c.quotation_client_name}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              <span>{c.counterparty_name || 'Fornecedor'}</span>
+                              {c.is_credit_card_invoice && (
+                                <span className="badge badge-warning" style={{ fontSize: '0.68rem' }}>Cartão de Crédito</span>
+                              )}
+                            </div>
+                            {c.description && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{c.description}</div>
+                            )}
+                            {c.notes && (
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                Obs: {c.notes}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className="badge badge-neutral">{c.currency}</span>
+                          </td>
+                          <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
+                            {formatMoney(c.original_amount, c.currency)}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>
+                            -{formatMoney(c.settled_amount, c.currency)}
+                          </td>
+                          <td>
+                            {c.last_settled_at ? (
+                              <span>{new Date(c.last_settled_at).toLocaleDateString('pt-PT')}</span>
+                            ) : c.expected_date ? (
+                              <span>{new Date(c.expected_date).toLocaleDateString('pt-PT')}</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)' }}>—</span>
+                            )}
+                          </td>
+                          <td>
+                            {c.settled_account_name ? (
+                              <span className="badge badge-neutral">{c.settled_account_name}</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Indefinida</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className="badge badge-success" title="Totalmente quitado">
+                              ✓ Liquidado
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {c.quotation_id ? (
+                              <Link
+                                to={`/cotacoes/${c.quotation_id}/financeiro`}
+                                className="btn btn-sm btn-secondary"
+                                style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
+                                title="Abrir ambiente financeiro desta cotação"
+                              >
+                                Ver Cotação →
+                              </Link>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
         </div>
       )}
 
