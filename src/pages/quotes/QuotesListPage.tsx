@@ -7,19 +7,25 @@ import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 
 export const QuotesListPage: React.FC = () => {
   const location = useLocation();
+  const [filterMode, setFilterMode] = useState<'active' | 'archived'>('active');
   const [quotes, setQuotes] = useState<Quotation[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(
     (location.state as any)?.message
       ? { type: 'success', message: (location.state as any).message }
       : null
   );
 
-  const loadQuotes = async () => {
+  const loadQuotes = async (mode: 'active' | 'archived' = filterMode) => {
     try {
       setLoading(true);
-      const data = await quotationsService.listQuotations();
+      // Garantia de que archived_at IS NULL é o padrão para listas ativas
+      const data =
+        mode === 'archived'
+          ? await quotationsService.listQuotations({ archivedOnly: true })
+          : await quotationsService.listQuotations();
       setQuotes(data);
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Erro ao listar cotações.' });
@@ -29,17 +35,83 @@ export const QuotesListPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadQuotes();
-  }, []);
+    loadQuotes(filterMode);
+  }, [filterMode]);
 
-  const handleDelete = async (id: string, reference: string) => {
-    if (!window.confirm(`Deseja realmente excluir a cotação ${reference}?`)) return;
+  const handleArchive = async (quote: Quotation) => {
+    if (quote.financial_operation_status === 'active') {
+      setFeedback({
+        type: 'error',
+        message: `A cotação ${quote.reference} possui operação financeira ativa e não pode ser arquivada. É necessário cancelar a operação no financeiro antes de arquivar.`,
+      });
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Deseja arquivar a cotação ${quote.reference}? Ela deixará de ser exibida nas listas normais e operacionais, mantendo intactos todos os dados e o histórico financeiro.`
+      )
+    ) {
+      return;
+    }
+
     try {
-      await quotationsService.deleteQuotation(id);
-      setFeedback({ type: 'success', message: `Cotação ${reference} excluída com sucesso.` });
-      setQuotes((prev) => prev.filter((q) => q.id !== id));
+      setActionInProgress(quote.id);
+      await quotationsService.archiveQuotation(quote.id);
+      setFeedback({
+        type: 'success',
+        message: `Cotação ${quote.reference} arquivada com sucesso. O histórico financeiro permanece intacto.`,
+      });
+      setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao arquivar cotação: ${err.message}` });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleUnarchive = async (quote: Quotation) => {
+    try {
+      setActionInProgress(quote.id);
+      await quotationsService.unarchiveQuotation(quote.id);
+      setFeedback({
+        type: 'success',
+        message: `Cotação ${quote.reference} restaurada para a lista ativa com sucesso.`,
+      });
+      setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao desarquivar cotação: ${err.message}` });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleDelete = async (quote: Quotation) => {
+    if (quote.has_financial_operation) {
+      if (quote.financial_operation_status === 'cancelled') {
+        setFeedback({
+          type: 'info',
+          message: `A cotação ${quote.reference} possui operação financeira vinculada ao histórico contábil e não pode ser excluída fisicamente. Utilize a opção de arquivamento.`,
+        });
+      } else {
+        setFeedback({
+          type: 'info',
+          message: `A cotação ${quote.reference} possui operação financeira ativa vinculada e não pode ser excluída para preservar o histórico financeiro.`,
+        });
+      }
+      return;
+    }
+
+    if (!window.confirm(`Deseja realmente excluir fisicamente a cotação ${quote.reference}?`)) return;
+    try {
+      setActionInProgress(quote.id);
+      await quotationsService.deleteQuotation(quote.id);
+      setFeedback({ type: 'success', message: `Cotação ${quote.reference} excluída com sucesso.` });
+      setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
     } catch (err: any) {
       setFeedback({ type: 'error', message: `Erro ao excluir cotação: ${err.message}` });
+    } finally {
+      setActionInProgress(null);
     }
   };
 
@@ -95,22 +167,46 @@ export const QuotesListPage: React.FC = () => {
         />
       )}
 
+      {/* Abas de Navegação Ativas vs. Arquivadas */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+        <button
+          type="button"
+          className={`btn btn-sm ${filterMode === 'active' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setFilterMode('active')}
+        >
+          Cotações Ativas
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm ${filterMode === 'archived' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setFilterMode('archived')}
+        >
+          Arquivadas
+        </button>
+      </div>
+
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: '2.5rem' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Carregando cotações...</p>
         </div>
       ) : quotes.length === 0 ? (
         <div className="placeholder-view">
-          <h3>Nenhuma cotação gerada</h3>
-          <p>Você pode emitir uma cotação avulsa ou clonar diretamente a partir de um pacote base do catálogo.</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem' }}>
-            <Link to="/pacotes" className="btn btn-primary">
-              Escolher pacote para cotar
-            </Link>
-            <Link to="/cotacoes/novo" className="btn btn-secondary">
-              Criar cotação avulsa
-            </Link>
-          </div>
+          <h3>{filterMode === 'archived' ? 'Nenhuma cotação arquivada' : 'Nenhuma cotação gerada'}</h3>
+          <p>
+            {filterMode === 'archived'
+              ? 'Cotações arquivadas com operações financeiras canceladas ou descontinuadas aparecerão aqui.'
+              : 'Você pode emitir uma cotação avulsa ou clonar diretamente a partir de um pacote base do catálogo.'}
+          </p>
+          {filterMode === 'active' && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem' }}>
+              <Link to="/pacotes" className="btn btn-primary">
+                Escolher pacote para cotar
+              </Link>
+              <Link to="/cotacoes/novo" className="btn btn-secondary">
+                Criar cotação avulsa
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -127,7 +223,7 @@ export const QuotesListPage: React.FC = () => {
               />
             </div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Mostrando <strong>{filteredQuotes.length}</strong> de {quotes.length} cotação(ões)
+              Mostrando <strong>{filteredQuotes.length}</strong> de {quotes.length} cotação(ões) {filterMode === 'archived' ? 'arquivada(s)' : 'ativa(s)'}
             </div>
           </div>
 
@@ -171,6 +267,22 @@ export const QuotesListPage: React.FC = () => {
                           <Link to={`/cotacoes/${q.id}`} className="table-link-highlight">
                             <code>{q.reference}</code>
                           </Link>
+                          {q.archived_at && (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                marginLeft: '0.4rem',
+                                fontSize: '10px',
+                                textTransform: 'uppercase',
+                                padding: '1px 5px',
+                                borderRadius: '3px',
+                                backgroundColor: 'var(--bg-tertiary, #e2e8f0)',
+                                color: 'var(--text-muted, #64748b)',
+                              }}
+                            >
+                              Arquivada
+                            </span>
+                          )}
                         </td>
                         <td>
                           <span style={{ fontWeight: 500, color: q.client_name ? 'var(--text-primary)' : 'var(--text-muted)' }}>
@@ -206,13 +318,80 @@ export const QuotesListPage: React.FC = () => {
                             <Link to={`/cotacoes/${q.id}/editar`} className="btn btn-sm btn-secondary">
                               Editar
                             </Link>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-danger-outline"
-                              onClick={() => handleDelete(q.id, q.reference)}
-                            >
-                              Excluir
-                            </button>
+
+                            {/* Se arquivada: oferece Desarquivar, e NUNCA oferece exclusão física se houver operação financeira */}
+                            {q.archived_at ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-secondary"
+                                  onClick={() => handleUnarchive(q)}
+                                  disabled={actionInProgress === q.id}
+                                  title="Restaurar cotação para as listas normais ativas"
+                                >
+                                  Desarquivar
+                                </button>
+                                {!q.has_financial_operation && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger-outline"
+                                    onClick={() => handleDelete(q)}
+                                    disabled={actionInProgress === q.id}
+                                    title="Excluir cotação sem operação financeira"
+                                  >
+                                    Excluir
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              /* Se ativa: */
+                              <>
+                                {q.has_financial_operation ? (
+                                  q.financial_operation_status === 'cancelled' ? (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-secondary"
+                                      onClick={() => handleArchive(q)}
+                                      disabled={actionInProgress === q.id}
+                                      title="A operação financeira vinculada foi cancelada. Arquive para ocultar a cotação sem perder histórico."
+                                    >
+                                      Arquivar
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-danger-outline"
+                                      onClick={() => handleDelete(q)}
+                                      title="Esta cotação possui operação financeira vinculada e precisa permanecer cadastrada para preservar o histórico financeiro."
+                                      style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                                    >
+                                      Excluir
+                                    </button>
+                                  )
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-secondary"
+                                      onClick={() => handleArchive(q)}
+                                      disabled={actionInProgress === q.id}
+                                      title="Arquivar cotação"
+                                    >
+                                      Arquivar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-danger-outline"
+                                      onClick={() => handleDelete(q)}
+                                      disabled={actionInProgress === q.id}
+                                      title="Excluir cotação"
+                                    >
+                                      Excluir
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

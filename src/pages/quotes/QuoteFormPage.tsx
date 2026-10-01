@@ -70,7 +70,7 @@ export const QuoteFormPage: React.FC = () => {
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(
     (location.state as any)?.message
       ? { type: 'success', message: (location.state as any).message }
       : null
@@ -217,6 +217,13 @@ export const QuoteFormPage: React.FC = () => {
         if (!quote) {
           setFeedback({ type: 'error', message: 'Cotação não encontrada.' });
           return;
+        }
+
+        if (quote.archived_at) {
+          setFeedback({
+            type: 'info',
+            message: `Esta cotação está arquivada (desde ${new Date(quote.archived_at).toLocaleDateString('pt-BR')}). O histórico financeiro permanece preservado.`,
+          });
         }
 
         setReference(quote.reference);

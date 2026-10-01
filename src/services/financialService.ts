@@ -221,7 +221,11 @@ export const financialService = {
     if (quoteErr) throw new Error(quoteErr.message);
     if (!quote) throw new Error('Cotação não encontrada.');
 
-    // 2. Validar status aprovado
+    // 2. Validar que não está arquivada e status aprovado
+    if (quote.archived_at) {
+      throw new Error('Não é possível iniciar operação financeira para uma cotação arquivada.');
+    }
+
     if (quote.status !== 'accepted') {
       throw new Error(
         `Não é possível iniciar operação financeira para cotação com status "${quote.status}". A cotação deve estar aprovada (status 'accepted').`

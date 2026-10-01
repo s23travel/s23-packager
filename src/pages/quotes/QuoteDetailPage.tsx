@@ -16,10 +16,11 @@ export const QuoteDetailPage: React.FC = () => {
   const location = useLocation();
 
   const [quote, setQuote] = useState<Quotation | null>(null);
+  const [financialOp, setFinancialOp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [hasFinancialOperation, setHasFinancialOperation] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(
     (location.state as any)?.message
       ? {
           type: (location.state as any)?.type === 'error' ? 'error' : 'success',
@@ -36,6 +37,7 @@ export const QuoteDetailPage: React.FC = () => {
       setQuote(data);
       if (data) {
         const op = await financialService.getOperationByQuotationId(data.id);
+        setFinancialOp(op);
         setHasFinancialOperation(Boolean(op));
       }
     } catch (err: any) {
@@ -56,6 +58,7 @@ export const QuoteDetailPage: React.FC = () => {
       if (newStatus === 'accepted') {
         const existingOp = await financialService.getOperationByQuotationId(quote.id);
         if (existingOp) {
+          setFinancialOp(existingOp);
           setHasFinancialOperation(true);
           setFeedback({ type: 'success', message: 'Cotação aprovada. Financeiro preparado.' });
           return;
@@ -63,6 +66,8 @@ export const QuoteDetailPage: React.FC = () => {
         await financialService.approveQuotationAndCreateOperation(quote.id);
         const updated = await quotationsService.getQuotationById(quote.id);
         if (updated) setQuote(updated);
+        const newOp = await financialService.getOperationByQuotationId(quote.id);
+        setFinancialOp(newOp);
         setHasFinancialOperation(true);
         setFeedback({ type: 'success', message: 'Cotação aprovada. Financeiro preparado.' });
       } else {
@@ -77,8 +82,80 @@ export const QuoteDetailPage: React.FC = () => {
     }
   };
 
+  const handleArchive = async () => {
+    if (!quote) return;
+    if (financialOp && financialOp.status === 'active') {
+      setFeedback({
+        type: 'error',
+        message:
+          'Não é permitido arquivar uma cotação com operação financeira ativa. Cancele primeiro a operação no módulo financeiro.',
+      });
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Deseja arquivar a cotação ${quote.reference}? Ela deixará de ser exibida nas listas normais e operacionais, mas todo o histórico financeiro e seus dados serão preservados.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setUpdatingStatus(true);
+      const updated = await quotationsService.archiveQuotation(quote.id);
+      setQuote(updated);
+      setFeedback({
+        type: 'success',
+        message: 'Cotação arquivada com sucesso. O histórico financeiro permanece intacto.',
+      });
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao arquivar: ${err.message}` });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    if (!quote) return;
+    try {
+      setUpdatingStatus(true);
+      const updated = await quotationsService.unarchiveQuotation(quote.id);
+      setQuote(updated);
+      setFeedback({
+        type: 'success',
+        message: 'Cotação restaurada com sucesso para as listas operacionais normais.',
+      });
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao desarquivar: ${err.message}` });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!quote) return;
+    if (quote.archived_at) {
+      setFeedback({
+        type: 'info',
+        message: 'Esta cotação está arquivada para preservar o histórico e não permite exclusão física.',
+      });
+      return;
+    }
+    if (hasFinancialOperation) {
+      if (financialOp?.status === 'cancelled') {
+        setFeedback({
+          type: 'info',
+          message: `A cotação ${quote.reference} possui histórico financeiro cancelado e não pode ser excluída fisicamente. Utilize a opção de arquivamento.`,
+        });
+      } else {
+        setFeedback({
+          type: 'info',
+          message: `A cotação ${quote.reference} possui operação financeira ativa vinculada e não pode ser excluída para preservar o histórico financeiro.`,
+        });
+      }
+      return;
+    }
     if (!window.confirm(`Deseja excluir a cotação ${quote.reference}?`)) return;
 
     try {
@@ -150,6 +227,18 @@ export const QuoteDetailPage: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
             <span className="badge badge-neutral"><code>{quote.reference}</code></span>
             <StatusBadge status={quote.status} />
+            {quote.archived_at && (
+              <span
+                className="badge"
+                style={{
+                  backgroundColor: 'var(--bg-tertiary, #e2e8f0)',
+                  color: 'var(--text-muted, #475569)',
+                  fontWeight: 600,
+                }}
+              >
+                ARQUIVADA
+              </span>
+            )}
           </div>
           <h1 className="page-title">
             {quote.client_name ? `Cotação para ${quote.client_name}` : `Cotação ${quote.reference}`}
@@ -168,9 +257,66 @@ export const QuoteDetailPage: React.FC = () => {
           <Link to={`/cotacoes/${quote.id}/editar`} className="btn btn-primary">
             Editar Cotação
           </Link>
-          <button type="button" className="btn btn-danger-outline" onClick={handleDelete}>
-            Excluir
-          </button>
+
+          {/* Se a cotação estiver arquivada: NÃO oferece exclusão física */}
+          {quote.archived_at ? (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleUnarchive}
+              disabled={updatingStatus}
+              title="Restaurar cotação para as listas normais ativas"
+            >
+              Desarquivar
+            </button>
+          ) : (
+            /* Se a cotação estiver ativa: */
+            <>
+              {hasFinancialOperation ? (
+                financialOp?.status === 'cancelled' ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleArchive}
+                    disabled={updatingStatus}
+                    title="A operação financeira vinculada está cancelada. Arquive para ocultar a cotação sem perder histórico contábil."
+                  >
+                    Arquivar
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-danger-outline"
+                    onClick={handleDelete}
+                    title="Esta cotação possui operação financeira ativa vinculada e não pode ser excluída para preservar o histórico financeiro."
+                    style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                  >
+                    Excluir
+                  </button>
+                )
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleArchive}
+                    disabled={updatingStatus}
+                    title="Arquivar cotação"
+                  >
+                    Arquivar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger-outline"
+                    onClick={handleDelete}
+                    title="Excluir cotação"
+                  >
+                    Excluir
+                  </button>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -180,6 +326,42 @@ export const QuoteDetailPage: React.FC = () => {
           message={feedback.message}
           onDismiss={() => setFeedback(null)}
         />
+      )}
+
+      {/* Banner de Cotação Arquivada */}
+      {quote.archived_at && (
+        <div
+          className="card"
+          style={{
+            backgroundColor: 'var(--bg-tertiary, #f8fafc)',
+            borderLeft: '4px solid #64748b',
+            marginBottom: '1.25rem',
+            padding: '1rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1rem',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>
+              📦 Cotação Arquivada
+            </div>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Esta cotação foi arquivada em {new Date(quote.archived_at).toLocaleString('pt-BR')}.
+              Ela não é exibida nas listas normais e operacionais. Seu histórico, proposta e operação financeira associados permanecem 100% preservados.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            onClick={handleUnarchive}
+            disabled={updatingStatus}
+            title="Restaurar cotação para as listas normais ativas"
+          >
+            Desarquivar
+          </button>
+        </div>
       )}
 
       {/* Aviso de Origem Discreto */}
@@ -206,7 +388,8 @@ export const QuoteDetailPage: React.FC = () => {
               key={st}
               type="button"
               className={`btn btn-sm ${quote.status === st ? 'btn-primary' : 'btn-secondary'}`}
-              disabled={updatingStatus || quote.status === st}
+              disabled={updatingStatus || quote.status === st || Boolean(quote.archived_at)}
+              title={quote.archived_at ? 'Cotação arquivada. Desarquive para alterar o status.' : undefined}
               onClick={() => handleStatusChange(st)}
             >
               {st === 'draft'

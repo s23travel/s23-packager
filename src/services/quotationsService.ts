@@ -8,18 +8,49 @@ export const quotationsService = {
    * Lista todas as cotações com ordenação por data de criação descrescente
    * e inclui o nome do pacote de origem quando disponível.
    */
-  async listQuotations(): Promise<Quotation[]> {
-    const { data, error } = await supabase
+  /**
+   * Lista todas as cotações com ordenação por data de criação descrescente
+   * e inclui o nome do pacote de origem quando disponível.
+   * Por padrão, filtra cotações ativas (archived_at IS NULL).
+   */
+  async listQuotations(options?: { includeArchived?: boolean; archivedOnly?: boolean }): Promise<Quotation[]> {
+    let query = supabase
       .from('quotations')
       .select(`
         *,
         packages:package_id ( name, reference )
-      `)
-      .order('created_at', { ascending: false });
+      `);
+
+    if (options?.archivedOnly) {
+      query = query.not('archived_at', 'is', null);
+    } else if (!options?.includeArchived) {
+      query = query.is('archived_at', null);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Erro ao listar cotações:', error);
       throw new Error(error.message);
+    }
+
+    // Busca rápida das operações financeiras vinculadas para integridade referencial e status
+    const opStatusMap = new Map<string, 'active' | 'cancelled'>();
+    try {
+      const { data: ops } = await supabase
+        .from('financial_operations')
+        .select('quotation_id, status');
+      if (ops && Array.isArray(ops)) {
+        for (const op of ops) {
+          if (op.quotation_id) {
+            opStatusMap.set(op.quotation_id, op.status as 'active' | 'cancelled');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Aviso ao carregar operações financeiras vinculadas:', e);
     }
 
     return (data || []).map((row: any) => ({
@@ -34,7 +65,10 @@ export const quotationsService = {
       exchange_rate_date: row.exchange_rate_date,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      archived_at: row.archived_at || null,
       origin_package_name: row.packages?.name || row.data?.originPackageName,
+      has_financial_operation: opStatusMap.has(row.id),
+      financial_operation_status: opStatusMap.get(row.id) || null,
     })) as Quotation[];
   },
 
@@ -95,6 +129,23 @@ export const quotationsService = {
       throw new Error(error.message);
     }
 
+    // Busca status da operação financeira vinculada se houver
+    let hasOp = false;
+    let opStatus: 'active' | 'cancelled' | null = null;
+    try {
+      const { data: op } = await supabase
+        .from('financial_operations')
+        .select('id, status')
+        .eq('quotation_id', id)
+        .maybeSingle();
+      if (op) {
+        hasOp = true;
+        opStatus = op.status as 'active' | 'cancelled';
+      }
+    } catch (e) {
+      console.warn('Aviso ao carregar operação financeira da cotação:', e);
+    }
+
     const row = data as any;
     return {
       id: row.id,
@@ -108,7 +159,10 @@ export const quotationsService = {
       exchange_rate_date: row.exchange_rate_date,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      archived_at: row.archived_at || null,
       origin_package_name: row.packages?.name || row.data?.originPackageName,
+      has_financial_operation: hasOp,
+      financial_operation_status: opStatus,
     } as Quotation;
   },
 
@@ -272,6 +326,22 @@ export const quotationsService = {
     if (input.currency !== undefined) payload.currency = input.currency;
     if (input.exchange_rate !== undefined) payload.exchange_rate = input.exchange_rate;
     if (input.exchange_rate_date !== undefined) payload.exchange_rate_date = input.exchange_rate_date;
+    if (input.archived_at !== undefined) {
+      if (input.archived_at !== null) {
+        const { data: op } = await supabase
+          .from('financial_operations')
+          .select('id, status')
+          .eq('quotation_id', id)
+          .maybeSingle();
+
+        if (op && op.status === 'active') {
+          throw new Error(
+            'Não é permitido arquivar uma cotação com operação financeira ativa. O cancelamento deve ser realizado previamente no módulo financeiro.'
+          );
+        }
+      }
+      payload.archived_at = input.archived_at;
+    }
 
     const { data, error } = await supabase
       .from('quotations')
@@ -296,15 +366,137 @@ export const quotationsService = {
   },
 
   /**
-   * Remove uma cotação
+   * Arquiva uma cotação logicamente (preenche archived_at).
+   * Regras:
+   * - Permitido somente se não houver operação financeira OU se a operação estiver cancelada.
+   * - Proibido se a operação financeira estiver ativa.
+   */
+  async archiveQuotation(id: string): Promise<Quotation> {
+    const { data: op, error: opErr } = await supabase
+      .from('financial_operations')
+      .select('id, status')
+      .eq('quotation_id', id)
+      .maybeSingle();
+
+    if (opErr) {
+      console.error(`Erro ao verificar operação financeira para arquivamento ${id}:`, opErr);
+      throw new Error(opErr.message);
+    }
+
+    if (op && op.status === 'active') {
+      throw new Error(
+        'Não é permitido arquivar uma cotação com operação financeira ativa. Realize o cancelamento financeiro antes de arquivar.'
+      );
+    }
+
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('quotations')
+      .update({ archived_at: now })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`Erro ao arquivar cotação ${id}:`, error);
+      throw new Error(error.message);
+    }
+
+    return data as Quotation;
+  },
+
+  /**
+   * Desarquiva uma cotação (remove archived_at).
+   */
+  async unarchiveQuotation(id: string): Promise<Quotation> {
+    const { data, error } = await supabase
+      .from('quotations')
+      .update({ archived_at: null })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`Erro ao desarquivar cotação ${id}:`, error);
+      throw new Error(error.message);
+    }
+
+    return data as Quotation;
+  },
+
+  /**
+   * Verifica se uma cotação possui operação financeira vinculada
+   */
+  async hasFinancialOperation(id: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('financial_operations')
+        .select('id')
+        .eq('quotation_id', id)
+        .maybeSingle();
+
+      if (error) {
+        console.error(`Erro ao verificar operação financeira da cotação ${id}:`, error);
+        return false;
+      }
+      return Boolean(data);
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Remove uma cotação sem operação financeira vinculada.
+   * Se houver operação financeira vinculada (FK RESTRICT), a exclusão física é bloqueada
+   * para preservar o histórico contábil e de auditoria.
    */
   async deleteQuotation(id: string): Promise<void> {
+    // 1. Verificação preventiva no serviço consultando a operação e seu status
+    try {
+      const { data: op } = await supabase
+        .from('financial_operations')
+        .select('id, status')
+        .eq('quotation_id', id)
+        .maybeSingle();
+
+      if (op) {
+        if (op.status === 'cancelled') {
+          throw new Error(
+            'Esta cotação possui uma operação financeira vinculada ao histórico contábil e não pode ser excluída fisicamente. Utilize a opção de arquivamento para ocultá-la das listagens normais.'
+          );
+        } else {
+          throw new Error(
+            'Esta cotação possui uma operação financeira vinculada e não pode ser excluída para preservar o histórico financeiro.'
+          );
+        }
+      }
+    } catch (err: any) {
+      if (err.message && err.message.includes('operação financeira vinculada')) {
+        throw err;
+      }
+    }
+
+    // 2. Executa a exclusão física
     const { error } = await supabase
       .from('quotations')
       .delete()
       .eq('id', id);
 
     if (error) {
+      // 3. Tratamento defensivo caso ocorra violação de foreign key constraint do PostgreSQL
+      const msg = error.message || '';
+      const code = (error as any).code || '';
+      if (
+        code === '23503' ||
+        msg.includes('financial_operations') ||
+        msg.includes('foreign key constraint') ||
+        msg.includes('violates foreign key')
+      ) {
+        throw new Error(
+          'Esta cotação possui uma operação financeira vinculada e não pode ser excluída para preservar o histórico financeiro.'
+        );
+      }
+
       console.error(`Erro ao deletar cotação ${id}:`, error);
       throw new Error(error.message);
     }

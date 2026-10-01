@@ -313,8 +313,11 @@ export interface Quotation {
   exchange_rate_date: string | null;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
   // Campos populados em listagens com join
   origin_package_name?: string;
+  has_financial_operation?: boolean;
+  financial_operation_status?: 'active' | 'cancelled' | null;
 }
 
 export type CreatePackageInput = {
@@ -338,7 +341,9 @@ export type CreateQuotationInput = {
   exchange_rate_date?: string | null;
 };
 
-export type UpdateQuotationInput = Partial<CreateQuotationInput>;
+export type UpdateQuotationInput = Partial<CreateQuotationInput> & {
+  archived_at?: string | null;
+};
 
 // ==========================================
 // MODELO ESTRUTURADO DE CONTEÚDO (FASE 6A)
