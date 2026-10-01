@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { financialService } from '../../services/financialService';
 import { financialAlertsService } from '../../services/financialAlertsService';
 import { supabase } from '../../lib/supabase';
@@ -27,8 +27,90 @@ const formatMoney = (val: number, curr: Currency) => {
   }).format(val || 0);
 };
 
+const getDueInfo = (expectedDate: string | null, isOverdue: boolean) => {
+  if (!expectedDate) {
+    return {
+      label: 'Sem data',
+      badgeClass: 'badge-neutral',
+      subtext: 'Data não informada',
+      isOverdue: false,
+    };
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(expectedDate + 'T00:00:00');
+  const diffTime = target.getTime() - today.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (isOverdue || diffDays < 0) {
+    const daysAgo = Math.max(1, Math.abs(diffDays));
+    return {
+      label: 'Vencido',
+      badgeClass: 'badge-danger',
+      subtext: daysAgo === 1 ? '1 dia de atraso' : `${daysAgo} dias de atraso`,
+      isOverdue: true,
+    };
+  }
+  if (diffDays === 0) {
+    return {
+      label: 'Vence hoje',
+      badgeClass: 'badge-warning',
+      subtext: 'Prazo limite hoje',
+      isOverdue: false,
+    };
+  }
+  if (diffDays === 1) {
+    return {
+      label: 'A vencer',
+      badgeClass: 'badge-neutral',
+      subtext: 'Vence amanhã',
+      isOverdue: false,
+    };
+  }
+  return {
+    label: 'A vencer',
+    badgeClass: 'badge-neutral',
+    subtext: `Vence em ${diffDays} dias`,
+    isOverdue: false,
+  };
+};
+
+const getCommitmentStatusBadge = (status: string, type: 'receivable' | 'payable') => {
+  if (status === 'partially_settled') {
+    return (
+      <span className="badge badge-warning" title="Parcela com liquidação parcial registrada">
+        {type === 'receivable' ? 'Parcialmente Recebido' : 'Parcialmente Pago'}
+      </span>
+    );
+  }
+  if (status === 'settled') {
+    return <span className="badge badge-success">Liquidado</span>;
+  }
+  if (status === 'cancelled') {
+    return <span className="badge badge-neutral">Cancelado</span>;
+  }
+  return <span className="badge badge-neutral">Previsto</span>;
+};
+
 export const FinancialPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<FinancialTab>('visao_geral');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') as FinancialTab | null;
+  const validTabs: FinancialTab[] = ['visao_geral', 'contas', 'compromissos', 'movimentacoes'];
+  const [activeTab, setActiveTab] = useState<FinancialTab>(
+    urlTab && validTabs.includes(urlTab) ? urlTab : 'visao_geral'
+  );
+
+  useEffect(() => {
+    const t = searchParams.get('tab') as FinancialTab | null;
+    if (t && validTabs.includes(t) && t !== activeTab) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab: FinancialTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab }, { replace: true });
+  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -146,13 +228,86 @@ export const FinancialPage: React.FC = () => {
         const client = (item.quotation_client_name || '').toLowerCase();
         const party = (item.counterparty_name || '').toLowerCase();
         const desc = (item.description || '').toLowerCase();
-        if (!ref.includes(q) && !client.includes(q) && !party.includes(q) && !desc.includes(q)) {
+        const notes = (item.notes || '').toLowerCase();
+        if (!ref.includes(q) && !client.includes(q) && !party.includes(q) && !desc.includes(q) && !notes.includes(q)) {
           return false;
         }
       }
       return true;
     });
   }, [commitments, commitTypeFilter, commitCurrFilter, commitStatusFilter, commitSearch]);
+
+  // Compromissos filtrados divididos em Recebimentos e Pagamentos
+  const filteredReceivables = useMemo(() => {
+    return filteredCommitments.filter((item) => item.type === 'receivable');
+  }, [filteredCommitments]);
+
+  const filteredPayables = useMemo(() => {
+    return filteredCommitments.filter((item) => item.type === 'payable');
+  }, [filteredCommitments]);
+
+  // Métricas gerais da central operacional de compromissos pendentes
+  const commitmentMetrics = useMemo(() => {
+    let totalReceivablesEur = 0;
+    let totalReceivablesBrl = 0;
+    let totalPayablesEur = 0;
+    let totalPayablesBrl = 0;
+    let overdueReceivablesEur = 0;
+    let overdueReceivablesBrl = 0;
+    let overduePayablesEur = 0;
+    let overduePayablesBrl = 0;
+    let overdueCount = 0;
+    let plannedCount = 0;
+
+    for (const c of commitments) {
+      const pending = Number(c.pending_amount || 0);
+      if (c.type === 'receivable') {
+        if (c.currency === 'EUR') {
+          totalReceivablesEur += pending;
+          if (c.is_overdue) overdueReceivablesEur += pending;
+        } else {
+          totalReceivablesBrl += pending;
+          if (c.is_overdue) overdueReceivablesBrl += pending;
+        }
+      } else {
+        if (c.currency === 'EUR') {
+          totalPayablesEur += pending;
+          if (c.is_overdue) overduePayablesEur += pending;
+        } else {
+          totalPayablesBrl += pending;
+          if (c.is_overdue) overduePayablesBrl += pending;
+        }
+      }
+      if (c.is_overdue) overdueCount++;
+      else plannedCount++;
+    }
+
+    return {
+      totalReceivablesEur,
+      totalReceivablesBrl,
+      totalPayablesEur,
+      totalPayablesBrl,
+      overdueReceivablesEur,
+      overdueReceivablesBrl,
+      overduePayablesEur,
+      overduePayablesBrl,
+      overdueCount,
+      plannedCount,
+    };
+  }, [commitments]);
+
+  // Subtotais dos itens filtrados atualmente visíveis
+  const filteredReceivableTotals = useMemo(() => {
+    const eur = filteredReceivables.filter((c) => c.currency === 'EUR').reduce((sum, c) => sum + Number(c.pending_amount || 0), 0);
+    const brl = filteredReceivables.filter((c) => c.currency === 'BRL').reduce((sum, c) => sum + Number(c.pending_amount || 0), 0);
+    return { eur, brl };
+  }, [filteredReceivables]);
+
+  const filteredPayableTotals = useMemo(() => {
+    const eur = filteredPayables.filter((c) => c.currency === 'EUR').reduce((sum, c) => sum + Number(c.pending_amount || 0), 0);
+    const brl = filteredPayables.filter((c) => c.currency === 'BRL').reduce((sum, c) => sum + Number(c.pending_amount || 0), 0);
+    return { eur, brl };
+  }, [filteredPayables]);
 
   // Filtragem de transações
   const filteredTransactions = useMemo(() => {
@@ -501,7 +656,7 @@ export const FinancialPage: React.FC = () => {
       >
         <button
           type="button"
-          onClick={() => setActiveTab('visao_geral')}
+          onClick={() => handleTabChange('visao_geral')}
           className={`btn ${activeTab === 'visao_geral' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
@@ -509,7 +664,7 @@ export const FinancialPage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('contas')}
+          onClick={() => handleTabChange('contas')}
           className={`btn ${activeTab === 'contas' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
@@ -517,7 +672,7 @@ export const FinancialPage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('compromissos')}
+          onClick={() => handleTabChange('compromissos')}
           className={`btn ${activeTab === 'compromissos' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
@@ -525,7 +680,7 @@ export const FinancialPage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('movimentacoes')}
+          onClick={() => handleTabChange('movimentacoes')}
           className={`btn ${activeTab === 'movimentacoes' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
@@ -949,16 +1104,107 @@ export const FinancialPage: React.FC = () => {
       {/* ABA 3: RECEBIMENTOS & PAGAMENTOS                              */}
       {/* ============================================================ */}
       {activeTab === 'compromissos' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Header da Aba */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>
-                Recebimentos &amp; Pagamentos Operacionais
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
+                Central Operacional de Recebimentos &amp; Pagamentos
               </h3>
               <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                Gestão e acompanhamento dos compromissos operacionais a receber (clientes) e a pagar (fornecedores) vinculados às cotações.
+                Gestão e acompanhamento operacional de compromissos pendentes: recebimentos de clientes e pagamentos a fornecedores.
               </p>
+            </div>
+          </div>
+
+          {/* Cards de Resumo Operacional (Bento) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+            {/* Recebíveis EUR */}
+            <div className="card" style={{ borderLeft: '4px solid var(--success)', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Recebíveis Portugal (EUR)
+                </span>
+                <span className="badge badge-neutral">EUR</span>
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--success)' }}>
+                +{formatMoney(commitmentMetrics.totalReceivablesEur, 'EUR')}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {commitmentMetrics.overdueReceivablesEur > 0 ? (
+                  <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                    🚨 {formatMoney(commitmentMetrics.overdueReceivablesEur, 'EUR')} em atraso
+                  </span>
+                ) : (
+                  <span>Nenhum recebível EUR em atraso</span>
+                )}
+              </div>
+            </div>
+
+            {/* Recebíveis BRL */}
+            <div className="card" style={{ borderLeft: '4px solid var(--success)', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Recebíveis Brasil (BRL)
+                </span>
+                <span className="badge badge-neutral">BRL</span>
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--success)' }}>
+                +{formatMoney(commitmentMetrics.totalReceivablesBrl, 'BRL')}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {commitmentMetrics.overdueReceivablesBrl > 0 ? (
+                  <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                    🚨 {formatMoney(commitmentMetrics.overdueReceivablesBrl, 'BRL')} em atraso
+                  </span>
+                ) : (
+                  <span>Nenhum recebível BRL em atraso</span>
+                )}
+              </div>
+            </div>
+
+            {/* Pagáveis EUR */}
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Pagáveis Portugal (EUR)
+                </span>
+                <span className="badge badge-neutral">EUR</span>
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--danger)' }}>
+                -{formatMoney(commitmentMetrics.totalPayablesEur, 'EUR')}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {commitmentMetrics.overduePayablesEur > 0 ? (
+                  <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                    🚨 {formatMoney(commitmentMetrics.overduePayablesEur, 'EUR')} em atraso
+                  </span>
+                ) : (
+                  <span>Nenhum pagamento EUR em atraso</span>
+                )}
+              </div>
+            </div>
+
+            {/* Pagáveis BRL */}
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Pagáveis Brasil (BRL)
+                </span>
+                <span className="badge badge-neutral">BRL</span>
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--danger)' }}>
+                -{formatMoney(commitmentMetrics.totalPayablesBrl, 'BRL')}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                {commitmentMetrics.overduePayablesBrl > 0 ? (
+                  <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                    🚨 {formatMoney(commitmentMetrics.overduePayablesBrl, 'BRL')} em atraso
+                  </span>
+                ) : (
+                  <span>Nenhum pagamento BRL em atraso</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -968,8 +1214,8 @@ export const FinancialPage: React.FC = () => {
               <input
                 type="text"
                 className="form-control"
-                style={{ maxWidth: '280px', fontSize: '0.85rem' }}
-                placeholder="Buscar cotação, cliente, fornecedor..."
+                style={{ flex: '1 1 260px', minWidth: '260px', fontSize: '0.85rem' }}
+                placeholder="Buscar cotação, cliente, fornecedor, descrição..."
                 value={commitSearch}
                 onChange={(e) => setCommitSearch(e.target.value)}
               />
@@ -981,8 +1227,8 @@ export const FinancialPage: React.FC = () => {
                 onChange={(e) => setCommitTypeFilter(e.target.value as any)}
               >
                 <option value="ALL">Todos os Tipos</option>
-                <option value="receivable">Apenas Recebimentos (Clientes)</option>
-                <option value="payable">Apenas Pagamentos (Fornecedores)</option>
+                <option value="receivable">📥 Apenas Recebimentos (Clientes)</option>
+                <option value="payable">📤 Apenas Pagamentos (Fornecedores)</option>
               </select>
 
               <select
@@ -992,8 +1238,8 @@ export const FinancialPage: React.FC = () => {
                 onChange={(e) => setCommitCurrFilter(e.target.value as any)}
               >
                 <option value="ALL">Todas as Moedas</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="BRL">BRL (R$)</option>
+                <option value="EUR">🇵🇹 EUR (€)</option>
+                <option value="BRL">🇧🇷 BRL (R$)</option>
               </select>
 
               <select
@@ -1002,108 +1248,342 @@ export const FinancialPage: React.FC = () => {
                 value={commitStatusFilter}
                 onChange={(e) => setCommitStatusFilter(e.target.value as any)}
               >
-                <option value="ALL">Todos os Status</option>
-                <option value="overdue">🚨 Vencidos</option>
-                <option value="planned">📅 A Vencer</option>
+                <option value="ALL">Todos os Prazos</option>
+                <option value="overdue">🚨 Apenas Vencidos</option>
+                <option value="planned">📅 A Vencer / Em dia</option>
               </select>
 
+              {(commitSearch || commitTypeFilter !== 'ALL' || commitCurrFilter !== 'ALL' || commitStatusFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  style={{ fontSize: '0.8rem' }}
+                  onClick={() => {
+                    setCommitSearch('');
+                    setCommitTypeFilter('ALL');
+                    setCommitCurrFilter('ALL');
+                    setCommitStatusFilter('ALL');
+                  }}
+                  title="Limpar todos os filtros"
+                >
+                  Limpar Filtros
+                </button>
+              )}
+
               <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                {filteredCommitments.length} compromisso(s) encontrado(s)
+                {filteredCommitments.length} compromisso(s) filtrado(s)
+                {commitTypeFilter === 'ALL' && (
+                  <> ({filteredReceivables.length} recebimento(s), {filteredPayables.length} pagamento(s))</>
+                )}
               </span>
             </div>
           </div>
 
-          {/* Tabela de Compromissos */}
-          <div className="card">
-            <div className="table-responsive">
-              <table className="data-table" style={{ fontSize: '0.85rem' }}>
-                <thead>
-                  <tr>
-                    <th>Tipo</th>
-                    <th>Cotação / Cliente</th>
-                    <th>Contraparte</th>
-                    <th>Vencimento</th>
-                    <th style={{ textAlign: 'right' }}>Valor Total</th>
-                    <th style={{ textAlign: 'right' }}>Saldo Pendente</th>
-                    <th>Conta Esperada</th>
-                    <th style={{ textAlign: 'center' }}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCommitments.length === 0 ? (
+          {/* SEÇÃO 1: RECEBIMENTOS DE CLIENTES */}
+          {(commitTypeFilter === 'ALL' || commitTypeFilter === 'receivable') && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>📥</span> Recebimentos de Clientes
+                    <span className="badge badge-success">{filteredReceivables.length}</span>
+                  </h4>
+                  <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    Compromissos pendentes a receber decorrentes de cotações aprovadas e vendas de viagens.
+                  </p>
+                </div>
+                <div style={{ fontSize: '0.82rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Saldo Filtrado a Receber:</span>
+                  {filteredReceivableTotals.eur > 0 && (
+                    <strong style={{ color: 'var(--success)' }}>+{formatMoney(filteredReceivableTotals.eur, 'EUR')}</strong>
+                  )}
+                  {filteredReceivableTotals.brl > 0 && (
+                    <strong style={{ color: 'var(--success)' }}>+{formatMoney(filteredReceivableTotals.brl, 'BRL')}</strong>
+                  )}
+                  {filteredReceivableTotals.eur === 0 && filteredReceivableTotals.brl === 0 && (
+                    <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="table-responsive">
+                <table className="data-table" style={{ fontSize: '0.85rem' }}>
+                  <thead>
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                        Nenhum compromisso encontrado para os filtros selecionados.
-                      </td>
+                      <th>Cotação Vinculada</th>
+                      <th>Cliente / Descrição</th>
+                      <th>Moeda</th>
+                      <th style={{ textAlign: 'right' }}>Valor Total</th>
+                      <th style={{ textAlign: 'right' }}>Saldo a Receber</th>
+                      <th>Data Prevista</th>
+                      <th>Situação / Prazo</th>
+                      <th>Status</th>
+                      <th>Conta Esperada</th>
+                      <th style={{ textAlign: 'center' }}>Origem</th>
                     </tr>
-                  ) : (
-                    filteredCommitments.map((c) => (
-                      <tr key={c.id}>
-                        <td>
-                          {c.type === 'receivable' ? (
-                            <span className="badge badge-success">Recebível</span>
-                          ) : (
-                            <span className="badge badge-danger">Pagável</span>
-                          )}
-                        </td>
-                        <td>
-                          <strong>{c.quotation_reference || 'Cotação'}</strong>
-                          {c.quotation_client_name && (
-                            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              {c.quotation_client_name}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {c.counterparty_name || '—'}
-                          {c.description && (
-                            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              {c.description}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {c.expected_date ? (
-                            <span style={{ color: c.is_overdue ? 'var(--danger)' : 'inherit', fontWeight: c.is_overdue ? 700 : 400 }}>
-                              {new Date(c.expected_date).toLocaleDateString('pt-PT')}
-                              {c.is_overdue && ' (Vencido)'}
-                            </span>
-                          ) : (
-                            <span style={{ color: 'var(--text-muted)' }}>Sem data</span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
-                          {formatMoney(c.amount, c.currency as Currency)}
-                        </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: c.type === 'receivable' ? 'var(--success)' : 'var(--danger)' }}>
-                          {formatMoney(c.pending_amount, c.currency as Currency)}
-                        </td>
-                        <td>
-                          {c.expected_account_name ? (
-                            <span className="badge badge-neutral">{c.expected_account_name}</span>
-                          ) : (
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Indefinida</span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {c.quotation_id && (
-                            <Link
-                              to={`/cotacoes/${c.quotation_id}/financeiro`}
-                              className="btn btn-sm btn-secondary"
-                              style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
-                              title="Abrir ambiente financeiro desta cotação"
-                            >
-                              Ver Cotação →
-                            </Link>
-                          )}
+                  </thead>
+                  <tbody>
+                    {filteredReceivables.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          Nenhum recebimento de cliente encontrado para os filtros selecionados.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      filteredReceivables.map((c) => {
+                        const dueInfo = getDueInfo(c.expected_date, c.is_overdue);
+                        return (
+                          <tr key={c.id}>
+                            <td>
+                              {c.quotation_id ? (
+                                <Link
+                                  to={`/cotacoes/${c.quotation_id}/financeiro`}
+                                  style={{ fontWeight: 700, color: 'var(--accent-primary)', textDecoration: 'none' }}
+                                  title="Ver ambiente financeiro da cotação"
+                                >
+                                  {c.quotation_reference || 'Cotação'}
+                                </Link>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Avulso</span>
+                              )}
+                              {c.quotation_client_name && (
+                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  {c.quotation_client_name}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{c.counterparty_name || 'Cliente'}</div>
+                              {c.description && (
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{c.description}</div>
+                              )}
+                              {c.notes && (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                  Obs: {c.notes}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span className="badge badge-neutral">{c.currency}</span>
+                            </td>
+                            <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
+                              {formatMoney(c.amount, c.currency as Currency)}
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>
+                              +{formatMoney(c.pending_amount, c.currency as Currency)}
+                              {c.already_paid > 0 && (
+                                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                                  Recebido: {formatMoney(c.already_paid, c.currency as Currency)}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {c.expected_date ? (
+                                <span>{new Date(c.expected_date).toLocaleDateString('pt-PT')}</span>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)' }}>—</span>
+                              )}
+                            </td>
+                            <td>
+                              <span className={`badge ${dueInfo.badgeClass}`}>
+                                {dueInfo.label}
+                              </span>
+                              {dueInfo.subtext && (
+                                <span style={{ display: 'block', fontSize: '0.72rem', color: dueInfo.isOverdue ? 'var(--danger)' : 'var(--text-muted)' }}>
+                                  {dueInfo.subtext}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {getCommitmentStatusBadge(c.status, 'receivable')}
+                            </td>
+                            <td>
+                              {c.expected_account_name ? (
+                                <span className="badge badge-neutral">{c.expected_account_name}</span>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Indefinida</span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {c.quotation_id ? (
+                                <Link
+                                  to={`/cotacoes/${c.quotation_id}/financeiro`}
+                                  className="btn btn-sm btn-secondary"
+                                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
+                                  title="Abrir ambiente financeiro desta cotação"
+                                >
+                                  Ver Cotação →
+                                </Link>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* SEÇÃO 2: PAGAMENTOS A FORNECEDORES */}
+          {(commitTypeFilter === 'ALL' || commitTypeFilter === 'payable') && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>📤</span> Pagamentos a Fornecedores
+                    <span className="badge badge-danger">{filteredPayables.length}</span>
+                  </h4>
+                  <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    Compromissos pendentes a pagar a companhias aéreas, operadoras, hotéis e fornecedores de serviços.
+                  </p>
+                </div>
+                <div style={{ fontSize: '0.82rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Saldo Filtrado a Pagar:</span>
+                  {filteredPayableTotals.eur > 0 && (
+                    <strong style={{ color: 'var(--danger)' }}>-{formatMoney(filteredPayableTotals.eur, 'EUR')}</strong>
+                  )}
+                  {filteredPayableTotals.brl > 0 && (
+                    <strong style={{ color: 'var(--danger)' }}>-{formatMoney(filteredPayableTotals.brl, 'BRL')}</strong>
+                  )}
+                  {filteredPayableTotals.eur === 0 && filteredPayableTotals.brl === 0 && (
+                    <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="table-responsive">
+                <table className="data-table" style={{ fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr>
+                      <th>Cotação Vinculada</th>
+                      <th>Fornecedor / Descrição</th>
+                      <th>Moeda</th>
+                      <th style={{ textAlign: 'right' }}>Valor Total</th>
+                      <th style={{ textAlign: 'right' }}>Saldo a Pagar</th>
+                      <th>Data Prevista</th>
+                      <th>Situação / Prazo</th>
+                      <th>Status</th>
+                      <th>Conta / Cartão Previsto</th>
+                      <th style={{ textAlign: 'center' }}>Origem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPayables.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          Nenhum pagamento a fornecedor encontrado para os filtros selecionados.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPayables.map((c) => {
+                        const dueInfo = getDueInfo(c.expected_date, c.is_overdue);
+                        return (
+                          <tr key={c.id}>
+                            <td>
+                              {c.quotation_id ? (
+                                <Link
+                                  to={`/cotacoes/${c.quotation_id}/financeiro`}
+                                  style={{ fontWeight: 700, color: 'var(--accent-primary)', textDecoration: 'none' }}
+                                  title="Ver ambiente financeiro da cotação"
+                                >
+                                  {c.quotation_reference || 'Cotação'}
+                                </Link>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Avulso</span>
+                              )}
+                              {c.quotation_client_name && (
+                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  {c.quotation_client_name}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <span>{c.counterparty_name || 'Fornecedor'}</span>
+                                {c.is_credit_card_invoice && (
+                                  <span className="badge badge-warning" style={{ fontSize: '0.68rem' }}>Cartão de Crédito</span>
+                                )}
+                                {c.is_cancellation_adjustment && (
+                                  <span className="badge badge-neutral" style={{ fontSize: '0.68rem' }}>Ajuste Cancelamento</span>
+                                )}
+                              </div>
+                              {c.description && (
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{c.description}</div>
+                              )}
+                              {c.notes && (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                  Obs: {c.notes}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span className="badge badge-neutral">{c.currency}</span>
+                            </td>
+                            <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
+                              {formatMoney(c.amount, c.currency as Currency)}
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>
+                              -{formatMoney(c.pending_amount, c.currency as Currency)}
+                              {c.already_paid > 0 && (
+                                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                                  Pago: {formatMoney(c.already_paid, c.currency as Currency)}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {c.expected_date ? (
+                                <span>{new Date(c.expected_date).toLocaleDateString('pt-PT')}</span>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)' }}>—</span>
+                              )}
+                            </td>
+                            <td>
+                              <span className={`badge ${dueInfo.badgeClass}`}>
+                                {dueInfo.label}
+                              </span>
+                              {dueInfo.subtext && (
+                                <span style={{ display: 'block', fontSize: '0.72rem', color: dueInfo.isOverdue ? 'var(--danger)' : 'var(--text-muted)' }}>
+                                  {dueInfo.subtext}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {getCommitmentStatusBadge(c.status, 'payable')}
+                            </td>
+                            <td>
+                              {c.expected_account_name ? (
+                                <span className="badge badge-neutral">{c.expected_account_name}</span>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Indefinida</span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {c.quotation_id ? (
+                                <Link
+                                  to={`/cotacoes/${c.quotation_id}/financeiro`}
+                                  className="btn btn-sm btn-secondary"
+                                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
+                                  title="Abrir ambiente financeiro desta cotação"
+                                >
+                                  Ver Cotação →
+                                </Link>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
