@@ -194,7 +194,8 @@ export interface UpdateFinancialCommitmentInput {
 }
 
 // 5. Tipos para Movimentações Reais de Caixa (com suporte a transferências cambiais)
-export type FinancialTransactionType = 'inflow' | 'outflow' | 'transfer' | 'refund';
+export type FinancialTransactionType = 'inflow' | 'outflow' | 'transfer' | 'refund' | 'balance_adjustment';
+export type BalanceAdjustmentDirection = 'positive' | 'negative';
 
 export interface FinancialTransaction {
   id: string;
@@ -214,6 +215,7 @@ export interface FinancialTransaction {
   counterparty_name: string | null;
   description: string | null;
   reference: string | null;
+  adjustment_direction?: BalanceAdjustmentDirection | null;
   created_at: string;
   updated_at: string;
 }
@@ -231,6 +233,7 @@ export interface CreateFinancialTransactionInput {
   exchange_rate?: number | null;
   transfer_fee?: number | null;
   transfer_fee_currency?: Currency | null;
+  adjustment_direction?: BalanceAdjustmentDirection | null;
   transacted_at?: string;
   counterparty_name?: string | null;
   description?: string | null;
@@ -304,6 +307,29 @@ export interface RecordAccountTransferResult {
   exchange_rate: number;
   transfer_fee: number;
   transacted_at: string;
+}
+
+// Ajuste Manual de Saldo de Conta Financeira
+export interface RecordBalanceAdjustmentInput {
+  account_id: string;
+  amount: number;              // sempre positivo; direção via direction
+  direction: BalanceAdjustmentDirection;
+  reason: string;              // motivo obrigatório
+  adjusted_at?: string;        // ISO datetime, default: agora
+  reference?: string | null;
+}
+
+export interface RecordBalanceAdjustmentResult {
+  success: boolean;
+  transaction_id: string;
+  account_id: string;
+  account_name: string;
+  currency: string;
+  amount: number;
+  direction: BalanceAdjustmentDirection;
+  adjustment_direction?: BalanceAdjustmentDirection;
+  reason: string;
+  adjusted_at: string;
 }
 
 // 6. Tipos para Fase 2C: Cancelamentos, Reembolsos e Multas

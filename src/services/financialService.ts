@@ -17,6 +17,8 @@ import {
   RecordCommitmentSettlementResult,
   RecordAccountTransferInput,
   RecordAccountTransferResult,
+  RecordBalanceAdjustmentInput,
+  RecordBalanceAdjustmentResult,
   CancelFinancialOperationResult,
   CancelOperationServiceWithAdjustmentsInput,
   CancelOperationServiceWithAdjustmentsResult,
@@ -113,6 +115,76 @@ export const financialService = {
       throw new Error(error.message);
     }
     return data as FinancialAccount;
+  },
+
+  /**
+   * Renomeia uma conta financeira. Operação segura — não afeta o histrico financeiro.
+   */
+  async updateAccountName(id: string, name: string): Promise<FinancialAccount> {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error('O nome da conta não pode ser vazio.');
+    const { data, error } = await supabase
+      .from('financial_accounts')
+      .update({ name: trimmed })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      console.error('Erro ao renomear conta financeira:', error);
+      throw new Error(error.message);
+    }
+    return data as FinancialAccount;
+  },
+
+  /**
+   * Ativa ou desativa uma conta financeira sem apagá-la.
+   * Contas desativadas continuam visíveis no histórico mas não aceitam novos ajustes.
+   */
+  async toggleAccountActive(id: string, active: boolean): Promise<FinancialAccount> {
+    const { data, error } = await supabase
+      .from('financial_accounts')
+      .update({ active })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      console.error('Erro ao atualizar status da conta financeira:', error);
+      throw new Error(error.message);
+    }
+    return data as FinancialAccount;
+  },
+
+  /**
+   * Registra um Ajuste de Saldo manual (positivo ou negativo) via RPC atômica.
+   * - Nunca altera initial_balance retroativamente.
+   * - Cria um financial_transaction do tipo 'balance_adjustment'.
+   * - Conta deve estar ativa; valor > 0; motivo obrigatório.
+   * - O saldo calculado pelo motor (get_financial_account_balances) reflete
+   *   o ajuste imediatamente após a inserção.
+   */
+  async recordBalanceAdjustment(
+    input: RecordBalanceAdjustmentInput
+  ): Promise<RecordBalanceAdjustmentResult> {
+    if (!input.account_id) throw new Error('account_id é obrigatório.');
+    if (!input.amount || input.amount <= 0) throw new Error('O valor do ajuste deve ser maior que zero.');
+    if (!input.direction) throw new Error('direction é obrigatório.');
+    if (!input.reason || !input.reason.trim()) throw new Error('O motivo do ajuste é obrigatório.');
+
+    const { data, error } = await supabase.rpc('record_balance_adjustment', {
+      p_account_id:  input.account_id,
+      p_amount:      input.amount,
+      p_direction:   input.direction,
+      p_reason:      input.reason.trim(),
+      p_adjusted_at: input.adjusted_at ?? new Date().toISOString(),
+      p_reference:   input.reference ?? null,
+    });
+
+    if (error) {
+      console.error('Erro ao registrar ajuste de saldo:', error);
+      throw new Error(error.message);
+    }
+
+    return data as RecordBalanceAdjustmentResult;
   },
 
   // ==========================================

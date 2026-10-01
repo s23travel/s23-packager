@@ -13,6 +13,7 @@ import {
   FinancialOperationServiceStatus,
   FinancialPaymentMethod,
   FinancialAdjustmentType,
+  BalanceAdjustmentDirection,
   ADJUSTMENT_TYPE_LABELS,
   Currency,
   PAYMENT_METHOD_LABELS,
@@ -72,6 +73,18 @@ export const QuotationFinancialPage: React.FC = () => {
   const [accInitialDate, setAccInitialDate] = useState(new Date().toISOString().slice(0, 10));
   const [accDesc, setAccDesc] = useState('');
   const [accActive, setAccActive] = useState(true);
+
+  // Estado para edição inline de nome de conta
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editingNameValue, setEditingNameValue] = useState('');
+
+  // Estado para modal de Ajuste de Saldo
+  const [adjustTargetAccount, setAdjustTargetAccount] = useState<FinancialAccount | null>(null);
+  const [adjBalanceDirection, setAdjBalanceDirection] = useState<BalanceAdjustmentDirection>('positive');
+  const [adjBalanceAmount, setAdjBalanceAmount] = useState('');
+  const [adjBalanceReason, setAdjBalanceReason] = useState('');
+  const [adjBalanceDate, setAdjBalanceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [adjBalanceReference, setAdjBalanceReference] = useState('');
 
   // Estado para registro de movimentação real (Recebimento / Pagamento)
   const [settlementTarget, setSettlementTarget] = useState<FinancialCommitment | null>(null);
@@ -995,6 +1008,116 @@ export const QuotationFinancialPage: React.FC = () => {
     }
   };
 
+  // ─── Edição de nome inline ───────────────────────────────────────────────
+  const handleStartEditName = (acc: FinancialAccount) => {
+    setEditingNameId(acc.id);
+    setEditingNameValue(acc.name);
+    // fecha formulário de criação/edição completa se estiver aberto
+    setIsAddingNewAccount(false);
+    setEditingAccountId(null);
+    setAdjustTargetAccount(null);
+  };
+
+  const handleSaveAccountName = async (accountId: string) => {
+    if (!editingNameValue.trim()) {
+      setFeedback({ type: 'error', message: 'O nome da conta não pode ser vazio.' });
+      return;
+    }
+    try {
+      setSaving(true);
+      await financialService.updateAccountName(accountId, editingNameValue);
+      const [activeAccs, allAccs] = await Promise.all([
+        financialService.listAccounts(true),
+        financialService.listAccounts(false),
+      ]);
+      setAccounts(activeAccs);
+      setAllAccounts(allAccs);
+      setEditingNameId(null);
+      setFeedback({ type: 'success', message: 'Nome da conta atualizado com sucesso.' });
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao renomear conta: ${err.message}` });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Ativar / Desativar conta ────────────────────────────────────────────
+  const handleToggleAccountActive = async (acc: FinancialAccount) => {
+    try {
+      setSaving(true);
+      await financialService.toggleAccountActive(acc.id, !acc.active);
+      const [activeAccs, allAccs] = await Promise.all([
+        financialService.listAccounts(true),
+        financialService.listAccounts(false),
+      ]);
+      setAccounts(activeAccs);
+      setAllAccounts(allAccs);
+      setFeedback({
+        type: 'success',
+        message: `Conta "${acc.name}" ${!acc.active ? 'ativada' : 'desativada'} com sucesso.`,
+      });
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao atualizar status da conta: ${err.message}` });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Modal de Ajuste de Saldo ─────────────────────────────────────────────
+  const handleOpenBalanceAdjustment = (acc: FinancialAccount) => {
+    setAdjustTargetAccount(acc);
+    setAdjBalanceDirection('positive');
+    setAdjBalanceAmount('');
+    setAdjBalanceReason('');
+    setAdjBalanceDate(new Date().toISOString().slice(0, 10));
+    setAdjBalanceReference('');
+    setEditingNameId(null);
+    setIsAddingNewAccount(false);
+    setEditingAccountId(null);
+  };
+
+  const handleSaveBalanceAdjustment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustTargetAccount) return;
+    const amount = Number(adjBalanceAmount);
+    if (!amount || amount <= 0) {
+      setFeedback({ type: 'error', message: 'O valor do ajuste deve ser maior que zero.' });
+      return;
+    }
+    if (!adjBalanceReason.trim()) {
+      setFeedback({ type: 'error', message: 'O motivo do ajuste é obrigatório.' });
+      return;
+    }
+    try {
+      setSaving(true);
+      await financialService.recordBalanceAdjustment({
+        account_id: adjustTargetAccount.id,
+        amount,
+        direction: adjBalanceDirection,
+        reason: adjBalanceReason.trim(),
+        adjusted_at: adjBalanceDate
+          ? new Date(adjBalanceDate + 'T12:00:00').toISOString()
+          : new Date().toISOString(),
+        reference: adjBalanceReference.trim() || null,
+      });
+      const [activeAccs, allAccs] = await Promise.all([
+        financialService.listAccounts(true),
+        financialService.listAccounts(false),
+      ]);
+      setAccounts(activeAccs);
+      setAllAccounts(allAccs);
+      setAdjustTargetAccount(null);
+      setFeedback({
+        type: 'success',
+        message: `Ajuste de ${adjBalanceDirection === 'positive' ? '+' : '-'}${amount.toFixed(2)} ${adjustTargetAccount.currency} registrado com sucesso.`,
+      });
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao registrar ajuste: ${err.message}` });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -1002,6 +1125,7 @@ export const QuotationFinancialPage: React.FC = () => {
       </div>
     );
   }
+
 
   if (!quote || !operation) {
     return (
@@ -2979,13 +3103,52 @@ export const QuotationFinancialPage: React.FC = () => {
                   {allAccounts.length === 0 ? (
                     <tr>
                       <td colSpan={7} style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        Nenhuma conta cadastrada. Clique em "+ Nova Conta" para começar.
+                        Nenhuma conta cadastrada. Clique em &quot;+ Nova Conta&quot; para começar.
                       </td>
                     </tr>
                   ) : (
                     allAccounts.map((acc) => (
-                      <tr key={acc.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                        <td style={{ padding: '0.5rem', fontWeight: 600 }}>{acc.name}</td>
+                      <tr key={acc.id} style={{ borderBottom: '1px solid var(--border-subtle)', opacity: acc.active ? 1 : 0.6 }}>
+                        {/* Nome — editável inline */}
+                        <td style={{ padding: '0.5rem', fontWeight: 600, minWidth: '160px' }}>
+                          {editingNameId === acc.id ? (
+                            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                              <input
+                                type="text"
+                                className="form-control"
+                                style={{ fontSize: '0.8rem', padding: '0.2rem 0.4rem', height: '28px' }}
+                                value={editingNameValue}
+                                onChange={(e) => setEditingNameValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveAccountName(acc.id);
+                                  if (e.key === 'Escape') setEditingNameId(null);
+                                }}
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', whiteSpace: 'nowrap' }}
+                                onClick={() => handleSaveAccountName(acc.id)}
+                                disabled={saving}
+                              >✓</button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-secondary"
+                                style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}
+                                onClick={() => setEditingNameId(null)}
+                              >✕</button>
+                            </div>
+                          ) : (
+                            <span
+                              title="Clique para renomear"
+                              style={{ cursor: 'pointer', borderBottom: '1px dashed var(--border-subtle)' }}
+                              onClick={() => handleStartEditName(acc)}
+                            >
+                              {acc.name}
+                            </span>
+                          )}
+                        </td>
                         <td style={{ padding: '0.5rem' }}>{ACCOUNT_TYPE_LABELS[acc.type] || acc.type}</td>
                         <td style={{ padding: '0.5rem' }}>
                           <span className="badge badge-neutral">{acc.currency}</span>
@@ -3004,14 +3167,39 @@ export const QuotationFinancialPage: React.FC = () => {
                           )}
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-secondary"
-                            style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
-                            onClick={() => handleStartEditAccount(acc)}
-                          >
-                            Editar
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {acc.active && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                style={{ fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}
+                                onClick={() => handleOpenBalanceAdjustment(acc)}
+                                disabled={saving}
+                                title="Registrar ajuste de saldo manual"
+                              >
+                                ± Ajustar
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              style={{ fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}
+                              onClick={() => handleStartEditAccount(acc)}
+                              disabled={saving}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${acc.active ? 'btn-danger' : 'btn-secondary'}`}
+                              style={{ fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}
+                              onClick={() => handleToggleAccountActive(acc)}
+                              disabled={saving}
+                              title={acc.active ? 'Desativar conta' : 'Reativar conta'}
+                            >
+                              {acc.active ? 'Desativar' : 'Ativar'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -3019,6 +3207,112 @@ export const QuotationFinancialPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Sub-painel: Formulário de Ajuste de Saldo (dentro do modal de gestão) */}
+            {adjustTargetAccount && (
+              <div
+                style={{
+                  marginTop: '1.5rem',
+                  border: '1px solid var(--color-warning, #d97706)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.25rem',
+                  background: 'var(--bg-surface-elevated)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+                      ± Ajuste de Saldo — {adjustTargetAccount.name}
+                    </h4>
+                    <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      Registra um movimento financeiro histórico sem alterar o saldo inicial da conta.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => setAdjustTargetAccount(null)}
+                  >✕</button>
+                </div>
+                <form onSubmit={handleSaveBalanceAdjustment}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Tipo de Ajuste *</label>
+                      <select
+                        className="form-select"
+                        value={adjBalanceDirection}
+                        onChange={(e) => setAdjBalanceDirection(e.target.value as BalanceAdjustmentDirection)}
+                        required
+                      >
+                        <option value="positive">+ Positivo (aumenta saldo)</option>
+                        <option value="negative">− Negativo (reduz saldo)</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                        Valor ({adjustTargetAccount.currency}) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        required
+                        className="form-control"
+                        placeholder="0.00"
+                        value={adjBalanceAmount}
+                        onChange={(e) => setAdjBalanceAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Data do Ajuste *</label>
+                      <input
+                        type="date"
+                        required
+                        className="form-control"
+                        value={adjBalanceDate}
+                        onChange={(e) => setAdjBalanceDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Referência (opcional)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Ex: DOC-001"
+                        value={adjBalanceReference}
+                        onChange={(e) => setAdjBalanceReference(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Motivo / Observação *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      placeholder="Descreva o motivo do ajuste (obrigatório)..."
+                      value={adjBalanceReason}
+                      onChange={(e) => setAdjBalanceReason(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => setAdjustTargetAccount(null)}
+                      disabled={saving}
+                    >Cancelar</button>
+                    <button
+                      type="submit"
+                      className="btn btn-sm btn-primary"
+                      disabled={saving || !adjBalanceAmount || !adjBalanceReason.trim()}
+                    >
+                      {saving ? 'Registrando...' : `Registrar Ajuste ${adjBalanceDirection === 'positive' ? '(+)' : '(-)'}`}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
               <button
