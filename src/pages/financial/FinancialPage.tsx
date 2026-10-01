@@ -521,6 +521,29 @@ export const FinancialPage: React.FC = () => {
     }
   };
 
+  const handleDeleteAccount = async (acc: FinancialAccount) => {
+    if (
+      !window.confirm(
+        `Deseja realmente excluir fisicamente a conta "${acc.name}" (${acc.currency})?\n\nEsta ação apagará permanentemente a conta do cadastro. Contas com histórico contábil vinculado não poderão ser excluídas.`
+      )
+    ) {
+      return;
+    }
+    try {
+      setSaving(true);
+      await financialService.deleteAccount(acc.id);
+      setFeedback({
+        type: 'success',
+        message: `Conta "${acc.name}" excluída com sucesso.`,
+      });
+      await loadData();
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao excluir conta: ${err.message}` });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Handlers de Ajuste de Saldo (Área de Movimentações)
   const handleOpenNewAdjustment = (targetAccountId?: string) => {
     const chosenId = targetAccountId || (activeAccounts.length > 0 ? activeAccounts[0].id : '');
@@ -829,7 +852,7 @@ export const FinancialPage: React.FC = () => {
             disabled={loading || saving}
             title="Transferir recursos entre contas gerando lançamentos históricos"
           >
-            ⇄ Transferir entre contas
+            Transferir entre contas
           </button>
           <button
             type="button"
@@ -838,7 +861,7 @@ export const FinancialPage: React.FC = () => {
             disabled={loading || saving}
             title="Cadastrar nova conta ou gerenciar dados cadastrais"
           >
-            🏦 Administrar Contas ({allAccounts.length})
+            Administrar Contas ({allAccounts.length})
           </button>
           <button
             type="button"
@@ -846,8 +869,11 @@ export const FinancialPage: React.FC = () => {
             onClick={loadData}
             disabled={loading || saving}
             title="Recarregar dados financeiros"
+            aria-label="Recarregar dados financeiros"
           >
-            ↻
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+            </svg>
           </button>
         </div>
       </div>
@@ -868,7 +894,7 @@ export const FinancialPage: React.FC = () => {
           className={`btn ${activeTab === 'visao_geral' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
-          📊 Visão Geral
+          Visão Geral
         </button>
         <button
           type="button"
@@ -876,7 +902,7 @@ export const FinancialPage: React.FC = () => {
           className={`btn ${activeTab === 'contas' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
-          🏦 Contas ({allAccounts.length})
+          Contas ({allAccounts.length})
         </button>
         <button
           type="button"
@@ -884,7 +910,7 @@ export const FinancialPage: React.FC = () => {
           className={`btn ${activeTab === 'compromissos' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
-          📑 Recebimentos &amp; Pagamentos ({commitments.length})
+          Recebimentos &amp; Pagamentos ({commitments.length})
         </button>
         <button
           type="button"
@@ -892,7 +918,7 @@ export const FinancialPage: React.FC = () => {
           className={`btn ${activeTab === 'movimentacoes' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0', borderBottom: 'none' }}
         >
-          📈 Movimentações &amp; Ajustes ({transactions.length})
+          Movimentações &amp; Ajustes ({transactions.length})
         </button>
       </div>
 
@@ -1036,7 +1062,7 @@ export const FinancialPage: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div style={{ flex: '1 1 520px' }}>
                 <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                  🏛️ Painel Administrativo de Cadastro &amp; Saldos de Abertura
+                  Painel Administrativo de Cadastro &amp; Saldos de Abertura
                 </div>
                 <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
                   Esta tela destina-se <strong>exclusivamente ao cadastro de contas, edição de nomes, ativação/desativação e fixação dos dados de abertura</strong> (saldo inicial e data de referência). Ela <strong>não processa lançamentos nem registra movimentações</strong>. Para transferências entre contas ou conciliações com lançamento histórico de ajuste, utilize a aba <strong>Movimentações &amp; Ajustes</strong>.
@@ -1154,13 +1180,23 @@ export const FinancialPage: React.FC = () => {
                             </button>
                             <button
                               type="button"
-                              className={`btn btn-sm ${acc.active ? 'btn-danger' : 'btn-secondary'}`}
+                              className={`btn btn-sm ${acc.active ? 'btn-secondary' : 'btn-secondary'}`}
                               style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
                               onClick={() => handleToggleAccountActive(acc)}
                               disabled={saving}
                               title={acc.active ? 'Desativar conta' : 'Reativar conta'}
                             >
                               {acc.active ? 'Desativar' : 'Ativar'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger-outline"
+                              style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                              onClick={() => handleDeleteAccount(acc)}
+                              disabled={saving}
+                              title="Excluir conta fisicamente"
+                            >
+                              Excluir
                             </button>
                           </div>
                         </td>
@@ -1273,13 +1309,23 @@ export const FinancialPage: React.FC = () => {
                             </button>
                             <button
                               type="button"
-                              className={`btn btn-sm ${acc.active ? 'btn-danger' : 'btn-secondary'}`}
+                              className={`btn btn-sm ${acc.active ? 'btn-secondary' : 'btn-secondary'}`}
                               style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
                               onClick={() => handleToggleAccountActive(acc)}
                               disabled={saving}
                               title={acc.active ? 'Desativar conta' : 'Reativar conta'}
                             >
                               {acc.active ? 'Desativar' : 'Ativar'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger-outline"
+                              style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                              onClick={() => handleDeleteAccount(acc)}
+                              disabled={saving}
+                              title="Excluir conta fisicamente"
+                            >
+                              Excluir
                             </button>
                           </div>
                         </td>
@@ -1350,7 +1396,7 @@ export const FinancialPage: React.FC = () => {
                 }}
                 onClick={() => setCommitmentSubView('pending')}
               >
-                <span>⏳ Pendentes</span>
+                <span>Pendentes</span>
                 <span
                   className={`badge ${commitmentSubView === 'pending' ? 'badge-primary' : 'badge-neutral'}`}
                   style={{ fontSize: '0.72rem' }}
@@ -1372,7 +1418,7 @@ export const FinancialPage: React.FC = () => {
                 }}
                 onClick={() => setCommitmentSubView('settled')}
               >
-                <span>📜 Histórico Liquidado</span>
+                <span>Histórico Liquidado</span>
                 <span
                   className={`badge ${commitmentSubView === 'settled' ? 'badge-primary' : 'badge-neutral'}`}
                   style={{ fontSize: '0.72rem' }}
@@ -1517,8 +1563,8 @@ export const FinancialPage: React.FC = () => {
                 onChange={(e) => setCommitStatusFilter(e.target.value as any)}
               >
                 <option value="ALL">Todos os Prazos</option>
-                <option value="overdue">🚨 Apenas Vencidos</option>
-                <option value="planned">📅 A Vencer / Em dia</option>
+                <option value="overdue">Apenas Vencidos</option>
+                <option value="planned">A Vencer / Em dia</option>
               </select>
 
               {(commitSearch || commitTypeFilter !== 'ALL' || commitCurrFilter !== 'ALL' || commitStatusFilter !== 'ALL') && (
@@ -1553,7 +1599,7 @@ export const FinancialPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>📥</span> Recebimentos de Clientes
+                    Recebimentos de Clientes
                     <span className="badge badge-success">{filteredReceivables.length}</span>
                   </h4>
                   <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
@@ -1715,7 +1761,7 @@ export const FinancialPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>📤</span> Pagamentos a Fornecedores
+                    Pagamentos a Fornecedores
                     <span className="badge badge-danger">{filteredPayables.length}</span>
                   </h4>
                   <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
@@ -2778,12 +2824,22 @@ export const FinancialPage: React.FC = () => {
                             </button>
                             <button
                               type="button"
-                              className={`btn btn-sm ${acc.active ? 'btn-danger' : 'btn-secondary'}`}
+                              className={`btn btn-sm ${acc.active ? 'btn-secondary' : 'btn-secondary'}`}
                               style={{ fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}
                               onClick={() => handleToggleAccountActive(acc)}
                               disabled={saving}
                             >
                               {acc.active ? 'Desativar' : 'Ativar'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger-outline"
+                              style={{ fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}
+                              onClick={() => handleDeleteAccount(acc)}
+                              disabled={saving}
+                              title="Excluir conta fisicamente"
+                            >
+                              Excluir
                             </button>
                           </div>
                         </td>
@@ -2841,7 +2897,7 @@ export const FinancialPage: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
-                  ⇄ Transferência entre Contas
+                  Transferência entre Contas
                 </h3>
                 <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   Movimentação financeira interna entre caixas e contas bancárias da S23
@@ -2870,7 +2926,7 @@ export const FinancialPage: React.FC = () => {
               }}
             >
               <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '0.15rem' }}>
-                ℹ️ Lançamento de Movimento Histórico
+                Lançamento de Movimento Histórico
               </strong>
               Esta transferência cria duas movimentações no extrato histórico: uma saída na conta de origem e uma entrada na conta de destino. Os saldos de abertura e configurações de cadastro de ambas as contas permanecem inalterados.
             </div>
@@ -3111,7 +3167,7 @@ export const FinancialPage: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
-                  ± Registrar Ajuste de Saldo
+                  Registrar Ajuste de Saldo
                 </h3>
                 <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   Movimentação contábil para conciliação do saldo real em caixa
@@ -3301,14 +3357,12 @@ export const FinancialPage: React.FC = () => {
             {/* Header do Modal */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  {settlementTarget.type === 'receivable' ? (
-                    <><span>📥</span> Registrar Recebimento</>
-                  ) : settlementTarget.is_credit_card_invoice ? (
-                    <><span>💳</span> Registrar Pagamento da Fatura do Cartão</>
-                  ) : (
-                    <><span>📤</span> Registrar Pagamento a Fornecedor</>
-                  )}
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
+                  {settlementTarget.type === 'receivable'
+                    ? 'Registrar Recebimento'
+                    : settlementTarget.is_credit_card_invoice
+                    ? 'Registrar Pagamento da Fatura do Cartão'
+                    : 'Registrar Pagamento a Fornecedor'}
                 </h3>
                 <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                   Liquidação operacional em caixa com registro de movimentação permanente

@@ -331,11 +331,26 @@ export const DashboardPage: React.FC = () => {
                 <span className="metric-card-sub">Liquidez operacional em EUR</span>
               </div>
             </div>
-            <span className="currency-badge">EUR</span>
+            <span className="currency-badge currency-badge--eur">EUR</span>
           </div>
 
-          {/* Cards de Métricas EUR */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+          {/* Card Hero: Saldo Projetado Consolidado EUR */}
+          <div className="metric-hero-card metric-hero-card--eur">
+            <div className="metric-hero-card-left">
+              <span className="metric-hero-label">Saldo Projetado</span>
+              <span className="metric-hero-sub">Caixa bancário + Recebíveis − Pagamentos</span>
+            </div>
+            <div className="metric-hero-card-right">
+              <div className={`metric-hero-value${
+                (consolidated?.EUR?.projected_balance || 0) < 0 ? ' metric-card-value--danger' : ''
+              }`}>
+                {loading ? '—' : formatMoney(consolidated?.EUR?.projected_balance || 0, 'EUR')}
+              </div>
+            </div>
+          </div>
+
+          {/* Cards de Métricas Operacionais EUR (Grid 2x2 com folga ampla) */}
+          <div className="metric-grid-2x2">
             {/* Disponível em Bancos/Caixa */}
             <div className="metric-card">
               <div className="metric-card-label">Caixa Bancário</div>
@@ -362,10 +377,12 @@ export const DashboardPage: React.FC = () => {
               <div className="metric-card-value metric-card-value--success">
                 {loading ? '—' : `+${formatMoney(consolidated?.EUR?.total_pending_receivables || 0, 'EUR')}`}
               </div>
-              {(consolidated?.EUR?.overdue_receivables || 0) > 0 && (
+              {(consolidated?.EUR?.overdue_receivables || 0) > 0 ? (
                 <div className="metric-card-sub metric-card-sub--danger">
                   {formatMoney(consolidated?.EUR?.overdue_receivables || 0, 'EUR')} vencido
                 </div>
+              ) : (
+                <div className="metric-card-sub">Previsão pendente</div>
               )}
             </div>
 
@@ -375,28 +392,19 @@ export const DashboardPage: React.FC = () => {
               <div className="metric-card-value metric-card-value--danger">
                 {loading ? '—' : `-${formatMoney(consolidated?.EUR?.total_pending_payables || 0, 'EUR')}`}
               </div>
-              {(consolidated?.EUR?.overdue_payables || 0) > 0 && (
+              {(consolidated?.EUR?.overdue_payables || 0) > 0 ? (
                 <div className="metric-card-sub metric-card-sub--danger">
                   {formatMoney(consolidated?.EUR?.overdue_payables || 0, 'EUR')} vencido
                 </div>
+              ) : (
+                <div className="metric-card-sub">Compromissos pendentes</div>
               )}
-            </div>
-
-            {/* Saldo Projetado EUR */}
-            <div className="metric-card">
-              <div className="metric-card-label">Saldo Projetado</div>
-              <div className={`metric-card-value${
-                (consolidated?.EUR?.projected_balance || 0) >= 0 ? '' : ' metric-card-value--danger'
-              }`}>
-                {loading ? '—' : formatMoney(consolidated?.EUR?.projected_balance || 0, 'EUR')}
-              </div>
-              <div className="metric-card-sub">Caixa + Rec - Pag</div>
             </div>
           </div>
 
           {/* Tabela de Contas Ativas em EUR */}
           <div>
-          <div className="account-sub">
+            <div className="account-sub">
               <span className="account-sub-label">Contas ativas ({eurAccounts.length})</span>
             </div>
 
@@ -415,10 +423,10 @@ export const DashboardPage: React.FC = () => {
                     <tr>
                       <th>Conta</th>
                       <th>Tipo</th>
-                      <th style={{ textAlign: 'right' }}>Saldo Atual</th>
-                      <th style={{ textAlign: 'right' }}>A Receber</th>
-                      <th style={{ textAlign: 'right' }}>A Pagar</th>
-                      <th style={{ textAlign: 'right' }}>Saldo Projetado</th>
+                      <th style={{ textAlign: 'right', paddingRight: '0.85rem' }}>Saldo Atual</th>
+                      <th style={{ textAlign: 'right', paddingRight: '0.85rem' }}>A Receber</th>
+                      <th style={{ textAlign: 'right', paddingRight: '0.85rem' }}>A Pagar</th>
+                      <th style={{ textAlign: 'right', paddingRight: '0.85rem' }}>Saldo Projetado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -434,18 +442,19 @@ export const DashboardPage: React.FC = () => {
                               {ACCOUNT_TYPE_LABELS[acc.account_type] || acc.account_type}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                          <td style={{ textAlign: 'right', fontWeight: 600, paddingRight: '0.85rem' }}>
                             {formatMoney(acc.current_balance, 'EUR')}
                           </td>
-                          <td style={{ textAlign: 'right', color: acc.pending_receivables > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
+                          <td style={{ textAlign: 'right', paddingRight: '0.85rem', color: acc.pending_receivables > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
                             {acc.pending_receivables > 0 ? `+${formatMoney(acc.pending_receivables, 'EUR')}` : '—'}
                           </td>
-                          <td style={{ textAlign: 'right', color: acc.pending_payables > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
+                          <td style={{ textAlign: 'right', paddingRight: '0.85rem', color: acc.pending_payables > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
                             {acc.pending_payables > 0 ? `-${formatMoney(acc.pending_payables, 'EUR')}` : '—'}
                           </td>
                           <td
                             style={{
                               textAlign: 'right',
+                              paddingRight: '0.85rem',
                               fontWeight: 700,
                               color: acc.projected_balance < 0 ? 'var(--danger)' : 'var(--text-primary)',
                             }}
@@ -480,11 +489,26 @@ export const DashboardPage: React.FC = () => {
                 <span className="metric-card-sub">Liquidez operacional em BRL</span>
               </div>
             </div>
-            <span className="currency-badge">BRL</span>
+            <span className="currency-badge currency-badge--brl">BRL</span>
           </div>
 
-          {/* Cards de Métricas BRL */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+          {/* Card Hero: Saldo Projetado Consolidado BRL */}
+          <div className="metric-hero-card metric-hero-card--brl">
+            <div className="metric-hero-card-left">
+              <span className="metric-hero-label">Saldo Projetado</span>
+              <span className="metric-hero-sub">Caixa bancário + Recebíveis − Pagamentos</span>
+            </div>
+            <div className="metric-hero-card-right">
+              <div className={`metric-hero-value${
+                (consolidated?.BRL?.projected_balance || 0) < 0 ? ' metric-card-value--danger' : ''
+              }`}>
+                {loading ? '—' : formatMoney(consolidated?.BRL?.projected_balance || 0, 'BRL')}
+              </div>
+            </div>
+          </div>
+
+          {/* Cards de Métricas Operacionais BRL (Grid 2x2 com folga ampla) */}
+          <div className="metric-grid-2x2">
             {/* Disponível em Bancos/Caixa */}
             <div className="metric-card">
               <div className="metric-card-label">Caixa Bancário</div>
@@ -511,10 +535,12 @@ export const DashboardPage: React.FC = () => {
               <div className="metric-card-value metric-card-value--success">
                 {loading ? '—' : `+${formatMoney(consolidated?.BRL?.total_pending_receivables || 0, 'BRL')}`}
               </div>
-              {(consolidated?.BRL?.overdue_receivables || 0) > 0 && (
+              {(consolidated?.BRL?.overdue_receivables || 0) > 0 ? (
                 <div className="metric-card-sub metric-card-sub--danger">
                   {formatMoney(consolidated?.BRL?.overdue_receivables || 0, 'BRL')} vencido
                 </div>
+              ) : (
+                <div className="metric-card-sub">Previsão pendente</div>
               )}
             </div>
 
@@ -524,22 +550,13 @@ export const DashboardPage: React.FC = () => {
               <div className="metric-card-value metric-card-value--danger">
                 {loading ? '—' : `-${formatMoney(consolidated?.BRL?.total_pending_payables || 0, 'BRL')}`}
               </div>
-              {(consolidated?.BRL?.overdue_payables || 0) > 0 && (
+              {(consolidated?.BRL?.overdue_payables || 0) > 0 ? (
                 <div className="metric-card-sub metric-card-sub--danger">
                   {formatMoney(consolidated?.BRL?.overdue_payables || 0, 'BRL')} vencido
                 </div>
+              ) : (
+                <div className="metric-card-sub">Compromissos pendentes</div>
               )}
-            </div>
-
-            {/* Saldo Projetado BRL */}
-            <div className="metric-card">
-              <div className="metric-card-label">Saldo Projetado</div>
-              <div className={`metric-card-value${
-                (consolidated?.BRL?.projected_balance || 0) >= 0 ? '' : ' metric-card-value--danger'
-              }`}>
-                {loading ? '—' : formatMoney(consolidated?.BRL?.projected_balance || 0, 'BRL')}
-              </div>
-              <div className="metric-card-sub">Caixa + Rec - Pag</div>
             </div>
           </div>
 
@@ -564,10 +581,10 @@ export const DashboardPage: React.FC = () => {
                     <tr>
                       <th>Conta</th>
                       <th>Tipo</th>
-                      <th style={{ textAlign: 'right' }}>Saldo Atual</th>
-                      <th style={{ textAlign: 'right' }}>A Receber</th>
-                      <th style={{ textAlign: 'right' }}>A Pagar</th>
-                      <th style={{ textAlign: 'right' }}>Saldo Projetado</th>
+                      <th style={{ textAlign: 'right', paddingRight: '0.85rem' }}>Saldo Atual</th>
+                      <th style={{ textAlign: 'right', paddingRight: '0.85rem' }}>A Receber</th>
+                      <th style={{ textAlign: 'right', paddingRight: '0.85rem' }}>A Pagar</th>
+                      <th style={{ textAlign: 'right', paddingRight: '0.85rem' }}>Saldo Projetado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -583,18 +600,19 @@ export const DashboardPage: React.FC = () => {
                               {ACCOUNT_TYPE_LABELS[acc.account_type] || acc.account_type}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                          <td style={{ textAlign: 'right', fontWeight: 600, paddingRight: '0.85rem' }}>
                             {formatMoney(acc.current_balance, 'BRL')}
                           </td>
-                          <td style={{ textAlign: 'right', color: acc.pending_receivables > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
+                          <td style={{ textAlign: 'right', paddingRight: '0.85rem', color: acc.pending_receivables > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
                             {acc.pending_receivables > 0 ? `+${formatMoney(acc.pending_receivables, 'BRL')}` : '—'}
                           </td>
-                          <td style={{ textAlign: 'right', color: acc.pending_payables > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
+                          <td style={{ textAlign: 'right', paddingRight: '0.85rem', color: acc.pending_payables > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
                             {acc.pending_payables > 0 ? `-${formatMoney(acc.pending_payables, 'BRL')}` : '—'}
                           </td>
                           <td
                             style={{
                               textAlign: 'right',
+                              paddingRight: '0.85rem',
                               fontWeight: 700,
                               color: acc.projected_balance < 0 ? 'var(--danger)' : 'var(--text-primary)',
                             }}

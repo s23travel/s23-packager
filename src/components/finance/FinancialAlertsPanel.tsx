@@ -221,7 +221,7 @@ export const FinancialAlertsPanel: React.FC<FinancialAlertsPanelProps> = ({
                     Portugal / EUR ({eurList.length})
                   </strong>
                 </div>
-                <span className="currency-badge">
+                <span className="currency-badge currency-badge--eur">
                   EUR
                 </span>
               </div>
@@ -268,7 +268,7 @@ export const FinancialAlertsPanel: React.FC<FinancialAlertsPanelProps> = ({
                     Brasil / BRL ({brlList.length})
                   </strong>
                 </div>
-                <span className="currency-badge">
+                <span className="currency-badge currency-badge--brl">
                   BRL
                 </span>
               </div>

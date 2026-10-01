@@ -1063,6 +1063,36 @@ export const QuotationFinancialPage: React.FC = () => {
     }
   };
 
+  // ─── Excluir conta permanentemente ───────────────────────────────────────
+  const handleDeleteAccount = async (acc: FinancialAccount) => {
+    if (
+      !window.confirm(
+        `Deseja realmente excluir fisicamente a conta "${acc.name}" (${acc.currency})?\n\nEsta ação apagará permanentemente a conta do cadastro. Contas com histórico contábil vinculado não poderão ser excluídas.`
+      )
+    ) {
+      return;
+    }
+    try {
+      setSaving(true);
+      await financialService.deleteAccount(acc.id);
+      const [activeAccs, allAccs] = await Promise.all([
+        financialService.listAccounts(true),
+        financialService.listAccounts(false),
+      ]);
+      setAccounts(activeAccs);
+      setAllAccounts(allAccs);
+      setFeedback({
+        type: 'success',
+        message: `Conta "${acc.name}" excluída com sucesso.`,
+      });
+      await loadData();
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: `Erro ao excluir conta: ${err.message}` });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ─── Modal de Ajuste de Saldo ─────────────────────────────────────────────
   const handleOpenBalanceAdjustment = (acc: FinancialAccount) => {
     setAdjustTargetAccount(acc);
@@ -3194,6 +3224,16 @@ export const QuotationFinancialPage: React.FC = () => {
                               title={acc.active ? 'Desativar conta' : 'Reativar conta'}
                             >
                               {acc.active ? 'Desativar' : 'Ativar'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger-outline"
+                              style={{ fontSize: '0.72rem', padding: '0.2rem 0.45rem' }}
+                              onClick={() => handleDeleteAccount(acc)}
+                              disabled={saving}
+                              title="Excluir permanentemente do cadastro"
+                            >
+                              Excluir
                             </button>
                           </div>
                         </td>

@@ -157,6 +157,51 @@ export const financialService = {
   },
 
   /**
+   * Exclui fisicamente uma conta financeira.
+   * Impede a exclusão se houver movimentações financeiras vinculadas no histórico contábil.
+   */
+  async deleteAccount(id: string): Promise<void> {
+    // 1. Verificar se existem movimentações reais associadas
+    const { count, error: countError } = await supabase
+      .from('financial_transactions')
+      .select('*', { count: 'exact', head: true })
+      .or(`account_id.eq.${id},destination_account_id.eq.${id}`);
+
+    if (countError) {
+      console.error('Erro ao verificar transações da conta:', countError);
+      throw new Error(`Falha ao verificar histórico da conta: ${countError.message}`);
+    }
+
+    if (count && count > 0) {
+      throw new Error(
+        `Esta conta possui ${count} movimentação(ões) vinculada(s) ao histórico contábil e não pode ser excluída fisicamente. Utilize a opção "Desativar" para ocultá-la mantendo a integridade financeira.`
+      );
+    }
+
+    // 2. Limpar referências em compromissos para evitar violação de integridade referencial
+    await supabase
+      .from('financial_commitments')
+      .update({ expected_account_id: null })
+      .eq('expected_account_id', id);
+
+    await supabase
+      .from('financial_commitments')
+      .update({ credit_card_account_id: null })
+      .eq('credit_card_account_id', id);
+
+    // 3. Excluir o registro da conta
+    const { error: deleteError } = await supabase
+      .from('financial_accounts')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('Erro ao excluir conta financeira:', deleteError);
+      throw new Error(`Falha ao excluir conta: ${deleteError.message}`);
+    }
+  },
+
+  /**
    * Registra um Ajuste de Saldo manual (positivo ou negativo) via RPC atômica.
    * - Nunca altera initial_balance retroativamente.
    * - Cria um financial_transaction do tipo 'balance_adjustment'.
