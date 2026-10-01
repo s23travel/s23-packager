@@ -21,6 +21,12 @@ import {
   CancelOperationServiceWithAdjustmentsInput,
   CancelOperationServiceWithAdjustmentsResult,
   CreateCancellationAdjustmentInput,
+  AccountBalanceSummary,
+  CurrencyConsolidatedSummary,
+  ConsolidatedBalancesResult,
+  PeriodCashFlowForecast,
+  PendingCommitmentItem,
+  PendingCommitmentFilters,
   ServiceItem,
   Currency,
 } from '../types';
@@ -863,5 +869,197 @@ export const financialService = {
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data || []) as FinancialTransaction[];
+  },
+
+  // ==========================================
+  // 6. MOTOR DE CONSULTA E SALDOS CONSOLIDADOS (FASE 3A)
+  // ==========================================
+
+  /**
+   * Obtém saldo atual e projetado por conta financeira.
+   * - Saldo atual: initial_balance + financial_transactions reais (incluindo transferências).
+   * - Saldo projetado: saldo atual + recebíveis pendentes - pagáveis pendentes (onde expected_account_id = conta.id).
+   */
+  async getAccountBalances(filters?: {
+    activeOnly?: boolean;
+    currency?: Currency;
+  }): Promise<AccountBalanceSummary[]> {
+    const { data, error } = await supabase.rpc('get_financial_account_balances');
+
+    if (error) {
+      console.error('Erro ao obter saldos das contas:', error);
+      throw new Error(error.message);
+    }
+
+    let results: AccountBalanceSummary[] = ((data || []) as any[]).map((row) => ({
+      account_id: String(row.account_id),
+      account_name: String(row.account_name),
+      account_type: row.account_type,
+      currency: row.currency,
+      active: Boolean(row.active),
+      initial_balance: Number(row.initial_balance || 0),
+      initial_balance_date: String(row.initial_balance_date || ''),
+      current_balance: Number(row.current_balance || 0),
+      pending_receivables: Number(row.pending_receivables || 0),
+      pending_payables: Number(row.pending_payables || 0),
+      projected_balance: Number(row.projected_balance || 0),
+    }));
+
+    if (filters?.activeOnly !== undefined) {
+      results = results.filter((r) => r.active === filters.activeOnly);
+    } else {
+      // Default: ativas conforme solicitação "saldo atual por conta ativa"
+      results = results.filter((r) => r.active);
+    }
+
+    if (filters?.currency) {
+      results = results.filter((r) => r.currency === filters.currency);
+    }
+
+    return results;
+  },
+
+  /**
+   * Obtém saldo consolidado por moeda (EUR e BRL):
+   * - saldo atual de contas bancárias/caixa ativas;
+   * - saldo devedor/crédito em cartões de crédito;
+   * - recebíveis pendentes (não liquidados);
+   * - pagáveis pendentes (não liquidados, incluindo faturas de cartão);
+   * - saldo projetado (saldo atual + recebíveis pendentes - pagáveis pendentes);
+   * - valores vencidos de recebíveis e pagáveis.
+   */
+  async getConsolidatedBalances(referenceDate?: string): Promise<ConsolidatedBalancesResult> {
+    const { data, error } = await supabase.rpc('get_financial_consolidated_summary', {
+      p_reference_date: referenceDate || undefined,
+    });
+
+    if (error) {
+      console.error('Erro ao obter saldos consolidados:', error);
+      throw new Error(error.message);
+    }
+
+    const raw = (data || {}) as Record<string, any>;
+    const parseCurrency = (curr: Currency): CurrencyConsolidatedSummary => {
+      const item = raw[curr] || {};
+      return {
+        currency: curr,
+        current_balance: Number(item.current_balance || 0),
+        credit_card_balance: Number(item.credit_card_balance || 0),
+        total_pending_receivables: Number(item.total_pending_receivables || 0),
+        total_pending_payables: Number(item.total_pending_payables || 0),
+        projected_balance: Number(item.projected_balance || 0),
+        overdue_receivables: Number(item.overdue_receivables || 0),
+        overdue_payables: Number(item.overdue_payables || 0),
+      };
+    };
+
+    return {
+      EUR: parseCurrency('EUR'),
+      BRL: parseCurrency('BRL'),
+      reference_date: referenceDate,
+    };
+  },
+
+  /**
+   * Previsão de entradas e saídas previstas por moeda para um período determinado
+   */
+  async getPeriodCashFlowForecast(
+    startDate: string,
+    endDate: string
+  ): Promise<PeriodCashFlowForecast[]> {
+    if (!startDate || !endDate) {
+      throw new Error('startDate e endDate são obrigatórios para a previsão de fluxo de caixa.');
+    }
+
+    const { data, error } = await supabase.rpc('get_period_cash_flow_forecast', {
+      p_start_date: startDate,
+      p_end_date: endDate,
+    });
+
+    if (error) {
+      console.error('Erro ao obter previsão de fluxo de caixa:', error);
+      throw new Error(error.message);
+    }
+
+    return ((data || []) as any[]).map((row) => ({
+      currency: row.currency as Currency,
+      expected_inflows: Number(row.expected_inflows || 0),
+      expected_outflows: Number(row.expected_outflows || 0),
+      net_cash_flow: Number(row.net_cash_flow || 0),
+      receivables_count: Number(row.receivables_count || 0),
+      payables_count: Number(row.payables_count || 0),
+    }));
+  },
+
+  /**
+   * Consulta compromissos pendentes com filtros opcionais:
+   * - por intervalo de datas (startDate, endDate);
+   * - por moeda (currency);
+   * - por tipo (receivable/payable);
+   * - por conta esperada (accountId);
+   * - vencidos (isOverdue);
+   * - data de referência para vencimento (referenceDate).
+   */
+  async getPendingCommitments(
+    filters?: PendingCommitmentFilters
+  ): Promise<PendingCommitmentItem[]> {
+    const { data, error } = await supabase.rpc('get_pending_financial_commitments', {
+      p_start_date: filters?.startDate || null,
+      p_end_date: filters?.endDate || null,
+      p_currency: filters?.currency || null,
+      p_type: filters?.type || null,
+      p_account_id: filters?.accountId || null,
+      p_is_overdue: filters?.isOverdue !== undefined ? filters.isOverdue : null,
+      p_reference_date: filters?.referenceDate || null,
+    });
+
+    if (error) {
+      console.error('Erro ao consultar compromissos pendentes:', error);
+      throw new Error(error.message);
+    }
+
+    return ((data || []) as any[]).map((row) => ({
+      id: String(row.id),
+      operation_id: String(row.operation_id),
+      operation_service_id: row.operation_service_id ? String(row.operation_service_id) : null,
+      quotation_id: row.quotation_id ? String(row.quotation_id) : null,
+      quotation_reference: row.quotation_reference ? String(row.quotation_reference) : null,
+      quotation_client_name: row.quotation_client_name ? String(row.quotation_client_name) : null,
+      type: row.type,
+      counterparty_name: String(row.counterparty_name),
+      counterparty_type: row.counterparty_type,
+      amount: Number(row.amount || 0),
+      currency: row.currency,
+      status: row.status,
+      expected_date: row.expected_date ? String(row.expected_date) : null,
+      expected_account_id: row.expected_account_id ? String(row.expected_account_id) : null,
+      expected_account_name: row.expected_account_name ? String(row.expected_account_name) : null,
+      already_paid: Number(row.already_paid || 0),
+      pending_amount: Number(row.pending_amount || 0),
+      is_overdue: Boolean(row.is_overdue),
+      payment_method: row.payment_method || null,
+      is_credit_card_invoice: Boolean(row.is_credit_card_invoice),
+      origin_commitment_id: row.origin_commitment_id ? String(row.origin_commitment_id) : null,
+      credit_card_account_id: row.credit_card_account_id ? String(row.credit_card_account_id) : null,
+      is_cancellation_adjustment: Boolean(row.is_cancellation_adjustment),
+      adjustment_type: row.adjustment_type || null,
+      description: row.description || null,
+      notes: row.notes || null,
+      created_at: String(row.created_at),
+    }));
+  },
+
+  /**
+   * Obtém compromissos vencidos (parcelas e compromissos com data limite ultrapassada e saldo não liquidado)
+   */
+  async getOverdueCommitments(
+    referenceDate?: string,
+    currency?: Currency
+  ): Promise<PendingCommitmentItem[]> {
+    return this.getPendingCommitments({
+      isOverdue: true,
+      referenceDate,
+      currency,
+    });
   },
 };

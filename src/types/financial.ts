@@ -349,3 +349,130 @@ export interface CreateCancellationAdjustmentInput {
   notes?: string;
   operation_service_id?: string;
 }
+
+// 7. Tipos para Fase 3A: Motor de Consulta e Saldos Consolidados
+export interface AccountBalanceSummary {
+  account_id: string;
+  account_name: string;
+  account_type: FinancialAccountType;
+  currency: Currency;
+  active: boolean;
+  initial_balance: number;
+  initial_balance_date: string;
+  current_balance: number;
+  pending_receivables: number;
+  pending_payables: number;
+  projected_balance: number;
+}
+
+export interface CurrencyConsolidatedSummary {
+  currency: Currency;
+  current_balance: number;
+  credit_card_balance: number;
+  total_pending_receivables: number;
+  total_pending_payables: number;
+  projected_balance: number;
+  overdue_receivables: number;
+  overdue_payables: number;
+}
+
+export interface ConsolidatedBalancesResult {
+  EUR: CurrencyConsolidatedSummary;
+  BRL: CurrencyConsolidatedSummary;
+  reference_date?: string;
+}
+
+export interface PeriodCashFlowForecast {
+  currency: Currency;
+  expected_inflows: number;
+  expected_outflows: number;
+  net_cash_flow: number;
+  receivables_count: number;
+  payables_count: number;
+}
+
+export interface PendingCommitmentItem {
+  id: string;
+  operation_id: string;
+  operation_service_id: string | null;
+  quotation_id: string | null;
+  quotation_reference: string | null;
+  quotation_client_name: string | null;
+  type: FinancialCommitmentType;
+  counterparty_name: string;
+  counterparty_type: FinancialCounterpartyType;
+  amount: number;
+  currency: Currency;
+  status: FinancialCommitmentStatus;
+  expected_date: string | null;
+  expected_account_id: string | null;
+  expected_account_name: string | null;
+  already_paid: number;
+  pending_amount: number;
+  is_overdue: boolean;
+  payment_method: FinancialPaymentMethod | null;
+  is_credit_card_invoice: boolean;
+  origin_commitment_id: string | null;
+  credit_card_account_id: string | null;
+  is_cancellation_adjustment: boolean;
+  adjustment_type: FinancialAdjustmentType | null;
+  description: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface PendingCommitmentFilters {
+  startDate?: string;
+  endDate?: string;
+  currency?: Currency;
+  type?: FinancialCommitmentType;
+  accountId?: string;
+  isOverdue?: boolean;
+  referenceDate?: string;
+}
+
+export interface CashFlowForecastFilters {
+  startDate: string;
+  endDate: string;
+}
+
+// 6. Tipos para Alertas Financeiros e Ações Rápidas (Fase 3D)
+export type FinancialAlertSeverity = 'critical' | 'warning' | 'info';
+
+export type FinancialAlertType =
+  | 'overdue_payable'
+  | 'overdue_receivable'
+  | 'credit_card_due_soon'
+  | 'missing_expected_date'
+  | 'negative_current_balance'
+  | 'negative_weekly_projection';
+
+export interface FinancialAlertAction {
+  label: string;
+  url: string;
+}
+
+export interface FinancialAlert {
+  id: string;
+  type: FinancialAlertType;
+  severity: FinancialAlertSeverity;
+  currency: Currency;
+  title: string;
+  message: string;
+  counterparty_name?: string;
+  amount?: number;
+  expected_date?: string | null;
+  account_id?: string;
+  account_name?: string;
+  quotation_id?: string | null;
+  quotation_reference?: string | null;
+  commitment_id?: string;
+  action?: FinancialAlertAction;
+}
+
+export interface GroupedFinancialAlerts {
+  EUR: FinancialAlert[];
+  BRL: FinancialAlert[];
+  totalCritical: number;
+  totalWarning: number;
+}
