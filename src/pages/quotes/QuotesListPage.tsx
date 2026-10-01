@@ -149,7 +149,7 @@ export const QuotesListPage: React.FC = () => {
             Cotações comerciais personalizadas derivadas de pacotes ou elaboradas de forma avulsa.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.6rem' }}>
+        <div className="page-header-actions">
           <Link to="/pacotes" className="btn btn-secondary">
             Ver Catálogo de Pacotes
           </Link>
@@ -186,8 +186,8 @@ export const QuotesListPage: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="card" style={{ textAlign: 'center', padding: '2.5rem' }}>
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Carregando cotações...</p>
+        <div className="card">
+          <p className="loading-text">Carregando cotações...</p>
         </div>
       ) : quotes.length === 0 ? (
         <div className="placeholder-view">
@@ -198,7 +198,7 @@ export const QuotesListPage: React.FC = () => {
               : 'Você pode emitir uma cotação avulsa ou clonar diretamente a partir de um pacote base do catálogo.'}
           </p>
           {filterMode === 'active' && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
               <Link to="/pacotes" className="btn btn-primary">
                 Escolher pacote para cotar
               </Link>
@@ -213,7 +213,12 @@ export const QuotesListPage: React.FC = () => {
           {/* Barra de Pesquisa e Filtros */}
           <div className="table-toolbar">
             <div className="search-input-wrapper">
-              <span className="search-icon">⚲</span>
+              <span className="search-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </span>
               <input
                 type="text"
                 className="search-input"
@@ -222,13 +227,13 @@ export const QuotesListPage: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <div className="table-counter">
               Mostrando <strong>{filteredQuotes.length}</strong> de {quotes.length} cotação(ões) {filterMode === 'archived' ? 'arquivada(s)' : 'ativa(s)'}
             </div>
           </div>
 
           {filteredQuotes.length === 0 ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+            <div className="table-empty-state">
               Nenhuma cotação encontrada para "<strong>{searchTerm}</strong>".
             </div>
           ) : (
@@ -268,18 +273,7 @@ export const QuotesListPage: React.FC = () => {
                             <code>{q.reference}</code>
                           </Link>
                           {q.archived_at && (
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                marginLeft: '0.4rem',
-                                fontSize: '10px',
-                                textTransform: 'uppercase',
-                                padding: '1px 5px',
-                                borderRadius: '3px',
-                                backgroundColor: 'var(--bg-tertiary, #e2e8f0)',
-                                color: 'var(--text-muted, #64748b)',
-                              }}
-                            >
+                            <span className="badge badge-muted" style={{ marginLeft: '0.4rem' }}>
                               Arquivada
                             </span>
                           )}

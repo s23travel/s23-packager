@@ -216,12 +216,12 @@ export const FinancialAlertsPanel: React.FC<FinancialAlertsPanelProps> = ({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <span style={{ fontSize: '16px' }}>🇵🇹</span>
+                  <span className="region-tag">PT</span>
                   <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
                     Portugal / EUR ({eurList.length})
                   </strong>
                 </div>
-                <span className="badge" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-primary)', fontSize: '10px' }}>
+                <span className="currency-badge">
                   EUR
                 </span>
               </div>
@@ -263,12 +263,12 @@ export const FinancialAlertsPanel: React.FC<FinancialAlertsPanelProps> = ({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <span style={{ fontSize: '16px' }}>🇧🇷</span>
+                  <span className="region-tag">BR</span>
                   <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
                     Brasil / BRL ({brlList.length})
                   </strong>
                 </div>
-                <span className="badge" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-primary)', fontSize: '10px' }}>
+                <span className="currency-badge">
                   BRL
                 </span>
               </div>

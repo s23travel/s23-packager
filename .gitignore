@@ -36,3 +36,4 @@ supabase/.temp/
 
 # Temporary and scratch files
 scratch/
+.agents/

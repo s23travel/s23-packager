@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
 /* Packager - Design System (Aura Enterprise - Back-office Operacional) */
 
 :root {
@@ -5,7 +7,7 @@
   --bg-app: #f8fafc;
   --bg-surface: #ffffff;
   --bg-surface-elevated: #f1f5f9;
-  --bg-surface-hover: #f8fafc;
+  --bg-surface-hover: #eef2f7;
 
   --border-subtle: #e2e8f0;
   --border-focus: #0066ff;
@@ -79,7 +81,7 @@
 
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --text-muted: #a8b8cc;
 
   --accent-primary: #2563eb;
   --accent-hover: #1d4ed8;
@@ -438,9 +440,9 @@ a {
 }
 
 .badge-muted {
-  background-color: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
 }
 
 /* Buttons (Compact Back-office Height) */
@@ -660,7 +662,22 @@ a {
   transform: translateY(-50%);
   color: var(--text-muted);
   font-size: var(--text-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
+}
+
+.table-counter {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.table-empty-state {
+  padding: 2.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
 /* Formulários Operacionais */
@@ -1214,11 +1231,30 @@ a {
 @media (max-width: 768px) {
   .app-header {
     padding: 0 1rem;
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    gap: 0.25rem;
+  }
+  .nav-menu {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nav-menu::-webkit-scrollbar { display: none; }
+  .nav-link {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .main-content {
     padding: 1rem;
   }
-  .grid-cols-3, .grid-cols-2, .form-grid-2, .form-grid-3, .form-grid-4, .form-grid-5 {
+  .grid-cols-3, .form-grid-2, .form-grid-3, .form-grid-4, .form-grid-5 {
     grid-template-columns: 1fr;
   }
   .quick-status-bar {
@@ -1468,7 +1504,7 @@ a {
 }
 
 .image-card-name {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 500;
   color: var(--text-primary);
   width: 100%;
@@ -1478,7 +1514,7 @@ a {
 }
 
 .image-card-size {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
@@ -1650,7 +1686,16 @@ a {
 }
 
 /* Responsividade Operacional para Telas Menores */
-@media (max-width: 960px) {
+
+/* Tablet landscape: grid-3 colapsa para 2 colunas suavemente */
+@media (max-width: 1100px) {
+  .grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile: todos os grids viram 1 coluna */
+@media (max-width: 640px) {
   .grid-cols-2,
   .grid-cols-3 {
     grid-template-columns: 1fr;
@@ -1680,4 +1725,201 @@ a {
   .calendar-week-grid {
     grid-template-columns: 1fr !important;
   }
+}
+
+/* ==========================================================================
+   Sprint 2 — Classes Semânticas Adicionais
+   Substituem padrões inline recorrentes em DashboardPage, listas e formulários
+   ========================================================================== */
+
+/* Wrapper de corpo de página (substitui style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}) */
+.page-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Seção: mini-card de métrica financeira (KPI micro) */
+.metric-card {
+  padding: 0.75rem;
+  background-color: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.metric-card-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: var(--line-xs);
+}
+
+.metric-card-value {
+  font-size: var(--text-lg);     /* 18px */
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin-top: 0.25rem;           /* 4dp */
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-card-value--success { color: var(--success); }
+.metric-card-value--danger  { color: var(--danger); }
+.metric-card-value--warning { color: var(--warning); }
+
+.metric-card-sub {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: 0.125rem;          /* 2dp */
+  line-height: var(--line-xs);
+}
+
+.metric-card-sub--danger {
+  color: var(--danger);
+  font-weight: var(--font-semibold);
+}
+
+/* Heading de seção dentro de cards (substitui <h2 style={{ fontSize:'16px', fontWeight:700 }}>) */
+.section-heading {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: var(--line-lg);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Sub-heading de seção (h3 dentro de card) */
+.subsection-heading {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Estado de carregamento padrão (substitui style={{ textAlign:'center', padding:'2.5rem' }} + p muted) */
+.loading-state {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+}
+
+.loading-state p,
+.loading-text {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--line-sm);
+  margin: 0;
+}
+
+/* Contador da toolbar de tabela (substitui style={{ fontSize:'13px', color:'var(--text-secondary)' }}) */
+.table-counter {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  line-height: var(--line-sm);
+}
+
+/* Tabela compacta no Dashboard (substitui data-table + style={{ fontSize:'12px' }}) */
+.data-table--compact th {
+  font-size: var(--text-xs);
+  padding: 0.5rem 0.75rem;
+}
+
+.data-table--compact td {
+  font-size: var(--text-xs);
+  padding: 0.5rem 0.75rem;
+}
+
+/* Valor numérico em célula de tabela */
+.td-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-medium);
+}
+
+.td-number--success { color: var(--success); }
+.td-number--danger  { color: var(--danger); }
+.td-number--muted   { color: var(--text-muted); }
+.td-number--bold    { font-weight: var(--font-bold); }
+
+/* Nota de binding vazio em tabela financeira */
+.td-empty-note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  display: block;
+  font-weight: var(--font-normal);
+}
+
+/* Badge de moeda (substitui badge inline com backgroundColor/color hardcoded) */
+.currency-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  background-color: var(--accent-soft);
+  color: var(--accent-text);
+  letter-spacing: 0.04em;
+}
+
+/* Indicador de país/região (substitui flags emoji 🇵🇹 🇧🇷) */
+.region-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+  font-variant: small-caps;
+}
+
+/* Cabeçalho de bloco EUR/BRL no dashboard */
+.block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.625rem;      /* 10dp ≈ 8dp */
+}
+
+.block-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Ações da page-header inline (substitui style={{ display:'flex', gap:'0.6rem', alignItems:'center' }}) */
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Linha de sub-título de conta na tabela */
+.account-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.account-sub-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }

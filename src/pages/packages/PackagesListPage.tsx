@@ -91,8 +91,10 @@ export const PackagesListPage: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="card" style={{ textAlign: 'center', padding: '2.5rem' }}>
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Carregando catálogo de pacotes...</p>
+        <div className="card">
+          <div className="loading-state">
+            <p>Carregando catálogo de pacotes...</p>
+          </div>
         </div>
       ) : packages.length === 0 ? (
         <div className="placeholder-view">
@@ -107,7 +109,12 @@ export const PackagesListPage: React.FC = () => {
           {/* Barra de Pesquisa e Filtros */}
           <div className="table-toolbar">
             <div className="search-input-wrapper">
-              <span className="search-icon">⚲</span>
+              <span className="search-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </span>
               <input
                 type="text"
                 className="search-input"
@@ -116,7 +123,7 @@ export const PackagesListPage: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <div className="table-counter">
               Mostrando <strong>{filteredPackages.length}</strong> de {packages.length} pacote(s)
             </div>
           </div>

@@ -169,7 +169,7 @@ export const DashboardPage: React.FC = () => {
   }, [sortedQuotes, quotePage]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="page-body">
       {/* Topo / Page Header */}
       <div className="page-header" style={{ marginBottom: 0 }}>
         <div>
@@ -178,7 +178,7 @@ export const DashboardPage: React.FC = () => {
             Posição de caixa, liquidez consolidada e operações da S23 Travel
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+        <div className="page-header-actions">
           <button
             type="button"
             onClick={loadData}
@@ -238,8 +238,24 @@ export const DashboardPage: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ fontSize: '18px' }}>
-            {loading ? '⌛' : criticalAlerts.length > 0 ? '⚠️' : '✅'}
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, flexShrink: 0 }} aria-hidden="true">
+            {loading ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            ) : criticalAlerts.length > 0 ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            )}
           </span>
           <div>
             <strong
@@ -308,176 +324,85 @@ export const DashboardPage: React.FC = () => {
             padding: '1.25rem',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottom: '1px solid var(--border-subtle)',
-              paddingBottom: '0.6rem',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '20px' }}>🇵🇹</span>
+          <div className="block-header">
+            <div className="block-header-left">
               <div>
-                <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
-                  Portugal
-                </h2>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Liquidez operacional em EUR
-                </span>
+                <h2 className="section-heading">Portugal</h2>
+                <span className="metric-card-sub">Liquidez operacional em EUR</span>
               </div>
             </div>
-            <span
-              className="badge"
-              style={{
-                backgroundColor: 'var(--accent-soft)',
-                color: 'var(--accent-primary)',
-                fontWeight: 600,
-              }}
-            >
-              EUR
-            </span>
+            <span className="currency-badge">EUR</span>
           </div>
 
           {/* Cards de Métricas EUR */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-              gap: '0.6rem',
-            }}
-          >
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
             {/* Disponível em Bancos/Caixa */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Caixa Bancário
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+            <div className="metric-card">
+              <div className="metric-card-label">Caixa Bancário</div>
+              <div className="metric-card-value">
                 {loading ? '—' : formatMoney(consolidated?.EUR?.current_balance || 0, 'EUR')}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                Disponível imediato
-              </div>
+              <div className="metric-card-sub">Disponível imediato</div>
             </div>
 
             {/* Saldo em Cartões de Crédito (SEPARADO do caixa bancário) */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Cartões de Crédito
-              </div>
-              <div
-                style={{
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  color: (consolidated?.EUR?.credit_card_balance || 0) < 0 ? 'var(--warning)' : 'var(--text-primary)',
-                  marginTop: '0.2rem',
-                }}
-              >
+            <div className="metric-card">
+              <div className="metric-card-label">Cartões de Crédito</div>
+              <div className={`metric-card-value${
+                (consolidated?.EUR?.credit_card_balance || 0) < 0 ? ' metric-card-value--warning' : ''
+              }`}>
                 {loading ? '—' : formatMoney(consolidated?.EUR?.credit_card_balance || 0, 'EUR')}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                Faturas / uso de limite
-              </div>
+              <div className="metric-card-sub">Faturas / uso de limite</div>
             </div>
 
             {/* Recebíveis Pendentes */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                A Receber
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--success)', marginTop: '0.2rem' }}>
+            <div className="metric-card">
+              <div className="metric-card-label">A Receber</div>
+              <div className="metric-card-value metric-card-value--success">
                 {loading ? '—' : `+${formatMoney(consolidated?.EUR?.total_pending_receivables || 0, 'EUR')}`}
               </div>
               {(consolidated?.EUR?.overdue_receivables || 0) > 0 && (
-                <div style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: 600, marginTop: '0.15rem' }}>
+                <div className="metric-card-sub metric-card-sub--danger">
                   {formatMoney(consolidated?.EUR?.overdue_receivables || 0, 'EUR')} vencido
                 </div>
               )}
             </div>
 
             {/* Pagáveis Pendentes */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                A Pagar
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--danger)', marginTop: '0.2rem' }}>
+            <div className="metric-card">
+              <div className="metric-card-label">A Pagar</div>
+              <div className="metric-card-value metric-card-value--danger">
                 {loading ? '—' : `-${formatMoney(consolidated?.EUR?.total_pending_payables || 0, 'EUR')}`}
               </div>
               {(consolidated?.EUR?.overdue_payables || 0) > 0 && (
-                <div style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: 600, marginTop: '0.15rem' }}>
+                <div className="metric-card-sub metric-card-sub--danger">
                   {formatMoney(consolidated?.EUR?.overdue_payables || 0, 'EUR')} vencido
                 </div>
               )}
             </div>
 
             {/* Saldo Projetado EUR */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Saldo Projetado
-              </div>
-              <div
-                style={{
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  color: (consolidated?.EUR?.projected_balance || 0) >= 0 ? 'var(--text-primary)' : 'var(--danger)',
-                  marginTop: '0.2rem',
-                }}
-              >
+            <div className="metric-card">
+              <div className="metric-card-label">Saldo Projetado</div>
+              <div className={`metric-card-value${
+                (consolidated?.EUR?.projected_balance || 0) >= 0 ? '' : ' metric-card-value--danger'
+              }`}>
                 {loading ? '—' : formatMoney(consolidated?.EUR?.projected_balance || 0, 'EUR')}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                Caixa + Rec - Pag
-              </div>
+              <div className="metric-card-sub">Caixa + Rec - Pag</div>
             </div>
           </div>
 
           {/* Tabela de Contas Ativas em EUR */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Contas ativas ({eurAccounts.length})
-              </span>
+          <div className="account-sub">
+              <span className="account-sub-label">Contas ativas ({eurAccounts.length})</span>
             </div>
 
             {loading ? (
-              <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-                Carregando contas...
+              <div className="loading-state">
+                <p>Carregando contas...</p>
               </div>
             ) : eurAccounts.length === 0 ? (
               <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', border: '1px dashed var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
@@ -485,7 +410,7 @@ export const DashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="table-responsive" style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
-                <table className="data-table" style={{ fontSize: '12px' }}>
+                <table className="data-table data-table--compact">
                   <thead>
                     <tr>
                       <th>Conta</th>
@@ -546,183 +471,87 @@ export const DashboardPage: React.FC = () => {
         <div
           id="secao-contas-brl"
           className="card"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-            padding: '1.25rem',
-          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem' }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottom: '1px solid var(--border-subtle)',
-              paddingBottom: '0.6rem',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '20px' }}>🇧🇷</span>
+          <div className="block-header">
+            <div className="block-header-left">
               <div>
-                <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
-                  Brasil
-                </h2>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Liquidez operacional em BRL
-                </span>
+                <h2 className="section-heading">Brasil</h2>
+                <span className="metric-card-sub">Liquidez operacional em BRL</span>
               </div>
             </div>
-            <span
-              className="badge"
-              style={{
-                backgroundColor: 'var(--accent-soft)',
-                color: 'var(--accent-primary)',
-                fontWeight: 600,
-              }}
-            >
-              BRL
-            </span>
+            <span className="currency-badge">BRL</span>
           </div>
 
           {/* Cards de Métricas BRL */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-              gap: '0.6rem',
-            }}
-          >
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
             {/* Disponível em Bancos/Caixa */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Caixa Bancário
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+            <div className="metric-card">
+              <div className="metric-card-label">Caixa Bancário</div>
+              <div className="metric-card-value">
                 {loading ? '—' : formatMoney(consolidated?.BRL?.current_balance || 0, 'BRL')}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                Disponível imediato
-              </div>
+              <div className="metric-card-sub">Disponível imediato</div>
             </div>
 
             {/* Saldo em Cartões de Crédito (SEPARADO) */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Cartões de Crédito
-              </div>
-              <div
-                style={{
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  color: (consolidated?.BRL?.credit_card_balance || 0) < 0 ? 'var(--warning)' : 'var(--text-primary)',
-                  marginTop: '0.2rem',
-                }}
-              >
+            <div className="metric-card">
+              <div className="metric-card-label">Cartões de Crédito</div>
+              <div className={`metric-card-value${
+                (consolidated?.BRL?.credit_card_balance || 0) < 0 ? ' metric-card-value--warning' : ''
+              }`}>
                 {loading ? '—' : formatMoney(consolidated?.BRL?.credit_card_balance || 0, 'BRL')}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                Faturas / uso de limite
-              </div>
+              <div className="metric-card-sub">Faturas / uso de limite</div>
             </div>
 
             {/* Recebíveis Pendentes */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                A Receber
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--success)', marginTop: '0.2rem' }}>
+            <div className="metric-card">
+              <div className="metric-card-label">A Receber</div>
+              <div className="metric-card-value metric-card-value--success">
                 {loading ? '—' : `+${formatMoney(consolidated?.BRL?.total_pending_receivables || 0, 'BRL')}`}
               </div>
               {(consolidated?.BRL?.overdue_receivables || 0) > 0 && (
-                <div style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: 600, marginTop: '0.15rem' }}>
+                <div className="metric-card-sub metric-card-sub--danger">
                   {formatMoney(consolidated?.BRL?.overdue_receivables || 0, 'BRL')} vencido
                 </div>
               )}
             </div>
 
             {/* Pagáveis Pendentes */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                A Pagar
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--danger)', marginTop: '0.2rem' }}>
+            <div className="metric-card">
+              <div className="metric-card-label">A Pagar</div>
+              <div className="metric-card-value metric-card-value--danger">
                 {loading ? '—' : `-${formatMoney(consolidated?.BRL?.total_pending_payables || 0, 'BRL')}`}
               </div>
               {(consolidated?.BRL?.overdue_payables || 0) > 0 && (
-                <div style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: 600, marginTop: '0.15rem' }}>
+                <div className="metric-card-sub metric-card-sub--danger">
                   {formatMoney(consolidated?.BRL?.overdue_payables || 0, 'BRL')} vencido
                 </div>
               )}
             </div>
 
             {/* Saldo Projetado BRL */}
-            <div
-              style={{
-                padding: '0.75rem',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Saldo Projetado
-              </div>
-              <div
-                style={{
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  color: (consolidated?.BRL?.projected_balance || 0) >= 0 ? 'var(--text-primary)' : 'var(--danger)',
-                  marginTop: '0.2rem',
-                }}
-              >
+            <div className="metric-card">
+              <div className="metric-card-label">Saldo Projetado</div>
+              <div className={`metric-card-value${
+                (consolidated?.BRL?.projected_balance || 0) >= 0 ? '' : ' metric-card-value--danger'
+              }`}>
                 {loading ? '—' : formatMoney(consolidated?.BRL?.projected_balance || 0, 'BRL')}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                Caixa + Rec - Pag
-              </div>
+              <div className="metric-card-sub">Caixa + Rec - Pag</div>
             </div>
           </div>
 
           {/* Tabela de Contas Ativas em BRL */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Contas ativas ({brlAccounts.length})
-              </span>
+            <div className="account-sub">
+              <span className="account-sub-label">Contas ativas ({brlAccounts.length})</span>
             </div>
 
             {loading ? (
-              <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-                Carregando contas...
+              <div className="loading-state">
+                <p>Carregando contas...</p>
               </div>
             ) : brlAccounts.length === 0 ? (
               <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', border: '1px dashed var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
@@ -730,7 +559,7 @@ export const DashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="table-responsive" style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
-                <table className="data-table" style={{ fontSize: '12px' }}>
+                <table className="data-table data-table--compact">
                   <thead>
                     <tr>
                       <th>Conta</th>

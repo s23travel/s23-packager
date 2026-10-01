@@ -1056,7 +1056,7 @@ export const FinancialPage: React.FC = () => {
           {/* Tabela Portugal (EUR) */}
           <div className="card">
             <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              🇵🇹 Contas em Portugal (EUR)
+              <span className="region-tag">PT</span> Contas em Portugal (EUR)
               <span className="badge badge-neutral">{eurAccountsAdmin.length}</span>
             </h4>
             <div className="table-responsive">
@@ -1175,7 +1175,7 @@ export const FinancialPage: React.FC = () => {
           {/* Tabela Brasil (BRL) */}
           <div className="card">
             <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              🇧🇷 Contas no Brasil (BRL)
+              <span className="region-tag">BR</span> Contas no Brasil (BRL)
               <span className="badge badge-neutral">{brlAccountsAdmin.length}</span>
             </h4>
             <div className="table-responsive">
@@ -1506,8 +1506,8 @@ export const FinancialPage: React.FC = () => {
                 onChange={(e) => setCommitCurrFilter(e.target.value as any)}
               >
                 <option value="ALL">Todas as Moedas</option>
-                <option value="EUR">🇵🇹 EUR (€)</option>
-                <option value="BRL">🇧🇷 BRL (R$)</option>
+                <option value="EUR">EUR (€) — Portugal</option>
+                <option value="BRL">BRL (R$) — Brasil</option>
               </select>
 
               <select
@@ -1983,8 +1983,8 @@ export const FinancialPage: React.FC = () => {
                 onChange={(e) => setSettledCurrFilter(e.target.value as any)}
               >
                 <option value="ALL">Todas as Moedas</option>
-                <option value="EUR">🇵🇹 EUR (€)</option>
-                <option value="BRL">🇧🇷 BRL (R$)</option>
+                <option value="EUR">EUR (€) — Portugal</option>
+                <option value="BRL">BRL (R$) — Brasil</option>
               </select>
 
               {(settledSearch || settledTypeFilter !== 'ALL' || settledCurrFilter !== 'ALL') && (

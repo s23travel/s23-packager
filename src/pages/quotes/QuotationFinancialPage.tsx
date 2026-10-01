@@ -1159,36 +1159,32 @@ export const QuotationFinancialPage: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="page-header-actions" style={{ flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={handleOpenTransferModal}
           >
-            ⇄ Transferir entre contas
+            Transferir entre contas
           </button>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={handleOpenAccountModal}
           >
-            🏦 Gerenciar Contas ({accounts.length})
+            Gerenciar Contas ({accounts.length})
           </button>
           {operation.status !== 'cancelled' ? (
             <button
               type="button"
-              className="btn btn-secondary"
-              style={{
-                borderColor: 'var(--color-danger, #ef4444)',
-                color: 'var(--color-danger, #ef4444)',
-              }}
+              className="btn btn-danger-outline"
               onClick={() => {
                 setCancelOperationReason('');
                 setIsCancelOperationModalOpen(true);
               }}
               title="Cancelar a operação financeira com motivo obrigatório"
             >
-              ✕ Cancelar operação
+              Cancelar operação
             </button>
           ) : (
             <span
