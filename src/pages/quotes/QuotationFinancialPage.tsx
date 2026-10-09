@@ -315,42 +315,31 @@ export const QuotationFinancialPage: React.FC = () => {
 
   const handleSplitReceivable = async (item: FinancialCommitment) => {
     if (!operation) return;
+
+    // Proteção estrita: não permitir divisão com edições pendentes em tela que ainda não foram salvas
+    if (receivableEdits[item.id] && Object.keys(receivableEdits[item.id]).length > 0) {
+      setFeedback({
+        type: 'error',
+        message: 'Existem alterações não salvas nesta parcela. Salve as alterações antes de dividir.',
+      });
+      return;
+    }
+
     try {
       setSaving(true);
-      const currentAmount = Number(receivableEdits[item.id]?.amount ?? item.amount);
-      const half1 = Number((currentAmount / 2).toFixed(2));
-      const half2 = Number((currentAmount - half1).toFixed(2));
-
-      // Atualiza primeira metade
-      const updatedFirst = await financialService.updateCommitment(item.id, {
-        amount: half1,
-        description: `${item.description || 'Parcela'} (1/2)`,
-      });
-
-      // Cria segunda metade
-      const createdSecond = await financialService.createCommitment({
-        operation_id: operation.id,
-        type: 'receivable',
-        counterparty_name: item.counterparty_name,
-        counterparty_type: 'client',
-        amount: half2,
-        currency: item.currency,
-        status: 'planned',
-        expected_date: item.expected_date,
-        expected_account_id: item.expected_account_id,
-        payment_method: item.payment_method,
-        description: `${item.description || 'Parcela'} (2/2)`,
+      const result = await financialService.splitCommitment({
+        commitment_id: item.id,
       });
 
       setCommitments((prev) =>
-        prev.map((c) => (c.id === item.id ? updatedFirst : c)).concat(createdSecond)
+        prev.map((c) => (c.id === item.id ? result.first_commitment : c)).concat(result.second_commitment)
       );
       setReceivableEdits((prev) => {
         const next = { ...prev };
         delete next[item.id];
         return next;
       });
-      setFeedback({ type: 'success', message: 'Recebimento dividido em 2 parcelas.' });
+      setFeedback({ type: 'success', message: 'Recebimento dividido em 2 parcelas com sucesso.' });
     } catch (err: any) {
       setFeedback({ type: 'error', message: `Erro ao dividir recebimento: ${err.message}` });
     } finally {

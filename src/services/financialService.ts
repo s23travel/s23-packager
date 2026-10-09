@@ -23,6 +23,8 @@ import {
   CancelOperationServiceWithAdjustmentsInput,
   CancelOperationServiceWithAdjustmentsResult,
   CreateCancellationAdjustmentInput,
+  SplitFinancialCommitmentInput,
+  SplitFinancialCommitmentResult,
   AccountBalanceSummary,
   CurrencyConsolidatedSummary,
   ConsolidatedBalancesResult,
@@ -734,6 +736,34 @@ export const financialService = {
 
     if (error) throw new Error(error.message);
     return data as FinancialCommitment;
+  },
+
+  /**
+   * Divide atomicamente um compromisso financeiro previsto em duas parcelas via RPC split_financial_commitment:
+   * - Bloqueia o compromisso e a operação financeira pai com FOR UPDATE;
+   * - Revalida sob lock: status 'planned', ausência de transações reais, operação ativa;
+   * - Calcula a divisão em cêntimos inteiros de forma determinística (invariante: parcela1 + parcela2 == total);
+   * - Atualiza a 1ª parcela e insere a 2ª parcela na mesma transação;
+   * - Rollback automático total no banco em caso de erro;
+   * - Retorna ambos os compromissos atualizados/criados.
+   */
+  async splitCommitment(
+    input: SplitFinancialCommitmentInput
+  ): Promise<SplitFinancialCommitmentResult> {
+    const { data, error } = await supabase.rpc('split_financial_commitment', {
+      p_commitment_id: input.commitment_id,
+      p_first_amount: input.first_amount ?? null,
+      p_second_expected_date: input.second_expected_date ?? null,
+      p_first_description: input.first_description ?? null,
+      p_second_description: input.second_description ?? null,
+    });
+
+    if (error) {
+      console.error('Erro ao dividir compromisso financeiro:', error);
+      throw new Error(error.message);
+    }
+
+    return data as SplitFinancialCommitmentResult;
   },
 
   /**

@@ -534,3 +534,21 @@ export interface GroupedFinancialAlerts {
   totalCritical: number;
   totalWarning: number;
 }
+
+// 8. Tipos para Divisão Atômica de Compromissos (RPC split_financial_commitment)
+export interface SplitFinancialCommitmentInput {
+  commitment_id: string;
+  first_amount?: number;
+  second_expected_date?: string | null;
+  first_description?: string | null;
+  second_description?: string | null;
+}
+
+export interface SplitFinancialCommitmentResult {
+  success: boolean;
+  first_commitment: FinancialCommitment;
+  second_commitment: FinancialCommitment;
+  original_amount: number;
+  first_amount: number;
+  second_amount: number;
+}
