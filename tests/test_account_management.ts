@@ -267,9 +267,30 @@ async function runTests() {
     console.log('\n🎉 Todos os testes de gestão de contas passaram com sucesso!\n');
   } finally {
     // Limpeza determinística: transações → conta
+    let cleanupFailed = false;
     for (const accId of testAccountIds) {
-      await supabase.from('financial_transactions').delete().eq('account_id', accId);
-      await supabase.from('financial_accounts').delete().eq('id', accId);
+      const { error: txErr } = await supabase
+        .from('financial_transactions')
+        .delete()
+        .eq('account_id', accId);
+      if (txErr) {
+        console.error(`❌ [LIMPEZA INCOMPLETA] Falha ao eliminar transações da conta ${accId}:`, txErr);
+        cleanupFailed = true;
+      }
+
+      const { error: accErr } = await supabase
+        .from('financial_accounts')
+        .delete()
+        .eq('id', accId);
+      if (accErr) {
+        console.error(`❌ [LIMPEZA INCOMPLETA] Falha ao eliminar conta de teste ${accId}:`, accErr);
+        cleanupFailed = true;
+      }
+    }
+
+    if (cleanupFailed) {
+      console.error('❌ [FAIL] Limpeza de fixtures incompleta em test_account_management.');
+      process.exit(1);
     }
   }
 }
