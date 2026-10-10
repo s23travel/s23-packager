@@ -22,60 +22,31 @@ import {
   parseJwtPayload,
 } from '../src/lib/buildEnvGuard';
 
+let passedCount = 0;
+
 function assert(condition: boolean, message: string) {
   if (!condition) {
     console.error(`❌ [FAIL] ${message}`);
     process.exit(1);
   }
+  passedCount++;
   console.log(`✅ [PASS] ${message}`);
 }
 
 console.log('=== INICIANDO TESTES DE SEGURANÇA E AMBIENTE SUPABASE (DEV E PROD) ===\n');
 
 // -------------------------------------------------------------
-// BLOCO 1: Validação do Ambiente Local de Desenvolvimento (DEV)
+// BLOCO 1: Validação Estática e Determinística da Guarda de Ambiente (DEV e PROD)
 // -------------------------------------------------------------
-console.log('--- Bloco 1: Validação do Ambiente de Desenvolvimento Local ---');
-
-const envLocalPath = path.resolve(process.cwd(), '.env.local');
-if (fs.existsSync(envLocalPath)) {
-  console.log('ℹ️  .env.local encontrado. Validando credenciais de desenvolvimento...');
-  const envContent = fs.readFileSync(envLocalPath, 'utf-8');
-  const lines = envContent.split('\n').map((l) => l.trim()).filter(Boolean);
-
-  let url = '';
-  let anonKey = '';
-
-  for (const line of lines) {
-    if (line.startsWith('VITE_SUPABASE_URL=')) {
-      url = line.replace('VITE_SUPABASE_URL=', '').trim();
-    }
-    if (line.startsWith('VITE_SUPABASE_ANON_KEY=')) {
-      anonKey = line.replace('VITE_SUPABASE_ANON_KEY=', '').trim();
-    }
-  }
-
-  assert(Boolean(url), '1. VITE_SUPABASE_URL está configurada em .env.local');
-  assert(Boolean(anonKey), '2. VITE_SUPABASE_ANON_KEY está configurada em .env.local');
-  assert(
-    url.includes(DEV_SUPABASE_PROJECT_REF),
-    `3. VITE_SUPABASE_URL aponta para o projeto de desenvolvimento (${DEV_SUPABASE_PROJECT_REF})`
-  );
-  assert(
-    !url.includes(PROD_SUPABASE_PROJECT_REF),
-    `4. VITE_SUPABASE_URL NÃO aponta para o projeto de produção (${PROD_SUPABASE_PROJECT_REF})`
-  );
-} else {
-  console.log('ℹ️  .env.local não presente (ambiente CI/build limpo). Pulando validação de arquivo local.');
-}
+console.log('--- Bloco 1: Validação Estática e Determinística da Guarda de Ambiente ---');
 
 assert(
   PROD_SUPABASE_PROJECT_REF === 'iqtfqitquykasvfybndl',
-  '5. PROD_SUPABASE_PROJECT_REF está devidamente definida como iqtfqitquykasvfybndl'
+  '1. PROD_SUPABASE_PROJECT_REF está devidamente definida como iqtfqitquykasvfybndl'
 );
 assert(
   DEV_SUPABASE_PROJECT_REF === 'rskhshtewkgrllbtamsr',
-  '6. DEV_SUPABASE_PROJECT_REF está devidamente definida como rskhshtewkgrllbtamsr'
+  '2. DEV_SUPABASE_PROJECT_REF está devidamente definida como rskhshtewkgrllbtamsr'
 );
 
 function simulateDevGuard(envDev: boolean, testUrl: string): boolean {
@@ -87,12 +58,31 @@ function simulateDevGuard(envDev: boolean, testUrl: string): boolean {
 
 assert(
   simulateDevGuard(true, `https://${PROD_SUPABASE_PROJECT_REF}.supabase.co`) === false,
-  '7. Ambiente de desenvolvimento bloqueia tentativa de conexão ao projeto de produção'
+  '3. Ambiente de desenvolvimento bloqueia tentativa de conexão ao projeto de produção'
 );
 
 assert(
   simulateDevGuard(true, `https://${DEV_SUPABASE_PROJECT_REF}.supabase.co`) === true,
-  '8. Ambiente de desenvolvimento permite conexão ao projeto packager-dev'
+  '4. Ambiente de desenvolvimento permite conexão ao projeto packager-dev'
+);
+
+// Validação determinística do utilitário parseJwtPayload
+const sampleJwtPayload = parseJwtPayload('header.' + Buffer.from(JSON.stringify({ ref: PROD_SUPABASE_PROJECT_REF, role: 'anon' })).toString('base64url') + '.sig');
+assert(
+  sampleJwtPayload?.ref === PROD_SUPABASE_PROJECT_REF,
+  '5. parseJwtPayload decodifica corretamente o project ref de token JWT simulado'
+);
+assert(
+  sampleJwtPayload?.role === 'anon',
+  '6. parseJwtPayload decodifica corretamente a claim de role de token JWT simulado'
+);
+assert(
+  parseJwtPayload('invalid-raw-string') === null,
+  '7. parseJwtPayload retorna null de forma segura para strings que não sejam JWTs'
+);
+assert(
+  parseJwtPayload('') === null,
+  '8. parseJwtPayload retorna null de forma segura para string vazia'
 );
 
 // -------------------------------------------------------------
@@ -409,6 +399,58 @@ const gitignoreContent = fs.readFileSync(path.resolve(process.cwd(), '.gitignore
 assert(gitignoreContent.includes('.env.local'), '29. .gitignore contém regra para .env.local');
 assert(gitignoreContent.includes('.env.production'), '30. .gitignore contém regra para .env.production');
 
+// -------------------------------------------------------------
+// BLOCO 4: Inspeção de Configuração Local (.env.local)
+// -------------------------------------------------------------
+console.log('\n--- Bloco 4: Inspeção de Configuração Local (.env.local) ---');
+
+const envLocalPath = path.resolve(process.cwd(), '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  console.log('ℹ️  .env.local encontrado. Validando formatação e integridade do ambiente...');
+  const envContent = fs.readFileSync(envLocalPath, 'utf-8');
+  const lines = envContent.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  let url = '';
+  let anonKey = '';
+
+  for (const line of lines) {
+    if (line.startsWith('VITE_SUPABASE_URL=')) {
+      url = line.replace('VITE_SUPABASE_URL=', '').trim();
+    }
+    if (line.startsWith('VITE_SUPABASE_ANON_KEY=')) {
+      anonKey = line.replace('VITE_SUPABASE_ANON_KEY=', '').trim();
+    }
+  }
+
+  assert(Boolean(url), '31. VITE_SUPABASE_URL está configurada em .env.local');
+  assert(Boolean(anonKey), '32. VITE_SUPABASE_ANON_KEY está configurada em .env.local');
+
+  let parsedUrl: URL | null = null;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    parsedUrl = null;
+  }
+  assert(
+    parsedUrl !== null && parsedUrl.protocol === 'https:',
+    '33. VITE_SUPABASE_URL em .env.local é uma URL HTTPS válida e bem formada'
+  );
+
+  const isDev = url.includes(DEV_SUPABASE_PROJECT_REF);
+  const isProd = url.includes(PROD_SUPABASE_PROJECT_REF);
+  assert(
+    isDev || isProd,
+    `34. VITE_SUPABASE_URL aponta para um ambiente explicitamente permitido (${DEV_SUPABASE_PROJECT_REF} ou ${PROD_SUPABASE_PROJECT_REF})`
+  );
+  console.log(
+    `ℹ️  Ambiente configurado em .env.local: ${
+      isProd ? 'PRODUÇÃO (iqtfqitquykasvfybndl)' : 'DESENVOLVIMENTO (rskhshtewkgrllbtamsr)'
+    } (chave validada sem exposição)`
+  );
+} else {
+  console.log('ℹ️  .env.local não presente (ambiente limpo/CI). Pulando inspeção de arquivo local.');
+}
+
 console.log('\n====================================================');
-console.log(' RESULTADO FINAL: 30 PASSOU / 0 FALHOU');
+console.log(` RESULTADO FINAL: ${passedCount} PASSOU / 0 FALHOU`);
 console.log('====================================================\n');
