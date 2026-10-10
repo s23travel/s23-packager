@@ -10,12 +10,25 @@ const isDev = Boolean(
   (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development')
 );
 
+const isProd = Boolean(
+  env.PROD ||
+  env.MODE === 'production' ||
+  (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production')
+);
+
 const rawUrl = (env.VITE_SUPABASE_URL || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) || '');
 const rawAnonKey = (env.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) || '');
 
 // Validação de segurança: impede o ambiente de desenvolvimento de usar o projeto de produção
 if (isDev && rawUrl.includes(PROD_SUPABASE_PROJECT_REF)) {
   const errorMsg = `[Segurança] Bloqueio de Ambiente: O ambiente de desenvolvimento não tem permissão para conectar ao projeto Supabase de produção (${PROD_SUPABASE_PROJECT_REF}). Configure o projeto de desenvolvimento (packager-dev) no arquivo .env.local.`;
+  console.error(errorMsg);
+  throw new Error(errorMsg);
+}
+
+// Validação de segurança: impede a aplicação em produção de usar qualquer projeto não oficial
+if (isProd && rawUrl && !rawUrl.includes(PROD_SUPABASE_PROJECT_REF)) {
+  const errorMsg = `[Segurança] Bloqueio de Ambiente: A aplicação em produção deve conectar exclusivamente ao projeto Supabase de produção (${PROD_SUPABASE_PROJECT_REF}).`;
   console.error(errorMsg);
   throw new Error(errorMsg);
 }
