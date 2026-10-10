@@ -190,7 +190,8 @@ async function runSplitCommitmentTests() {
 
   assert(fs.existsSync(migrationPath), '1. Ficheiro de migração 20261010010000_atomic_split_financial_commitment.sql existe');
 
-  const sqlContent = fs.readFileSync(migrationPath, 'utf-8');
+  const rawSqlContent = fs.readFileSync(migrationPath, 'utf-8');
+  const sqlContent = rawSqlContent.replace(/\r\n/g, '\n');
   assert(sqlContent.includes('CREATE OR REPLACE FUNCTION public.split_financial_commitment'), '2. Migração declara função public.split_financial_commitment');
   assert(sqlContent.includes('WHERE id = p_commitment_id\n  FOR UPDATE;'), '3. Migração executa lock explícito FOR UPDATE em financial_commitments');
   assert(sqlContent.includes('WHERE id = v_comm.operation_id\n  FOR UPDATE;'), '4. Migração executa lock explícito FOR UPDATE na operação financeira pai');
