@@ -7,6 +7,7 @@ import {
   validateImageFile,
   validateImageFilesBatch,
   normalizeImportedPackageData,
+  deduceBaggageNotes,
   MAX_FILE_SIZE_BYTES,
   MAX_IMAGES_PER_ANALYSIS,
   ALLOWED_EXTENSIONS,
@@ -494,6 +495,125 @@ runTest('35. Formato de erro controlado da Edge Function é devidamente estrutur
   };
   assert.strictEqual(errorPayload.success, false);
   assert(errorPayload.error.includes('FILE_TOO_LARGE'));
+});
+
+// 36. Divisão de preço total por trechos e por passageiros (Cálculo Google Flights)
+runTest('36. Preço total do voo dividido pelo número de trechos e de passageiros', () => {
+  const raw = {
+    destination: 'Amsterdã',
+    passengers: { adults: 2, children: [] },
+    services: [
+      {
+        type: 'outbound_transport',
+        description: 'LIS-AMS | Transavia',
+        carrier: 'Transavia',
+        departureTime: '09:40',
+        arrivalTime: '13:45',
+        amount: 0,
+        quantity: 1,
+      },
+      {
+        type: 'inbound_transport',
+        description: 'AMS-LIS | Transavia',
+        carrier: 'Transavia',
+        departureTime: '06:35',
+        arrivalTime: '08:40',
+        amount: 0,
+        quantity: 1,
+      },
+    ],
+    financial: {
+      currency: 'EUR',
+      total: 243,
+    },
+  };
+  const normalized = normalizeImportedPackageData(raw);
+  assert.strictEqual(normalized.services.length, 2);
+
+  const outbound = normalized.services.find((s) => s.type === 'outbound_transport')!;
+  const inbound = normalized.services.find((s) => s.type === 'inbound_transport')!;
+
+  // 243 / 2 trechos / 2 passageiros = 60.75
+  assert.strictEqual(outbound.amount, 60.75);
+  assert.strictEqual(outbound.quantity, 2);
+  assert.strictEqual(inbound.amount, 60.75);
+  assert.strictEqual(inbound.quantity, 2);
+
+  // Subtotais individuais
+  assert.strictEqual(outbound.amount * outbound.quantity, 121.5);
+  assert.strictEqual(inbound.amount * inbound.quantity, 121.5);
+  assert.strictEqual(outbound.amount * outbound.quantity + inbound.amount * inbound.quantity, 243);
+});
+
+// 37. Dedução de Bagagem de Mão quando cabine e despachada são cobradas à parte
+runTest('37. Dedução de "Bagagem de mão" quando avisos indicam bagagem cobrada à parte', () => {
+  const raw = {
+    passengers: { adults: 2, children: [] },
+    baggageConditions:
+      'Uma bagagem de mão por passageiro cobrada à parte Uma bagagem despachada por passageiro cobrada à parte',
+    services: [
+      { type: 'outbound_transport', description: 'Voo Ida' },
+      { type: 'inbound_transport', description: 'Voo Volta' },
+    ],
+    financial: { total: 243 },
+  };
+  const normalized = normalizeImportedPackageData(raw);
+  assert.strictEqual(normalized.services[0].notes, 'Bagagem de mão');
+  assert.strictEqual(normalized.services[1].notes, 'Bagagem de mão');
+  assert.strictEqual(normalized.outbound?.notes, 'Bagagem de mão');
+  assert.strictEqual(normalized.inbound?.notes, 'Bagagem de mão');
+});
+
+// 38. Dedução de Bagagem de Mão a partir de frase explícita "Bagagem de cabine e de porão cobradas a parte"
+runTest('38. Dedução a partir de "Bagagem de cabine e de porão cobradas a parte"', () => {
+  const deduced = deduceBaggageNotes('Bagagem de cabine e de porão cobradas a parte');
+  assert.strictEqual(deduced, 'Bagagem de mão');
+
+  const raw = {
+    notes: 'Bagagem de cabine e de porão cobradas a parte',
+    services: [
+      { type: 'outbound_transport', description: 'Voo Ida' },
+    ],
+  };
+  const normalized = normalizeImportedPackageData(raw);
+  assert.strictEqual(normalized.services[0].notes, 'Bagagem de mão');
+});
+
+// 39. Mapeamento legado com total de voo, 3 passageiros e 2 trechos
+runTest('39. Mapeamento legado com total de voo e 3 passageiros', () => {
+  const raw = {
+    passengers: { adults: 3, children: [] },
+    outbound: { route: 'LIS-MAD', company: 'Iberia' },
+    inbound: { route: 'MAD-LIS', company: 'Iberia' },
+    financial: { total: 300 },
+    baggageConditions: 'Mala de mão por passageiro cobrada à parte',
+  };
+  const normalized = normalizeImportedPackageData(raw);
+  assert.strictEqual(normalized.services.length, 2);
+
+  // 300 / 2 / 3 = 50.00 cada trecho por passageiro
+  assert.strictEqual(normalized.services[0].amount, 50);
+  assert.strictEqual(normalized.services[0].quantity, 3);
+  assert.strictEqual(normalized.services[0].notes, 'Bagagem de mão');
+
+  assert.strictEqual(normalized.services[1].amount, 50);
+  assert.strictEqual(normalized.services[1].quantity, 3);
+  assert.strictEqual(normalized.services[1].notes, 'Bagagem de mão');
+});
+
+// 40. Preservação de bagagem despachada incluída quando expressamente informada
+runTest('40. Preservação de "Bagagem despachada inclusa" quando incluída na tarifa', () => {
+  const deduced = deduceBaggageNotes('1 bagagem despachada incluída na tarifa');
+  assert.strictEqual(deduced, 'Bagagem despachada inclusa');
+
+  const raw = {
+    passengers: { adults: 1, children: [] },
+    services: [
+      { type: 'outbound_transport', description: 'TAP Lisboa - Roma', notes: '1 mala de porão incluída' },
+    ],
+  };
+  const normalized = normalizeImportedPackageData(raw);
+  assert.strictEqual(normalized.services[0].notes, 'Bagagem despachada inclusa');
 });
 
 console.log(`\n=== FIM DOS TESTES DA FASE 5: ${testsPassed} PASSARAM, ${testsFailed} FALHARAM ===\n`);

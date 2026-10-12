@@ -645,6 +645,7 @@ export interface ImportConflict {
 export interface ImportedPackageData {
   packageName?: string | null;
   destination?: string | null;
+  baggageConditions?: string | null;
 
   dates: {
     start: string | null;
@@ -681,6 +682,9 @@ export interface ImportedPackageData {
     flight: string | null;
     departureTime: string | null;
     arrivalTime: string | null;
+    amount?: number | null;
+    quantity?: number | null;
+    notes?: string | null;
   };
 
   inbound?: {
@@ -689,6 +693,9 @@ export interface ImportedPackageData {
     flight: string | null;
     departureTime: string | null;
     arrivalTime: string | null;
+    amount?: number | null;
+    quantity?: number | null;
+    notes?: string | null;
   };
 
   lodging?: {

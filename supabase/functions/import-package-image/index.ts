@@ -141,28 +141,39 @@ REGRAS INEGOCIÁVEIS:
    - Não confunda o bairro ou cidade da hospedagem (ex: "Bagnolet") com o destino comercial da viagem ("Paris").
 3. TIPOS EXATOS DE SERVIÇOS ('type'):
    Cada item de 'services' DEVE ter um dos seguintes tipos:
-   - 'outbound_transport': Transporte / voo de ida. Extrair carrier, route/description, departureTime (HH:MM), arrivalTime (HH:MM), amount, currency, quantity.
-   - 'inbound_transport': Transporte / voo de volta. Extrair carrier, route/description, departureTime (HH:MM), arrivalTime (HH:MM), amount, currency, quantity.
+   - 'outbound_transport': Transporte / voo de ida. Extrair carrier, route/description, departureTime (HH:MM), arrivalTime (HH:MM), amount, currency, quantity, notes.
+   - 'inbound_transport': Transporte / voo de volta. Extrair carrier, route/description, departureTime (HH:MM), arrivalTime (HH:MM), amount, currency, quantity, notes.
    - 'accommodation': Hotel ou hospedagem. Extrair description (nome do hotel), destination (cidade/local), mealPlan (regime alimentar se explícito), quantity (número de noites se explícito), amount, currency.
    - 'transfer': Traslado aeroporto/hotel/porto. Extrair description, amount, currency, quantity.
    - 'insurance': Seguro-viagem. Extrair description, amount, currency, quantity.
    - 'additional': Passeios, ingressos, aluguel de carro, bagagem adicional, atividades.
    - 'taxes': Taxas aeroportuárias, taxas turísticas ou impostos explicitamente discriminados na oferta. NÃO criar taxes se não estiver informada.
    - 'other': Outros custos da oferta que não se encaixem nas categorias anteriores.
-4. PROIBIÇÃO ESTRITA DE INVENÇÃO E ALUCINAÇÃO:
+4. RECONHECIMENTO DE PASSAGEIROS E VALOR DOS TRECHOS DE TRANSPORTE:
+   - Identifique com atenção o número de passageiros indicado na imagem (ex: "2 passageiros", "1 adulto", "3 passageiros") e registre em 'passengers.adults'.
+   - Cada trecho aéreo (ida, volta ou percursos intermediários) deve gerar um item em 'services' com type 'outbound_transport' ou 'inbound_transport'.
+   - O campo 'quantity' de cada trecho de transporte DEVE refletir a quantidade de passageiros da viagem (ex: se são 2 passageiros, quantity: 2).
+   - Quando a imagem apresentar um preço total para o conjunto dos voos/trechos (ex: "€ 243 Menor preço total" para 2 passageiros ida e volta), calcule o custo unitário por trecho por passageiro:
+     custo_unitario = preco_total / numero_de_trechos / numero_de_passageiros (ex: 243 / 2 / 2 = 60.75).
+     Preencha o resultado no campo 'amount' de cada trecho de transporte.
+   - Registre o valor total identificado em 'financial.flightTotalPrice' e 'financial.identifiedSalePrice'.
+5. RECONHECIMENTO E DEDUÇÃO DE BAGAGEM:
+   - Observe as notas, políticas e restrições de bagagem exibidas na imagem (ex: "Uma bagagem de mão por passageiro cobrada à parte", "Uma bagagem despachada por passageiro cobrada à parte", "Bagagem de cabine e de porão cobradas a parte").
+   - Com base na informação de que bagagem de cabine/mão ou de porão/despachada é cobrada à parte, deduza que as tarifas permitem apenas "Bagagem de mão" (item básico), e adicione a nota "Bagagem de mão" no campo 'notes' de cada item de transporte.
+   - Se a imagem indicar expressamente bagagem despachada incluída (ex: "1 bagagem despachada incluída", "bagagem de porão incluída"), registre "Bagagem despachada inclusa" em 'notes'.
+   - Registre o texto identificado em 'baggageConditions'.
+6. PROIBIÇÃO ESTRITA DE INVENÇÃO E ALUCINAÇÃO:
    - Extraia APENAS o que estiver visível e legível nas imagens.
    - NUNCA invente preços, taxas, passageiros, regimes ou datas.
    - Se uma informação não estiver visível (ex: regime alimentar do hotel não mencionado), retorne OBRIGATORIAMENTE 'null' para o campo (ex: mealPlan: null). NUNCA presuma "Pequeno-almoço" ou "Café da manhã".
-5. TRATAMENTO ESTRITO DE CONFLITOS ENTRE IMAGENS:
+7. TRATAMENTO ESTRITO DE CONFLITOS ENTRE IMAGENS:
    - Se houver dados conflitantes entre imagens (ex: valores diferentes, datas divergentes, noites diferentes):
      NÃO escolha arbitrariamente. Registre detalhadamente em 'conflicts':
      { "field": "campo", "values": ["valor1", "valor2"], "description": "Descrição clara do conflito" }
-6. NATUREZA FINANCEIRA E MOEDAS:
+8. NATUREZA FINANCEIRA E MOEDAS:
    - Preserve rigorosamente a moeda original identificada (EUR, BRL, USD). NUNCA converta moedas.
-   - Os valores nos itens de serviços representam custos unitários identificados.
    - Se a imagem indicar um preço total comercial da oferta (ex: "Preço total do pacote: 1.299 €"), informe em financial.identifiedSalePrice.
-   - NUNCA calcule margem, lucro, markup ou preço por pessoa.
-7. FORMATOS:
+9. FORMATOS:
    - Datas: YYYY-MM-DD quando identificadas.
    - Horários de voo: HH:MM quando visíveis.
 
@@ -171,6 +182,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido, sem comentários ou texto adicion
 {
   "packageName": string | null,
   "destination": string | null,
+  "baggageConditions": string | null,
   "dates": {
     "start": string | null,
     "end": string | null
@@ -197,7 +209,28 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido, sem comentários ou texto adicion
   "financial": {
     "currency": "EUR" | "BRL" | null,
     "identifiedSalePrice": number | null,
+    "flightTotalPrice": number | null,
     "taxesAndFees": number | null
+  },
+  "outbound": {
+    "route": string | null,
+    "company": string | null,
+    "flight": string | null,
+    "departureTime": string | null,
+    "arrivalTime": string | null,
+    "amount": number | null,
+    "quantity": number | null,
+    "notes": string | null
+  },
+  "inbound": {
+    "route": string | null,
+    "company": string | null,
+    "flight": string | null,
+    "departureTime": string | null,
+    "arrivalTime": string | null,
+    "amount": number | null,
+    "quantity": number | null,
+    "notes": string | null
   },
   "conflicts": [
     {
@@ -309,6 +342,110 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido, sem comentários ou texto adicion
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
+    }
+
+    // Pós-processamento determinístico de transportes, passageiros e bagagem no backend
+    if (parsedData && typeof parsedData === 'object') {
+      const pAdults = typeof parsedData.passengers?.adults === 'number' && parsedData.passengers.adults > 0
+        ? parsedData.passengers.adults
+        : 1;
+      const pChildren = Array.isArray(parsedData.passengers?.children) ? parsedData.passengers.children.length : 0;
+      const totalPax = pAdults + pChildren;
+
+      const rawBaggageHint = (
+        parsedData.baggageConditions ||
+        parsedData.baggage ||
+        parsedData.notes ||
+        parsedData.outbound?.notes ||
+        parsedData.inbound?.notes ||
+        ''
+      ).toLowerCase();
+
+      let deducedBaggage = '';
+      if (
+        (rawBaggageHint.includes('cobrad') && (rawBaggageHint.includes('parte') || rawBaggageHint.includes('extra'))) ||
+        rawBaggageHint.includes('bagagem de cabine e de porão') ||
+        rawBaggageHint.includes('bagagem de mão por passageiro cobrada') ||
+        rawBaggageHint.includes('bagagem despachada por passageiro cobrada') ||
+        rawBaggageHint.includes('item pessoal')
+      ) {
+        deducedBaggage = 'Bagagem de mão';
+      } else if (
+        (rawBaggageHint.includes('despachad') || rawBaggageHint.includes('porão') || rawBaggageHint.includes('23kg')) &&
+        (rawBaggageHint.includes('inclus') || rawBaggageHint.includes('incluíd'))
+      ) {
+        deducedBaggage = 'Bagagem despachada inclusa';
+      }
+
+      if (deducedBaggage && !parsedData.baggageConditions) {
+        parsedData.baggageConditions = deducedBaggage;
+      }
+
+      // Se retornou services[]
+      if (Array.isArray(parsedData.services) && parsedData.services.length > 0) {
+        const flightServices = parsedData.services.filter(
+          (s: any) => s && (s.type === 'outbound_transport' || s.type === 'inbound_transport')
+        );
+        const flightTotal =
+          parsedData.financial?.flightTotalPrice ??
+          parsedData.financial?.total ??
+          parsedData.financial?.identifiedSalePrice ??
+          parsedData.salePrice;
+
+        if (flightServices.length > 0) {
+          for (const s of flightServices) {
+            if (!s.quantity || s.quantity <= 1) {
+              s.quantity = totalPax;
+            }
+            if (!s.notes && deducedBaggage) {
+              s.notes = deducedBaggage;
+            } else if (s.notes && (s.notes.toLowerCase().includes('cobrad') || s.notes.toLowerCase().includes('cabine e de porão'))) {
+              s.notes = 'Bagagem de mão';
+            }
+          }
+
+          if (flightTotal && typeof flightTotal === 'number' && flightTotal > 0) {
+            const allZero = flightServices.every((s: any) => !s.amount || s.amount === 0);
+            if (allZero) {
+              const unitAmount = Math.round((flightTotal / (flightServices.length * totalPax)) * 100) / 100;
+              for (const s of flightServices) {
+                s.amount = unitAmount;
+                s.quantity = totalPax;
+              }
+            }
+          }
+        }
+      }
+
+      // Se retornou formato legado outbound/inbound
+      if (parsedData.outbound || parsedData.inbound) {
+        const segs = [parsedData.outbound, parsedData.inbound].filter(Boolean);
+        const flightTotal =
+          parsedData.financial?.flightTotalPrice ??
+          parsedData.financial?.total ??
+          parsedData.financial?.identifiedSalePrice ??
+          parsedData.salePrice;
+
+        for (const seg of segs) {
+          if (!seg.quantity || seg.quantity <= 1) {
+            seg.quantity = totalPax;
+          }
+          if (!seg.notes && deducedBaggage) {
+            seg.notes = deducedBaggage;
+          }
+        }
+
+        if (flightTotal && typeof flightTotal === 'number' && flightTotal > 0 && segs.length > 0) {
+          const allZero = segs.every((s: any) => !s.amount || s.amount === 0);
+          if (allZero) {
+            const unitAmount = Math.round((flightTotal / (segs.length * totalPax)) * 100) / 100;
+            for (const seg of segs) {
+              seg.amount = unitAmount;
+              seg.quantity = totalPax;
+            }
+          }
+        }
+      }
     }
 
     return new Response(

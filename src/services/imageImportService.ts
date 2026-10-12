@@ -135,6 +135,66 @@ export function fileToBase64(file: File): Promise<string> {
 }
 
 /**
+ * Deduz a franquia ou observação de bagagem com base em descrições textuais
+ * (ex.: Google Flights, companhias aéreas, tarifas econômicas/básicas).
+ * Quando a tarifa cobra bagagem de cabine/porão à parte, deduz que apenas
+ * "Bagagem de mão" (item pessoal básico) é permitida.
+ */
+export function deduceBaggageNotes(rawText?: string | null): string | undefined {
+  if (!rawText || typeof rawText !== 'string') return undefined;
+  const lower = rawText.toLowerCase().trim();
+  if (!lower) return undefined;
+
+  // Se já for diretamente "Bagagem de mão"
+  if (lower === 'bagagem de mão' || lower === 'bagagem de mao') {
+    return 'Bagagem de mão';
+  }
+
+  // Verifica menções a cobrança à parte ou tarifa restritiva de bagagem
+  const indicatesChargedSeparately =
+    (lower.includes('cobrad') && (lower.includes('parte') || lower.includes('extra') || lower.includes('alto'))) ||
+    lower.includes('não inclus') ||
+    lower.includes('nao inclus') ||
+    lower.includes('não incluíd') ||
+    lower.includes('nao incluid') ||
+    lower.includes('item pessoal') ||
+    lower.includes('mochila') ||
+    lower.includes('tarifa basic') ||
+    lower.includes('tarifa básic');
+
+  const mentionsBaggage =
+    lower.includes('bagagem') ||
+    lower.includes('mala') ||
+    lower.includes('cabine') ||
+    lower.includes('porão') ||
+    lower.includes('porao') ||
+    lower.includes('despachad') ||
+    lower.includes('mão') ||
+    lower.includes('mao');
+
+  if (indicatesChargedSeparately && mentionsBaggage) {
+    return 'Bagagem de mão';
+  }
+
+  // Se expressamente indicar bagagem despachada / de porão incluída
+  const indicatesIncluded =
+    lower.includes('inclus') ||
+    lower.includes('incluíd') ||
+    lower.includes('incluid') ||
+    lower.includes('grátis') ||
+    lower.includes('gratis');
+
+  if (
+    indicatesIncluded &&
+    (lower.includes('despachad') || lower.includes('porão') || lower.includes('porao') || lower.includes('23kg'))
+  ) {
+    return 'Bagagem despachada inclusa';
+  }
+
+  return rawText.trim();
+}
+
+/**
  * Normaliza e valida a estrutura retornada pela IA para garantir que obedece
  * estritamente à interface ImportedPackageData, sem campos anômalos. (Fase 5)
  */
@@ -255,9 +315,10 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
         carrier: safeStringOrNull(outbound.company) || undefined,
         departureTime: safeStringOrNull(outbound.departureTime) || undefined,
         arrivalTime: safeStringOrNull(outbound.arrivalTime) || undefined,
-        amount: 0,
+        amount: safeNumberOrNull(outbound.amount) ?? 0,
         currency: 'EUR',
-        quantity: 1,
+        quantity: typeof outbound.quantity === 'number' && outbound.quantity > 0 ? outbound.quantity : 1,
+        notes: safeStringOrNull(outbound.notes) || undefined,
       });
     }
 
@@ -270,9 +331,10 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
         carrier: safeStringOrNull(inbound.company) || undefined,
         departureTime: safeStringOrNull(inbound.departureTime) || undefined,
         arrivalTime: safeStringOrNull(inbound.arrivalTime) || undefined,
-        amount: 0,
+        amount: safeNumberOrNull(inbound.amount) ?? 0,
         currency: 'EUR',
-        quantity: 1,
+        quantity: typeof inbound.quantity === 'number' && inbound.quantity > 0 ? inbound.quantity : 1,
+        notes: safeStringOrNull(inbound.notes) || undefined,
       });
     }
 
@@ -304,6 +366,74 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
             quantity: 1,
             notes: safeStringOrNull(s.date) ? `Data: ${s.date}` : undefined,
           });
+        }
+      }
+    }
+  }
+
+  // 2. Normalização e dedução de quantidade de passageiros, tarifas e bagagem para serviços de transporte
+  const rawAdults = safeNumberOrNull(passengers.adults);
+  const totalPax = (rawAdults ?? 0) + childrenArray.length;
+  const passengerCount = totalPax > 0 ? totalPax : (rawAdults && rawAdults > 0 ? rawAdults : 1);
+
+  // Dedução de bagagem a partir de campos disponíveis no payload
+  const rawBaggageHint =
+    safeStringOrNull(raw?.baggageConditions) ||
+    safeStringOrNull(raw?.baggage) ||
+    safeStringOrNull(raw?.notes) ||
+    safeStringOrNull(outbound.notes) ||
+    safeStringOrNull(outbound.baggage) ||
+    safeStringOrNull(inbound.notes) ||
+    safeStringOrNull(inbound.baggage);
+
+  const deducedGlobalBaggage = deduceBaggageNotes(rawBaggageHint);
+
+  const transportServices = services.filter(
+    (s) => s.type === 'outbound_transport' || s.type === 'inbound_transport'
+  );
+  const numSegments = transportServices.length;
+
+  for (const ts of transportServices) {
+    if (ts.notes) {
+      const deduced = deduceBaggageNotes(ts.notes);
+      if (deduced) ts.notes = deduced;
+    } else if (deducedGlobalBaggage) {
+      ts.notes = deducedGlobalBaggage;
+    }
+  }
+
+  // Preço total da viagem aérea e distribuição proporcional por trechos e passageiros
+  // No exemplo do Google Flights: Total € 243 dividido por 2 trechos (ida e volta) e por 2 passageiros = € 60,75 cada trecho
+  const explicitFlightTotal =
+    safeNumberOrNull(financial.flightTotalPrice) ??
+    safeNumberOrNull(raw?.flightTotalPrice);
+
+  // Se não houver explicitFlightTotal, verifica se a oferta é exclusivamente de transportes
+  const onlyTransportsInQuote =
+    services.length > 0 &&
+    services.every((s) => s.type === 'outbound_transport' || s.type === 'inbound_transport');
+
+  const flightTotalPrice =
+    explicitFlightTotal ??
+    (onlyTransportsInQuote
+      ? safeNumberOrNull(financial.identifiedSalePrice ?? financial.total ?? raw?.salePrice)
+      : null);
+
+  if (numSegments > 0) {
+    // Altera a quantidade de passageiros de cada trecho para a contagem de pessoas identificada
+    for (const ts of transportServices) {
+      if (passengerCount > 1 && ts.quantity <= 1) {
+        ts.quantity = passengerCount;
+      }
+    }
+
+    if (flightTotalPrice && flightTotalPrice > 0) {
+      const allZeroAmounts = transportServices.every((s) => s.amount === 0);
+      if (allZeroAmounts) {
+        const unitAmount = Math.round((flightTotalPrice / (numSegments * passengerCount)) * 100) / 100;
+        for (const ts of transportServices) {
+          ts.amount = unitAmount;
+          ts.quantity = passengerCount;
         }
       }
     }
@@ -351,9 +481,13 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
     }
   }
 
+  const firstOutboundItem = services.find((s) => s.type === 'outbound_transport');
+  const firstInboundItem = services.find((s) => s.type === 'inbound_transport');
+
   return {
     packageName: safeStringOrNull(raw?.packageName),
     destination,
+    baggageConditions: deducedGlobalBaggage || safeStringOrNull(raw?.baggageConditions) || undefined,
     dates: {
       start: safeStringOrNull(dates.start),
       end: safeStringOrNull(dates.end),
@@ -369,18 +503,24 @@ export function normalizeImportedPackageData(raw: any): ImportedPackageData {
 
     // Campos legados para retrocompatibilidade
     outbound: {
-      route: safeStringOrNull(outbound.route) || services.find((s) => s.type === 'outbound_transport')?.description || null,
-      company: safeStringOrNull(outbound.company) || services.find((s) => s.type === 'outbound_transport')?.carrier || null,
+      route: safeStringOrNull(outbound.route) || firstOutboundItem?.description || null,
+      company: safeStringOrNull(outbound.company) || firstOutboundItem?.carrier || null,
       flight: safeStringOrNull(outbound.flight),
-      departureTime: safeStringOrNull(outbound.departureTime) || services.find((s) => s.type === 'outbound_transport')?.departureTime || null,
-      arrivalTime: safeStringOrNull(outbound.arrivalTime) || services.find((s) => s.type === 'outbound_transport')?.arrivalTime || null,
+      departureTime: safeStringOrNull(outbound.departureTime) || firstOutboundItem?.departureTime || null,
+      arrivalTime: safeStringOrNull(outbound.arrivalTime) || firstOutboundItem?.arrivalTime || null,
+      amount: firstOutboundItem?.amount ?? safeNumberOrNull(outbound.amount),
+      quantity: firstOutboundItem?.quantity ?? safeNumberOrNull(outbound.quantity),
+      notes: firstOutboundItem?.notes ?? safeStringOrNull(outbound.notes),
     },
     inbound: {
-      route: safeStringOrNull(inbound.route) || services.find((s) => s.type === 'inbound_transport')?.description || null,
-      company: safeStringOrNull(inbound.company) || services.find((s) => s.type === 'inbound_transport')?.carrier || null,
+      route: safeStringOrNull(inbound.route) || firstInboundItem?.description || null,
+      company: safeStringOrNull(inbound.company) || firstInboundItem?.carrier || null,
       flight: safeStringOrNull(inbound.flight),
-      departureTime: safeStringOrNull(inbound.departureTime) || services.find((s) => s.type === 'inbound_transport')?.departureTime || null,
-      arrivalTime: safeStringOrNull(inbound.arrivalTime) || services.find((s) => s.type === 'inbound_transport')?.arrivalTime || null,
+      departureTime: safeStringOrNull(inbound.departureTime) || firstInboundItem?.departureTime || null,
+      arrivalTime: safeStringOrNull(inbound.arrivalTime) || firstInboundItem?.arrivalTime || null,
+      amount: firstInboundItem?.amount ?? safeNumberOrNull(inbound.amount),
+      quantity: firstInboundItem?.quantity ?? safeNumberOrNull(inbound.quantity),
+      notes: firstInboundItem?.notes ?? safeStringOrNull(inbound.notes),
     },
     lodging: {
       name: safeStringOrNull(lodging.name) || services.find((s) => s.type === 'accommodation')?.description || null,
@@ -525,6 +665,7 @@ export function consolidateImportedPackageData(results: ImportedPackageData[]): 
   return {
     packageName,
     destination,
+    baggageConditions: validItems.find((v) => v.baggageConditions)?.baggageConditions || undefined,
     dates: {
       start: startDate,
       end: endDate,
@@ -544,6 +685,9 @@ export function consolidateImportedPackageData(results: ImportedPackageData[]): 
       flight: null,
       departureTime: firstOutbound?.departureTime || null,
       arrivalTime: firstOutbound?.arrivalTime || null,
+      amount: firstOutbound?.amount,
+      quantity: firstOutbound?.quantity,
+      notes: firstOutbound?.notes,
     },
     inbound: {
       route: firstInbound?.description || null,
@@ -551,6 +695,9 @@ export function consolidateImportedPackageData(results: ImportedPackageData[]): 
       flight: null,
       departureTime: firstInbound?.departureTime || null,
       arrivalTime: firstInbound?.arrivalTime || null,
+      amount: firstInbound?.amount,
+      quantity: firstInbound?.quantity,
+      notes: firstInbound?.notes,
     },
     lodging: {
       name: firstLodging?.description || null,

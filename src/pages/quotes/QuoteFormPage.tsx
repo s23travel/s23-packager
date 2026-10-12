@@ -420,6 +420,15 @@ export const QuoteFormPage: React.FC = () => {
         outItem.carrier = data.outbound.company || undefined;
         outItem.departureTime = data.outbound.departureTime || undefined;
         outItem.arrivalTime = data.outbound.arrivalTime || undefined;
+        if (data.outbound.amount !== undefined && data.outbound.amount !== null) {
+          outItem.amount = data.outbound.amount;
+        }
+        if (data.outbound.quantity) {
+          outItem.quantity = data.outbound.quantity;
+        }
+        if (data.outbound.notes) {
+          outItem.notes = data.outbound.notes;
+        }
         importedServices.push(outItem);
       }
 
@@ -430,6 +439,15 @@ export const QuoteFormPage: React.FC = () => {
         inItem.carrier = data.inbound.company || undefined;
         inItem.departureTime = data.inbound.departureTime || undefined;
         inItem.arrivalTime = data.inbound.arrivalTime || undefined;
+        if (data.inbound.amount !== undefined && data.inbound.amount !== null) {
+          inItem.amount = data.inbound.amount;
+        }
+        if (data.inbound.quantity) {
+          inItem.quantity = data.inbound.quantity;
+        }
+        if (data.inbound.notes) {
+          inItem.notes = data.inbound.notes;
+        }
         importedServices.push(inItem);
       }
 
