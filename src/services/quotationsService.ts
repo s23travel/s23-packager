@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { Quotation, CreateQuotationInput, UpdateQuotationInput, QuotationData } from '../types';
 import { packagesService } from './packagesService';
 import { getNextSequentialReference } from './referenceService';
+import { generateServiceId } from './legacyAdapterService';
 
 export const quotationsService = {
   /**
@@ -272,6 +273,80 @@ export const quotationsService = {
         throw new Error('Esta referência já está em uso. Informe outra referência.');
       }
       console.error('Erro ao clonar cotação a partir do pacote:', error);
+      throw new Error(error.message);
+    }
+
+    return data as Quotation;
+  },
+
+  /**
+   * Duplica uma cotação existente replicando todos os seus itens
+   * e gerando uma nova referência sequencial única (COT-YYYY-NNN).
+   */
+  async duplicateQuotation(id: string): Promise<Quotation> {
+    const original = await this.getQuotationById(id);
+
+    if (!original) {
+      throw new Error(`Cotação com ID ${id} não encontrada.`);
+    }
+
+    // Clonagem profunda dos dados da cotação original para total isolamento
+    const clonedData: QuotationData = JSON.parse(JSON.stringify(original.data || {}));
+
+    // Reatribui IDs únicos para os itens de serviço duplicados
+    if (Array.isArray(clonedData.services)) {
+      clonedData.services = clonedData.services.map((srv) => ({
+        ...srv,
+        id: generateServiceId(),
+      }));
+    }
+
+    // Se houver componentes financeiros estruturados, reatribui IDs únicos
+    if (Array.isArray(clonedData.financials?.components)) {
+      clonedData.financials.components = clonedData.financials.components.map((comp) => ({
+        ...comp,
+        id: generateServiceId(),
+      }));
+    }
+
+    // Se houver hospedagens legadas, reatribui IDs únicos
+    if (Array.isArray(clonedData.lodging)) {
+      clonedData.lodging = clonedData.lodging.map((lodge) => ({
+        ...lodge,
+        id: generateServiceId(),
+      }));
+    }
+
+    clonedData.snapshotCreatedAt = new Date().toISOString();
+
+    const reference = await this.getNextReference();
+
+    const payload = {
+      package_id: original.package_id || null,
+      reference,
+      client_name: original.client_name ? original.client_name.trim() : null,
+      status: 'draft' as const,
+      data: clonedData,
+      currency: original.currency || 'EUR',
+      exchange_rate: original.exchange_rate ?? null,
+      exchange_rate_date: original.exchange_rate_date ?? null,
+    };
+
+    const { data, error } = await supabase
+      .from('quotations')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) {
+      if (
+        error.code === '23505' ||
+        error.message?.includes('duplicate key') ||
+        error.message?.includes('violates unique constraint')
+      ) {
+        throw new Error('Esta referência já está em uso. Informe outra referência.');
+      }
+      console.error('Erro ao duplicar cotação:', error);
       throw new Error(error.message);
     }
 

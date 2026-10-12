@@ -19,6 +19,7 @@ export const QuoteDetailPage: React.FC = () => {
   const [financialOp, setFinancialOp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [hasFinancialOperation, setHasFinancialOperation] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(
     (location.state as any)?.message
@@ -168,6 +169,27 @@ export const QuoteDetailPage: React.FC = () => {
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!quote || duplicating) return;
+    try {
+      setDuplicating(true);
+      setFeedback(null);
+      const duplicated = await quotationsService.duplicateQuotation(quote.id);
+      navigate(`/cotacoes/${duplicated.id}`, {
+        state: {
+          type: 'success',
+          message: `Cotação duplicada com sucesso! Nova referência: ${duplicated.reference}`,
+        },
+      });
+    } catch (err: any) {
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Erro ao duplicar cotação.',
+      });
+      setDuplicating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -257,6 +279,15 @@ export const QuoteDetailPage: React.FC = () => {
           <Link to={`/cotacoes/${quote.id}/editar`} className="btn btn-primary">
             Editar Cotação
           </Link>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleDuplicate}
+            disabled={duplicating}
+            title="Duplicar esta cotação gerando um novo número com todos os itens"
+          >
+            {duplicating ? 'Duplicando...' : 'Duplicar Cotação'}
+          </button>
 
           {/* Se a cotação estiver arquivada: NÃO oferece exclusão física */}
           {quote.archived_at ? (
@@ -519,4 +550,3 @@ export const QuoteDetailPage: React.FC = () => {
     </div>
   );
 };
-

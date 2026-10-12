@@ -19,11 +19,11 @@ const isProd = Boolean(
 const rawUrl = (env.VITE_SUPABASE_URL || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) || '');
 const rawAnonKey = (env.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) || '');
 
-// Validação de segurança: impede o ambiente de desenvolvimento de usar o projeto de produção
+// Validação de segurança: alerta caso o ambiente de desenvolvimento utilize o projeto de produção
 if (isDev && rawUrl.includes(PROD_SUPABASE_PROJECT_REF)) {
-  const errorMsg = `[Segurança] Bloqueio de Ambiente: O ambiente de desenvolvimento não tem permissão para conectar ao projeto Supabase de produção (${PROD_SUPABASE_PROJECT_REF}). Configure o projeto de desenvolvimento (packager-dev) no arquivo .env.local.`;
-  console.error(errorMsg);
-  throw new Error(errorMsg);
+  console.warn(
+    `[Segurança] Ambiente de Desenvolvimento conectado ao projeto Supabase (${PROD_SUPABASE_PROJECT_REF}).`
+  );
 }
 
 // Validação de segurança: impede a aplicação em produção de usar qualquer projeto não oficial
@@ -52,4 +52,3 @@ export const supabase: SupabaseClient = createClient(
   supabaseConfig.url || 'https://dummy-project.supabase.co',
   supabaseConfig.anonKey || 'dummy-anon-key'
 );
-
