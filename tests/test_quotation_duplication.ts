@@ -71,6 +71,14 @@ async function runQuotationDuplicationTests() {
     detailContent.includes('quotationsService.duplicateQuotation'),
     'QuoteDetailPage deve invocar quotationsService.duplicateQuotation'
   );
+  assert(
+    detailContent.includes('/cotacoes/${duplicated.id}/editar'),
+    'QuoteDetailPage deve redirecionar para a página de edição da nova cotação duplicada'
+  );
+  assert(
+    detailContent.includes('finally') && detailContent.includes('setDuplicating(false)'),
+    'QuoteDetailPage deve restaurar o estado duplicating no bloco finally'
+  );
 
   // =========================================================================
   // 2. SIMULAÇÃO DETERMINÍSTICA DA LÓGICA DE DUPLICAÇÃO

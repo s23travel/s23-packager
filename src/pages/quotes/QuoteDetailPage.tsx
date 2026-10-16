@@ -175,7 +175,7 @@ export const QuoteDetailPage: React.FC = () => {
       setDuplicating(true);
       setFeedback(null);
       const duplicated = await quotationsService.duplicateQuotation(quote.id);
-      navigate(`/cotacoes/${duplicated.id}`, {
+      navigate(`/cotacoes/${duplicated.id}/editar`, {
         state: {
           type: 'success',
           message: `Cotação duplicada com sucesso! Nova referência: ${duplicated.reference}`,
@@ -186,6 +186,7 @@ export const QuoteDetailPage: React.FC = () => {
         type: 'error',
         message: err.message || 'Erro ao duplicar cotação.',
       });
+    } finally {
       setDuplicating(false);
     }
   };
