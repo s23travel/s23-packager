@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { quotationsService } from '../../services/quotationsService';
 import { financialService } from '../../services/financialService';
 import {
@@ -725,21 +725,6 @@ export const QuoteFormPage: React.FC = () => {
           message={feedback.message}
           onDismiss={() => setFeedback(null)}
         />
-      )}
-
-      {originPackageId && (
-        <div className="info-banner" style={{ marginBottom: '1.5rem' }}>
-          <div className="info-banner-text">
-            <h4>📸 Snapshot Independente Ativo</h4>
-            <p>
-              Esta cotação possui uma cópia autônoma dos dados do pacote original (<code>{originPackageName}</code>).
-              Qualquer alteração feita aqui não afetará o pacote base, e alterações futuras no pacote não modificarão esta cotação.
-            </p>
-          </div>
-          <Link to={`/pacotes/${originPackageId}`} className="btn btn-sm btn-secondary" target="_blank">
-            Ver Pacote de Origem ↗
-          </Link>
-        </div>
       )}
 
       <form onSubmit={handleSubmit} className="form-layout">
