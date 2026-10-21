@@ -109,6 +109,14 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
     onChangeServices(next);
   };
 
+  const handleMoveService = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= services.length) return;
+    const next = [...services];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    onChangeServices(next);
+  };
+
   const handleResetToAutoPrice = () => {
     setIsManualSalePrice(false);
     const suggested = calculateSuggestedSalePrice(summary.totalCost, DEFAULT_PROFIT_MARGIN_PERCENT);
@@ -257,15 +265,55 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
                       Subtotal: {formatMoney(subtotal, item.currency)}
                     </span>
                     {!readOnly && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger-outline"
-                        onClick={() => handleRemoveService(idx)}
-                        title="Remover serviço"
-                        style={{ padding: '2px 8px', fontSize: '12px' }}
-                      >
-                        ✕ Remover
-                      </button>
+                      <>
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveService(idx, 'up')}
+                            disabled={idx === 0}
+                            title="Mover para cima"
+                            style={{
+                              padding: '2px 6px',
+                              fontSize: '12px',
+                              background: 'var(--bg-surface-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                              borderRadius: 'var(--radius-sm)',
+                              color: idx === 0 ? 'var(--text-muted)' : 'var(--text-secondary)',
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                              lineHeight: 1,
+                            }}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveService(idx, 'down')}
+                            disabled={idx === services.length - 1}
+                            title="Mover para baixo"
+                            style={{
+                              padding: '2px 6px',
+                              fontSize: '12px',
+                              background: 'var(--bg-surface-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                              borderRadius: 'var(--radius-sm)',
+                              color: idx === services.length - 1 ? 'var(--text-muted)' : 'var(--text-secondary)',
+                              cursor: idx === services.length - 1 ? 'not-allowed' : 'pointer',
+                              lineHeight: 1,
+                            }}
+                          >
+                            ▼
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger-outline"
+                          onClick={() => handleRemoveService(idx)}
+                          title="Remover serviço"
+                          style={{ padding: '2px 8px', fontSize: '12px' }}
+                        >
+                          ✕ Remover
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
