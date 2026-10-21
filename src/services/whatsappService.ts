@@ -307,6 +307,11 @@ export function generateWhatsAppMessage(quotation: Quotation): string {
         obDesc = `${outbound.carrier.trim()} ${obDesc}`;
       }
 
+      // Informação de bagagem presente nas notas/observação
+      if (outbound.notes?.trim()) {
+        obDesc += ` - ${outbound.notes.trim()}`;
+      }
+
       if (startDate) {
         inclusions.push(`🛫 ${startDate} – ${obDesc}`);
       } else {
@@ -335,6 +340,11 @@ export function generateWhatsAppMessage(quotation: Quotation): string {
       let ibDesc = inbound.description.trim();
       if (inbound.carrier?.trim() && !ibDesc.toLowerCase().includes(inbound.carrier.toLowerCase().trim())) {
         ibDesc = `${inbound.carrier.trim()} ${ibDesc}`;
+      }
+
+      // Informação de bagagem presente nas notas/observação
+      if (inbound.notes?.trim()) {
+        ibDesc += ` - ${inbound.notes.trim()}`;
       }
 
       if (endDate) {
@@ -432,6 +442,9 @@ export function generateWhatsAppMessage(quotation: Quotation): string {
       inclusions.push(`📦 ${oth.description.trim()}`);
     }
   }
+
+  // Item fixo: Guia Exclusivo S23 (sempre presente na lista de inclusões)
+  inclusions.push('🗺 Guia Exclusivo S23');
 
   sections.push(inclusions.join('\n'));
 
