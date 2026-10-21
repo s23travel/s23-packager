@@ -4,6 +4,9 @@ import { quotationsService } from '../../services/quotationsService';
 import { Quotation } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
+import { Pagination } from '../../components/common/Pagination';
+
+const PAGE_SIZE = 10;
 
 export const QuotesListPage: React.FC = () => {
   const location = useLocation();
@@ -140,6 +143,28 @@ export const QuotesListPage: React.FC = () => {
     });
   }, [quotes, searchTerm]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset da página ao alterar termo de busca ou alternar aba
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterMode]);
+
+  const totalPages = Math.ceil(filteredQuotes.length / PAGE_SIZE) || 1;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, filteredQuotes.length);
+  const paginatedQuotes = useMemo(() => {
+    return filteredQuotes.slice(startIndex, endIndex);
+  }, [filteredQuotes, startIndex, endIndex]);
+
   return (
     <div>
       <div className="page-header">
@@ -228,7 +253,14 @@ export const QuotesListPage: React.FC = () => {
               />
             </div>
             <div className="table-counter">
-              Mostrando <strong>{filteredQuotes.length}</strong> de {quotes.length} cotação(ões) {filterMode === 'archived' ? 'arquivada(s)' : 'ativa(s)'}
+              {filteredQuotes.length > 0 ? (
+                <>
+                  Mostrando <strong>{startIndex + 1}–{endIndex}</strong> de {filteredQuotes.length} cotação(ões) {filterMode === 'archived' ? 'arquivada(s)' : 'ativa(s)'}
+                  {searchTerm.trim() && filteredQuotes.length !== quotes.length ? ` (de ${quotes.length} total)` : ''}
+                </>
+              ) : (
+                <>0 cotações encontradas</>
+              )}
             </div>
           </div>
 
@@ -237,7 +269,8 @@ export const QuotesListPage: React.FC = () => {
               Nenhuma cotação encontrada para "<strong>{searchTerm}</strong>".
             </div>
           ) : (
-            <div className="table-responsive">
+            <>
+              <div className="table-responsive">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -252,7 +285,7 @@ export const QuotesListPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredQuotes.map((q) => {
+                  {paginatedQuotes.map((q) => {
                     const originName = q.origin_package_name || q.data?.originPackageName;
                     const destination =
                       q.data?.destination ||
@@ -394,6 +427,16 @@ export const QuotesListPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+              {filteredQuotes.length > PAGE_SIZE && (
+                <Pagination
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={filteredQuotes.length}
+                  pageSize={PAGE_SIZE}
+                />
+              )}
+            </>
           )}
         </div>
       )}

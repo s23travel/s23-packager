@@ -993,6 +993,17 @@ textarea::placeholder {
   cursor: not-allowed;
 }
 
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  user-select: none;
+}
+
 /* Detalhes de Entidade */
 .detail-rows {
   display: flex;

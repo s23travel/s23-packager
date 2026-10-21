@@ -14,15 +14,26 @@ export const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
   totalItems,
-  pageSize = 8,
+  pageSize = 10,
   className = '',
 }) => {
-  // Se houver 1 ou menos páginas (até 8 registros), a paginação não deve ser exibida
+  // Se houver 1 ou menos páginas, a paginação não precisa ser exibida
   if (totalPages <= 1) {
     return null;
   }
 
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  const getPageNumbers = (): (number | string)[] => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, '...', totalPages];
+    }
+    if (currentPage >= totalPages - 3) {
+      return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+  };
 
   const startItem = (currentPage - 1) * pageSize + 1;
   const endItem =
@@ -32,7 +43,7 @@ export const Pagination: React.FC<PaginationProps> = ({
     <div className={`pagination-container ${className}`}>
       {totalItems !== undefined ? (
         <span className="pagination-info">
-          Exibindo {startItem}–{endItem} de {totalItems}
+          Exibindo <strong>{startItem}–{endItem}</strong> de <strong>{totalItems}</strong>
         </span>
       ) : (
         <span />
@@ -48,17 +59,23 @@ export const Pagination: React.FC<PaginationProps> = ({
           &larr; Anterior
         </button>
 
-        {pages.map((page) => (
-          <button
-            key={page}
-            type="button"
-            className={`pagination-btn ${page === currentPage ? 'active' : ''}`}
-            onClick={() => onPageChange(page)}
-            aria-current={page === currentPage ? 'page' : undefined}
-          >
-            {page}
-          </button>
-        ))}
+        {getPageNumbers().map((item, index) =>
+          typeof item === 'number' ? (
+            <button
+              key={item}
+              type="button"
+              className={`pagination-btn ${item === currentPage ? 'active' : ''}`}
+              onClick={() => onPageChange(item)}
+              aria-current={item === currentPage ? 'page' : undefined}
+            >
+              {item}
+            </button>
+          ) : (
+            <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+              &hellip;
+            </span>
+          )
+        )}
 
         <button
           type="button"

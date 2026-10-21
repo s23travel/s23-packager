@@ -5,6 +5,9 @@ import { quotationsService } from '../../services/quotationsService';
 import { Package } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
+import { Pagination } from '../../components/common/Pagination';
+
+const PAGE_SIZE = 10;
 
 export const PackagesListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -68,6 +71,28 @@ export const PackagesListPage: React.FC = () => {
     });
   }, [packages, searchTerm]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset da página ao alterar termo de busca
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const totalPages = Math.ceil(filteredPackages.length / PAGE_SIZE) || 1;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, filteredPackages.length);
+  const paginatedPackages = useMemo(() => {
+    return filteredPackages.slice(startIndex, endIndex);
+  }, [filteredPackages, startIndex, endIndex]);
+
   return (
     <div>
       <div className="page-header">
@@ -124,7 +149,14 @@ export const PackagesListPage: React.FC = () => {
               />
             </div>
             <div className="table-counter">
-              Mostrando <strong>{filteredPackages.length}</strong> de {packages.length} pacote(s)
+              {filteredPackages.length > 0 ? (
+                <>
+                  Mostrando <strong>{startIndex + 1}–{endIndex}</strong> de {filteredPackages.length} pacote(s)
+                  {searchTerm.trim() && filteredPackages.length !== packages.length ? ` (de ${packages.length} total)` : ''}
+                </>
+              ) : (
+                <>0 pacotes encontrados</>
+              )}
             </div>
           </div>
 
@@ -133,7 +165,8 @@ export const PackagesListPage: React.FC = () => {
               Nenhum pacote encontrado para "<strong>{searchTerm}</strong>".
             </div>
           ) : (
-            <div className="table-responsive">
+            <>
+              <div className="table-responsive">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -146,7 +179,7 @@ export const PackagesListPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPackages.map((pkg) => {
+                  {paginatedPackages.map((pkg) => {
                     const destination = pkg.data?.destination || pkg.data?.lodging?.[0]?.destination || pkg.data?.lodging?.[0]?.name || '—';
                     const duration = pkg.data?.dates?.durationDays ? `${pkg.data.dates.durationDays} dias` : null;
 
@@ -204,6 +237,16 @@ export const PackagesListPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+              {filteredPackages.length > PAGE_SIZE && (
+                <Pagination
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={filteredPackages.length}
+                  pageSize={PAGE_SIZE}
+                />
+              )}
+            </>
           )}
         </div>
       )}
