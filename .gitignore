@@ -37,3 +37,9 @@ supabase/.temp/
 # Temporary and scratch files
 scratch/
 .agents/
+
+# Pastas locais de agentes/IDE (skills instaladas como symlinks nesta máquina)
+.claude/
+.codex/
+.gemini/
+.opencode/
