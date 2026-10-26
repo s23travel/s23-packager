@@ -1,76 +1,42 @@
-# AGENTS.md — Packager (S23)
+# Instruções para agentes — Packager (S23)
 
-Aplicação web interna para gerenciar pacotes de viagem e cotações. SPA em React 18 + Vite + TypeScript estrito, persistência em Supabase (Postgres) e deploy estático no Cloudflare Pages.
-UI, comentários e mensagens de commit em **pt-BR**; identificadores de código em inglês. (Antigravity é só o IDE usado no dia a dia, não faz parte do runtime.)
+## Contexto
+Aplicação web interna para gerir pacotes de viagem, cotações e operações financeiras da S23. É uma SPA React 18 + TypeScript + Vite; persiste dados no Supabase (Postgres) e gera artefactos estáticos para Cloudflare Pages. Interface, comentários e documentação em pt-BR; identificadores de código em inglês. Antigravity é histórico de IDE, não dependência de runtime.
 
-## Comandos
+## Orientação operacional
+- Antes de editar, verificar `git status` e ler [docs/ONBOARDING.md](docs/ONBOARDING.md), além da documentação específica do domínio.
+- Manter alterações incrementais, dependências mínimas e arquitetura atual; não antecipar fases nem refatorar sem pedido explícito.
+- Seguir os fluxos e riscos descritos em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+- Não expor valores de `.env.local`, segredos, dados de backups ou conteúdo de clientes em código, logs ou documentação. Nunca usar `service_role` no frontend.
 
-| Objetivo | Comando |
-|---|---|
-| Dev server (porta 5173) | `npm run dev` |
-| Build de produção | `npm run build` — exige variáveis de ambiente, ver abaixo |
-| Suíte de testes | `npm test` — **escreve no banco**, ver abaixo |
-| Um teste isolado | `npx tsx tests/test_finance_engine.ts` |
-| Supabase CLI | `npx supabase ...` — não existe binário `supabase` no PATH |
+## Comandos e perigos
+- `npm run dev` — Vite, porta 5173.
+- `npm run build` — `tsc && vite build`; exige `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` **no ambiente do processo**. A configuração de produção ignora ficheiros `.env*` e só aceita a origem de PROD. Não copiar chaves para comandos, documentação ou logs.
+- `npm run preview` — pré-visualiza `dist/`.
+- `npm test` — não executar sem avaliar cada suite e confirmar um projeto DEV isolado: inclui suites que criam, alteram e apagam dados Supabase; ver [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). `npm run test:all` acrescenta chamadas reais à integração de IA.
+- Testes isolados usam `npx tsx`, mas `tsx` não está declarado no `package.json` nem no lockfile. Não instalar dependências automaticamente para contornar isso.
+- Supabase CLI: `npx supabase ...`; stack local precisa de Docker. **Não usar `npx supabase db push` para reconciliar este histórico**. Em 2026-10-26 o ledger PROD foi alinhado após auditoria sem Docker; confirmar `migration list` antes de operações futuras. Ver [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+- Verificações read-only de 2026-10-25 e 2026-10-26 confirmaram que `.env.local` e o link Supabase deste checkout apontam para PROD. Ver [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md); revalidar antes de qualquer teste ou operação.
 
-## ⚠️ Armadilhas que custam tempo
+## Mapa e regras críticas
+- Entrada: `src/main.tsx`; rotas/layout: `src/App.tsx`, `src/components/layout/`.
+- Páginas por domínio em `src/pages/`; UI em `src/components/`; integrações e regras em `src/services/`; tipos em `src/types/`; configuração em `src/lib/`.
+- `src/services/financeService.ts` é cálculo monetário puro; `src/services/financialService.ts` é persistência financeira Supabase. Não confundir.
+- Regras financeiras atómicas (aprovação, liquidação, transferências, cancelamentos, divisão de compromissos e projeções) estão em RPCs SQL nas migrations; não as reimplementar no cliente.
+- Câmbio: `1 EUR = X BRL`. Usar `roundMoney`/`formatMoney` do motor financeiro.
+- CSS puro e tokens em `src/index.css`; tema escuro pela classe `dark` e `localStorage` (`packager-theme`). Não introduzir Tailwind.
+- O app não implementa autenticação de utilizador. Rever políticas RLS e efeitos em dados antes de tocar em Supabase; tabelas financeiras críticas têm restrições específicas documentadas na arquitetura.
+- Autenticação da aplicação está planeada para uma etapa posterior, depois do alinhamento das migrations e deploy; não antecipar implementação de Auth/RLS.
+- `.opencode/skills/` e diretórios locais de agentes não são código do produto; não editar/copiar symlinks.
 
-**1. O build de produção ignora `.env.local` — por design.**
-`vite.config.ts` chama `validateProductionEnv(process.env)` (`src/lib/buildEnvGuard.ts`), que rejeita URL ausente, projeto DEV, host falso e chave `service_role`. Sem as variáveis exportadas no processo, `npm run build` falha com `VITE_SUPABASE_URL ausente`.
-```powershell
-# PowerShell: carregar .env.local no processo antes de buildar
-Get-Content .env.local | ForEach-Object { if ($_ -match '^([^#=]+)=(.*)$') { Set-Item -Path "env:$($matches[1].Trim())" -Value $matches[2].Trim() } }
-npm run build
-```
-No Cloudflare Pages as duas variáveis precisam estar configuradas no painel.
+## Referências
+- [Entrada e funcionalidades](docs/ONBOARDING.md)
+- [Arquitetura e integrações](docs/ARCHITECTURE.md)
+- [Desenvolvimento, testes e publicação](docs/DEVELOPMENT.md)
+- [Histórico e incertezas recuperáveis](docs/PROJECT-HISTORY.md)
+- Guia visual: `design-system/s23-packager/MASTER.md`
 
-**2. `npm test` grava e apaga registros reais no projeto apontado por `.env.local`.**
-Cinco suítes da lista padrão criam fixtures via anon key **sem guarda de ambiente**: `test_dashboard_phase3b`, `test_financial_balances_phase3a`, `test_quotation_approval_flows`, `test_quotation_financial_screen`, `test_weekly_calendar_phase3c`. A RLS permite `FOR ALL TO anon USING (true)` em `packages`/`quotations`, então não há barreira no banco.
-Neste checkout `.env.local` aponta para **PROD** (`iqtfqitquykasvfybndl`): antes de rodar a suíte inteira, troque para DEV (`rskhshtewkgrllbtamsr`) ou assuma o risco de dados temporários em produção.
-
-**3. Testes fora do `npm test`** (só manual, precisam de recursos reais): `tests/*_live.ts` (exigem DEV e abortam fora dele) e `tests/test_real_ai_*.ts` (chamam API de IA com chave real).
-
-**4. Não rode `npx supabase db push`.**
-O histórico de migrations divergiu: 6 versões existem só no remoto e 23 só no local (arquivos foram renomeados depois de aplicados). O schema está em dia — o push tentaria reaplicar tudo e quebraria. Reconciliar exige `supabase migration repair` com mapeamento manual, versão por versão.
-
-**5. `tsc` roda com `noUnusedLocals` e `noUnusedParameters`** — variável ou parâmetro não usado quebra `npm run build`.
-
-**6. `.opencode/skills/` são symlinks** para a biblioteca central de skills; não edite nem copie arquivos ali.
-
-## Arquitetura (o que não se deduz pelos nomes)
-
-- Rotas em `src/App.tsx` (react-router-dom v6, sem data router): `/pacotes`, `/cotacoes`, `/cotacoes/:id/financeiro`, `/financeiro`, `/servicos`.
-- `src/pages/<domínio>/` = telas por rota; `src/components/<domínio>/` = blocos visuais. Domínios: `packages`, `quotes`, `financial`, `services`, `whatsapp`, `ai`, `import`, `common`, `layout`.
-- **Dois serviços quase homônimos — escolher o errado é o erro mais comum:**
-  - `src/services/financeService.ts` → motor de cálculo puro e determinístico (câmbio, custos, margem, `roundMoney`, `formatMoney`). Sem I/O.
-  - `src/services/financialService.ts` → persistência financeira no Supabase, incluindo RPCs atômicas.
-- `src/services/index.ts` é barrel **parcial**: exporta `packagesService`, `quotationsService` e namespaces de cálculo, mas não `financialService`, `packageWebsiteContentService`, `financialAlertsService` etc. — esses se importam direto do arquivo.
-- Regras financeiras críticas (aprovar cotação, liquidar/dividir compromisso, cancelar operação) vivem em RPCs Postgres (`supabase/migrations/2026100103*/2026100104*/2026101001*`). Não reimplemente no client.
-- Convenção de câmbio fixa: **1 EUR = X BRL** (`EXCHANGE_RATE_CONVENTION_NOTE`). Valores monetários sempre formatados por `formatMoney`/`roundMoney`.
-- Estilo: CSS puro em `src/index.css` (~1.8k linhas, tokens semânticos), sem Tailwind. Tema claro/escuro via classe `dark` no `<html>`, chave `packager-theme` no localStorage e script anti-FOUC em `index.html`. Guia visual: `design-system/s23-packager/MASTER.md`.
-
-## Supabase e dados
-
-- PROD `iqtfqitquykasvfybndl` · DEV `rskhshtewkgrllbtamsr` (constantes em `src/lib/buildEnvGuard.ts`).
-- `src/lib/supabase.ts` lança em produção se a URL não for PROD, mas no modo dev apenas emite `console.warn` quando conectado a PROD — **não é proteção de dados**, é sinalização.
-- App interno sem login: as políticas RLS liberam anon para CRUD. Nunca usar `service_role` no frontend nem versionar chaves.
-- `supabase/config.toml` (gerado com Postgres 17, igual ao remoto) habilita a stack local, que exige Docker.
-- Scripts SQL manuais antigos de produção ficam em `docs/supabase-prod-migration-*.sql` — não são migrations versionadas.
-
-## Deploy e operação
-
-- Cloudflare Pages publica `dist/`; `wrangler.jsonc` define o fallback SPA (`not_found_handling: single-page-application`). `wrangler` **não** é dependência do projeto.
-- `.github/workflows/backup.yml` faz dump semanal (roles, schema, data) para a branch `Bkp-Supabase-Weekly`, condicionado à variável `BACKUP_ENABLED`. Não commite backups na `main`.
-- `.env.local` é ignorado pelo git; `.env.example` lista as duas chaves necessárias.
-
-## Docs que confundem
-
-`docs/COMO_ADICIONAR_PACOTE.md` e `docs/ARQUITETURA_MANAGER.md` descrevem outro produto (S23 Manager: pasta `content/pacotes/`, rota `/manager`), que não existe neste repositório. `docs/ARCHITECTURE.md` e `design-system/s23-packager/MASTER.md` são os documentos válidos.
-
-## Princípios do projeto
-
-- Entrega incremental: nada de antecipar fases nem criar abstrações prematuras.
-- Dependências mínimas — justificar antes de instalar qualquer pacote.
-- `npm run build` precisa passar limpo (deploy é estático).
-- Desktop-first: app operacional de uso diário, priorizando densidade de informação e poucos cliques.
-- Não alterar arquitetura sem validação explícita.
+## Restrições conhecidas
+- `docs/COMO_ADICIONAR_PACOTE.md` e `docs/ARQUITETURA_MANAGER.md` descrevem fluxos do S23 Manager/site, não rotas desta SPA; usar apenas como referência editorial quando aplicável.
+- `README.md` contém trechos de fundação antiga que descrevem backend e funcionalidades como futuras; validar sempre com código e documentação técnica atual.
+- Não publicar, fazer push/commit, alterar serviços externos ou operar dados partilhados sem pedido explícito.
