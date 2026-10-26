@@ -229,6 +229,10 @@ $$;
 ALTER FUNCTION "public"."approve_quotation_and_create_operation"("p_quotation_id" "uuid", "p_notes" "text") OWNER TO "postgres";
 
 
+COMMENT ON FUNCTION "public"."approve_quotation_and_create_operation"("p_quotation_id" "uuid", "p_notes" "text") IS 'Aprova atomicamente uma cotação e inicializa sua operação financeira com serviços e previsões';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -375,6 +379,10 @@ $$;
 
 
 ALTER FUNCTION "public"."cancel_operation_service"("p_service_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."cancel_operation_service"("p_service_id" "uuid") IS 'Cancela atomicamente um serviço financeiro e todos os seus pagamentos abertos vinculados, bloqueando registros e impedindo cancelamento em caso de liquidações ou movimentações reais.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."cancel_operation_service_with_adjustments"("p_service_id" "uuid", "p_reason" "text", "p_supplier_refund_amount" numeric DEFAULT 0, "p_supplier_refund_currency" "text" DEFAULT 'EUR'::"text", "p_cancellation_fee_amount" numeric DEFAULT 0, "p_cancellation_fee_currency" "text" DEFAULT 'EUR'::"text", "p_fee_counterparty_name" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -1139,6 +1147,10 @@ $$;
 ALTER FUNCTION "public"."record_account_transfer"("p_source_account_id" "uuid", "p_destination_account_id" "uuid", "p_amount" numeric, "p_destination_amount" numeric, "p_exchange_rate" numeric, "p_transfer_fee" numeric, "p_transfer_fee_currency" "text", "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_operation_id" "uuid") OWNER TO "postgres";
 
 
+COMMENT ON FUNCTION "public"."record_account_transfer"("p_source_account_id" "uuid", "p_destination_account_id" "uuid", "p_amount" numeric, "p_destination_amount" numeric, "p_exchange_rate" numeric, "p_transfer_fee" numeric, "p_transfer_fee_currency" "text", "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_operation_id" "uuid") IS 'Registra de forma atômica uma transferência entre contas financeiras ativas com validação cambial e bloqueio estrito de cartões de crédito.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."record_balance_adjustment"("p_account_id" "uuid", "p_amount" numeric, "p_direction" "text", "p_reason" "text", "p_adjusted_at" timestamp with time zone DEFAULT "now"(), "p_reference" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1412,6 +1424,10 @@ $$;
 
 
 ALTER FUNCTION "public"."record_commitment_settlement"("p_commitment_id" "uuid", "p_account_id" "uuid", "p_amount" numeric, "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_invoice_due_date" "date") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."record_commitment_settlement"("p_commitment_id" "uuid", "p_account_id" "uuid", "p_amount" numeric, "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_invoice_due_date" "date") IS 'Registra de forma atômica uma movimentação financeira real de liquidação de compromisso e atualiza seu status para partially_settled ou settled.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."rls_auto_enable"() RETURNS "event_trigger"
@@ -1716,7 +1732,7 @@ CREATE TABLE IF NOT EXISTS "public"."favorite_services" (
 ALTER TABLE "public"."favorite_services" OWNER TO "postgres";
 
 
-COMMENT ON TABLE "public"."favorite_services" IS 'Catálogo de serviços reutilizáveis para preenchimento de novos pacotes. Fonte de dados apenas — packages mantêm snapshot próprio.';
+COMMENT ON TABLE "public"."favorite_services" IS 'Catálogo de serviços reutilizáveis (hotéis, aéreas, transfers, etc.) para preenchimento de novos pacotes. Fonte de dados apenas — packages mantêm snapshot próprio.';
 
 
 
@@ -1797,7 +1813,7 @@ CREATE TABLE IF NOT EXISTS "public"."financial_commitments" (
 ALTER TABLE "public"."financial_commitments" OWNER TO "postgres";
 
 
-COMMENT ON TABLE "public"."financial_commitments" IS 'Compromissos previstos a receber (cliente) ou a pagar (fornecedor)';
+COMMENT ON TABLE "public"."financial_commitments" IS 'Compromissos previstos a receber (cliente) ou a pagar (fornecedor) com conta e data configuráveis';
 
 
 
@@ -1806,6 +1822,14 @@ COMMENT ON COLUMN "public"."financial_commitments"."payment_method" IS 'Método 
 
 
 COMMENT ON COLUMN "public"."financial_commitments"."is_credit_card_invoice" IS 'Indica se a parcela prevista é uma fatura de cartão de crédito originada por pagamento a fornecedor';
+
+
+
+COMMENT ON COLUMN "public"."financial_commitments"."origin_commitment_id" IS 'ID do compromisso original do fornecedor pago via cartão de crédito';
+
+
+
+COMMENT ON COLUMN "public"."financial_commitments"."credit_card_account_id" IS 'Conta do cartão de crédito que originou a fatura';
 
 
 
@@ -1893,6 +1917,28 @@ COMMENT ON TABLE "public"."financial_transactions" IS 'Livro-razão financeiro (
 
 
 
+COMMENT ON COLUMN "public"."financial_transactions"."type" IS 'Tipo da movimentação: inflow (entrada), outflow (saída), transfer (transferência entre contas),
+    refund (reembolso associado a cancelamento de operação),
+    balance_adjustment (ajuste manual de saldo positivo/negativo sem vínculo a cotação)';
+
+
+
+COMMENT ON COLUMN "public"."financial_transactions"."destination_amount" IS 'Valor que entra na conta destino em caso de transferência';
+
+
+
+COMMENT ON COLUMN "public"."financial_transactions"."destination_currency" IS 'Moeda de destino da transferência (EUR ou BRL)';
+
+
+
+COMMENT ON COLUMN "public"."financial_transactions"."exchange_rate" IS 'Taxa de câmbio aplicada na conversão da transferência';
+
+
+
+COMMENT ON COLUMN "public"."financial_transactions"."transfer_fee" IS 'Custo ou taxa de remessa/bancária cobrada na transferência';
+
+
+
 COMMENT ON COLUMN "public"."financial_transactions"."adjustment_direction" IS 'Direção estruturada para balance_adjustment: positive (aumenta saldo) ou negative (reduz saldo). Deve ser NULL para outros tipos.';
 
 
@@ -1909,6 +1955,26 @@ CREATE TABLE IF NOT EXISTS "public"."package_website_contents" (
 
 
 ALTER TABLE "public"."package_website_contents" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."package_website_contents" IS 'Armazena a última versão salva e validada do conteúdo editorial para website e seu respectivo Markdown determinístico para cada Pacote Base.';
+
+
+
+COMMENT ON COLUMN "public"."package_website_contents"."package_id" IS 'Referência 1:1 ao Pacote Base. ON DELETE CASCADE garante que ao deletar o pacote o conteúdo associado seja removido.';
+
+
+
+COMMENT ON COLUMN "public"."package_website_contents"."content" IS 'StructuredPackageContent completo em formato JSONB, permitindo reabrir o editor a qualquer momento.';
+
+
+
+COMMENT ON COLUMN "public"."package_website_contents"."markdown" IS 'Último Markdown determinístico validado gerado a partir do conteúdo salvo.';
+
+
+
+COMMENT ON COLUMN "public"."package_website_contents"."filename" IS 'Nome do arquivo .md derivado do slug atual para download direto.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."packages" (
