@@ -43,3 +43,6 @@ scratch/
 .codex/
 .gemini/
 .opencode/
+
+# Índice local do CodeGraph (gerado por máquina, não versionar)
+.codegraph/
