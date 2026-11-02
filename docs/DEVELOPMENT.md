@@ -24,6 +24,8 @@ Verificações read-only em 2026-10-25 e revalidação em 2026-10-26: o host em 
 
 Também foi consultado somente o catálogo de schema/policies/grants (sem ler linhas de negócio): as nove tabelas públicas da aplicação têm RLS ligado; `anon` pode ler todas, fazer CRUD direto em sete e executar as RPCs `SECURITY DEFINER` consultadas. A análise confirma que o estado efetivo em PROD é acesso anónimo amplo, não apenas uma possibilidade descrita nas migrations. O login na SPA não fecha esses acessos: antes da publicação, auditar integrações e restringir tabelas, RPCs e Edge Functions a utilizadores autenticados; verificar também as opções de cadastro público e login anônimo no Supabase. Não foram alteradas configurações nem permissões remotas.
 
+**Atualização de 2026-11-02:** a migration de restrição foi aplicada e registrada; catálogo e chamadas anônimas confirmaram o bloqueio nas tabelas/RPCs testadas. As duas funções de IA foram publicadas e o cadastro público desabilitado. A função remota `publish-package` continua pendente de revisão. A observação no parágrafo anterior descreve o estado histórico antes dessa aplicação. Ver `docs/SEGURANCA_AUTENTICACAO.md`.
+
 ## Build e pré-visualização
 
 - `npm run build` executa `tsc && vite build` e gera `dist/`.

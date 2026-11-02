@@ -57,4 +57,4 @@ O Packager é uma aplicação operacional interna da S23 para gerir pacotes de v
 
 ## Regra de segurança antes de começar
 
-O frontend exige login, mas várias policies e RPCs Supabase ainda permitem operações a `anon`: a tela não protege a API diretamente. Não executar suites de integração nem testar mutations contra um projeto desconhecido. Ver `docs/DEVELOPMENT.md`; confirmar um ambiente DEV isolado sem imprimir credenciais. Não executar `supabase db push` para reconciliar o histórico.
+O frontend exige login e, desde 2026-11-02, as tabelas e RPCs conhecidas foram restringidas em PROD. A função remota `publish-package` continua pendente de revisão; a tela não protege a API diretamente. Não executar suites de integração nem testar mutations contra um projeto desconhecido. Ver `docs/DEVELOPMENT.md`; confirmar um ambiente DEV isolado sem imprimir credenciais. Não executar `supabase db push` para reconciliar o histórico.

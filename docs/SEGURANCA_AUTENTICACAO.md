@@ -2,7 +2,9 @@
 
 ## Estado
 
-A migration `20261102170622_restrict_packager_access.sql` e a validação das duas Edge Functions estão **preparadas no repositório; não foram aplicadas nem publicadas**. O PROD continua exposto conforme `docs/ARCHITECTURE.md` até serem executadas e verificadas separadamente. A tela de login, por si só, não protege as APIs.
+Em 2026-11-02, a migration `20261102170622_restrict_packager_access.sql` foi aplicada em PROD e registrada no ledger. As duas Edge Functions foram publicadas, o cadastro público desabilitado e o login anônimo confirmado como desativado. Consultas de catálogo confirmaram as restrições nas nove tabelas e 13 RPCs; chamadas anônimas à tabela `packages`, à RPC de saldos e às duas funções retornaram HTTP 401. Não foram feitos testes de escrita nem validados os fluxos autenticados em PROD por esta operação.
+
+As duas funções de IA estão com `verify_jwt = false` no gateway; a autenticação de usuário é verificada pelos handlers publicados. A função remota `publish-package`, fora deste repositório, também está com `verify_jwt = false` e sua implementação consultada não aparenta validar o usuário: permanece inalterada e exige revisão urgente, pois interage com o GitHub. As configurações de Auth e os objetos futuros devem ser monitorados separadamente.
 
 O modelo desejado dá acesso compartilhado aos dados para todos os usuários permanentes cadastrados. Não há isolamento entre usuários. As configurações de Auth e as políticas precisam ser mantidas em conjunto: quem conseguir criar uma conta permanente terá acesso completo.
 
@@ -14,7 +16,7 @@ O modelo desejado dá acesso compartilhado aos dados para todos os usuários per
 - `generate-content` e `import-package-image` consultam o Supabase Auth para validar o token antes de processar qualquer conteúdo ou chamar a IA. Falhas de autenticação retornam 401; indisponibilidade da validação retorna 503. Uma chave pública, isoladamente, não é uma sessão.
 - Em `supabase/config.toml`, cadastro público e login anônimo estão desabilitados **para o ambiente local**. Essa alteração de arquivo não modifica o projeto remoto.
 
-## Verificações antes da publicação
+## Verificações para futuras publicações
 
 1. Confirmar que a nova SPA com login esteja publicada e funcional antes de bloquear `anon`; a versão anterior da SPA deixará de acessar os dados.
 2. Auditar todos os consumidores do projeto Supabase, incluindo integrações externas e rotinas que usam a chave `anon`. A restrição bloqueará esses consumidores até serem adaptados; não alterar permissões sem identificar os impactos.

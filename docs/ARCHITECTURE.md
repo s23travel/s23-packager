@@ -48,7 +48,7 @@ Não há servidor HTTP próprio no projeto. `supabase/functions/` contém códig
 
 ## Persistência e modelo de dados
 
-As migrations em `supabase/migrations/` definem o schema. Há **25 ficheiros `.sql` locais** neste checkout; o ledger PROD foi alinhado em 2026-10-26 após auditoria manual por catálogo sem Docker. Histórico e limites da comparação estão em `docs/DEVELOPMENT.md`.
+As migrations em `supabase/migrations/` definem o schema. Há **26 ficheiros `.sql` locais** neste checkout; o ledger PROD foi alinhado em 2026-10-26 após auditoria manual por catálogo sem Docker e a migration de acesso foi aplicada em 2026-11-02. Histórico e limites da comparação estão em `docs/DEVELOPMENT.md`.
 
 - `packages` e `quotations` guardam os dados operacionais em `JSONB`; `quotations.data` é snapshot independente do pacote de origem.
 - `favorite_services` fornece dados para preenchimento; o pacote mantém os valores copiados no seu próprio snapshot.
@@ -89,12 +89,12 @@ Outras dependências de browser/rede observáveis: Google Fonts, Clipboard API e
 ## Segurança e limites confirmados
 
 - A SPA exige uma sessão Supabase para mostrar as rotas, com login por e-mail/senha e saída local. O cliente usa chave pública Supabase (`anon`); essa proteção da interface não impede chamadas diretas à API.
-- As migrations iniciais dão políticas `FOR ALL` a `anon`/`authenticated` em tabelas como `packages`, `quotations`, `favorite_services`, `package_website_contents`, `financial_accounts`, `financial_operation_services` e `financial_commitments`. É acesso amplo sem isolamento por utilizador/tenant; confirmar e corrigir a postura de segurança antes de expor a aplicação para além do contexto interno previsto.
-- A migration `20261010020000_harden_financial_transactions_and_operations.sql` restringe escrita direta de `anon`/`authenticated` em `financial_operations` e `financial_transactions`; a escrita passa pelas RPCs `SECURITY DEFINER`, várias concedidas também a `anon`.
+- A migration `20261102170622_restrict_packager_access.sql` substitui as policies iniciais e restringe as nove tabelas a usuários permanentes autenticados, sem isolamento por utilizador/tenant. As duas tabelas financeiras críticas permanecem somente leitura direta.
+- A migration `20261010020000_harden_financial_transactions_and_operations.sql` restringe escrita direta em `financial_operations` e `financial_transactions`; a escrita passa pelas RPCs `SECURITY DEFINER`. A migration de 2026-11-02 removeu a execução anônima dessas RPCs.
 - **Verificação read-only do PROD em 2026-10-25, revalidada em 2026-10-26:** as nove tabelas `public` da aplicação existem e têm RLS ligado, mas `FORCE ROW LEVEL SECURITY` está desligado. `anon` tem `SELECT` nas nove e privilégios CRUD/policy `ALL USING (true) WITH CHECK (true)` em sete (`packages`, `quotations`, `favorite_services`, `package_website_contents`, `financial_accounts`, `financial_operation_services`, `financial_commitments`). `financial_operations` e `financial_transactions` são somente leitura direta. As 14 funções `SECURITY DEFINER` retornadas pela consulta de catálogo, incluindo RPCs financeiras, indicam `EXECUTE` para `anon`. Não foram consultadas linhas de dados.
 - `src/lib/supabase.ts` avisa quando desenvolvimento aponta para PROD e bloqueia em produção origens diferentes da PROD. O aviso em desenvolvimento **não** protege dados. `vite.config.ts` faz validação adicional do ambiente de build.
-- As Edge Functions definem CORS `*`; não foi encontrada validação de identidade de utilizador no código dos handlers. O comportamento efetivo do gateway Supabase (incluindo verificação JWT) depende da configuração/deploy e não foi confirmado remotamente.
-- **Pendente para restringir efetivamente o acesso:** rever e alterar as políticas e privilégios anônimos das tabelas e RPCs, verificar a autenticação das Edge Functions e desabilitar cadastro público e login anônimo no projeto Supabase. A proteção da SPA não substitui essas medidas. A configuração e eventuais integrações existentes devem ser auditadas antes de qualquer alteração no PROD.
+- Em 2026-11-02, as funções de IA foram publicadas com validação de usuário no handler; o gateway permanece com `verify_jwt = false`. A função remota `publish-package`, ausente do repositório, usa GitHub e não aparenta validar usuário: permanece inalterada e requer revisão.
+- Em 2026-11-02, PROD teve cadastro público desabilitado e login anônimo confirmado desativado. As tabelas/RPCs foram restringidas e chamadas anônimas de teste retornaram 401. Ver `docs/SEGURANCA_AUTENTICACAO.md` para limites e verificações pendentes.
 - `backups/*.sql` estão versionados neste checkout. O seu conteúdo não foi lido para evitar expor dados; tratar como material potencialmente sensível e não os copiar para documentação nem para a branch principal sem autorização.
 
 ## Configuração e referências
@@ -104,4 +104,4 @@ Outras dependências de browser/rede observáveis: Google Fonts, Clipboard API e
 - Hosting estático: `wrangler.jsonc` aponta para `dist/` e fallback SPA. O responsável confirmou que GitHub está integrado ao Cloudflare Pages e push para `main` publica automaticamente. O repositório tem apenas workflow de backup; build settings e variáveis do Pages não foram observadas.
 - Guia visual: `design-system/s23-packager/MASTER.md`.
 
-**Por confirmar:** diff integral via shadow database (não executável sem Docker); configuração/deploy das Edge Functions; restrição efetiva de acesso no backend; build settings/variáveis reais do Cloudflare Pages. O ledger foi reconciliado por catálogo e o alvo PROD está registado em `docs/DEVELOPMENT.md`.
+**Por confirmar:** diff integral via shadow database (não executável sem Docker); testes autenticados dos fluxos em PROD; segurança e uso de `publish-package`; build settings/variáveis reais do Cloudflare Pages. O ledger foi reconciliado por catálogo e o alvo PROD está registado em `docs/DEVELOPMENT.md`.
