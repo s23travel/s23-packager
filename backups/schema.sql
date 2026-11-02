@@ -47,7 +47,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 CREATE OR REPLACE FUNCTION "public"."approve_quotation_and_create_operation"("p_quotation_id" "uuid", "p_notes" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_quote RECORD;
@@ -64,6 +64,12 @@ DECLARE
   v_services_count INT := 0;
   v_commitments_count INT := 0;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   -- 1. Bloqueia e consulta a cotação
   SELECT * INTO v_quote
   FROM public.quotations
@@ -235,7 +241,7 @@ COMMENT ON FUNCTION "public"."approve_quotation_and_create_operation"("p_quotati
 
 CREATE OR REPLACE FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_op RECORD;
@@ -243,6 +249,12 @@ DECLARE
   v_cancelled_commitments_count INT := 0;
   v_trimmed_reason TEXT;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   v_trimmed_reason := trim(COALESCE(p_reason, ''));
   IF length(v_trimmed_reason) = 0 THEN
     RAISE EXCEPTION 'O motivo do cancelamento da operação é obrigatório.';
@@ -315,12 +327,18 @@ ALTER FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p
 
 CREATE OR REPLACE FUNCTION "public"."cancel_operation_service"("p_service_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_service RECORD;
   v_cancelled_commitments_count INT := 0;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   SELECT * INTO v_service
   FROM public.financial_operation_services
   WHERE id = p_service_id
@@ -387,7 +405,7 @@ COMMENT ON FUNCTION "public"."cancel_operation_service"("p_service_id" "uuid") I
 
 CREATE OR REPLACE FUNCTION "public"."cancel_operation_service_with_adjustments"("p_service_id" "uuid", "p_reason" "text", "p_supplier_refund_amount" numeric DEFAULT 0, "p_supplier_refund_currency" "text" DEFAULT 'EUR'::"text", "p_cancellation_fee_amount" numeric DEFAULT 0, "p_cancellation_fee_currency" "text" DEFAULT 'EUR'::"text", "p_fee_counterparty_name" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_service RECORD;
@@ -396,6 +414,12 @@ DECLARE
   v_supplier_refund_id UUID := NULL;
   v_cancellation_fee_id UUID := NULL;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   v_trimmed_reason := trim(COALESCE(p_reason, ''));
   IF length(v_trimmed_reason) = 0 THEN
     RAISE EXCEPTION 'O motivo do cancelamento do serviço é obrigatório.';
@@ -547,7 +571,7 @@ ALTER FUNCTION "public"."check_quotation_status_protection"() OWNER TO "postgres
 
 CREATE OR REPLACE FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text" DEFAULT NULL::"text", "p_expected_date" "date" DEFAULT NULL::"date", "p_description" "text" DEFAULT NULL::"text", "p_notes" "text" DEFAULT NULL::"text", "p_operation_service_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_type TEXT;
@@ -558,6 +582,12 @@ DECLARE
   v_op RECORD;
   v_service RECORD;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   SELECT * INTO v_op
   FROM public.financial_operations
   WHERE id = p_operation_id;
@@ -670,9 +700,15 @@ ALTER FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid"
 
 CREATE OR REPLACE FUNCTION "public"."get_financial_account_balances"() RETURNS TABLE("account_id" "uuid", "account_name" "text", "account_type" "text", "currency" "text", "active" boolean, "initial_balance" numeric, "initial_balance_date" "date", "current_balance" numeric, "pending_receivables" numeric, "pending_payables" numeric, "projected_balance" numeric)
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   RETURN QUERY
   WITH tx_totals AS (
     SELECT
@@ -782,12 +818,18 @@ ALTER FUNCTION "public"."get_financial_account_balances"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."get_financial_consolidated_summary"("p_reference_date" "date" DEFAULT CURRENT_DATE) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_ref_date DATE := COALESCE(p_reference_date, CURRENT_DATE);
   v_result JSONB;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   WITH balances AS (
     SELECT * FROM public.get_financial_account_balances()
   ),
@@ -873,11 +915,17 @@ ALTER FUNCTION "public"."get_financial_consolidated_summary"("p_reference_date" 
 
 CREATE OR REPLACE FUNCTION "public"."get_pending_financial_commitments"("p_start_date" "date" DEFAULT NULL::"date", "p_end_date" "date" DEFAULT NULL::"date", "p_currency" "text" DEFAULT NULL::"text", "p_type" "text" DEFAULT NULL::"text", "p_account_id" "uuid" DEFAULT NULL::"uuid", "p_is_overdue" boolean DEFAULT NULL::boolean, "p_reference_date" "date" DEFAULT CURRENT_DATE) RETURNS TABLE("id" "uuid", "operation_id" "uuid", "operation_service_id" "uuid", "quotation_id" "uuid", "quotation_reference" "text", "quotation_client_name" "text", "type" "text", "counterparty_name" "text", "counterparty_type" "text", "amount" numeric, "currency" "text", "status" "text", "expected_date" "date", "expected_account_id" "uuid", "expected_account_name" "text", "already_paid" numeric, "pending_amount" numeric, "is_overdue" boolean, "payment_method" "text", "is_credit_card_invoice" boolean, "origin_commitment_id" "uuid", "credit_card_account_id" "uuid", "is_cancellation_adjustment" boolean, "adjustment_type" "text", "description" "text", "notes" "text", "created_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_ref_date DATE := COALESCE(p_reference_date, CURRENT_DATE);
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   RETURN QUERY
   WITH commitment_settled AS (
     SELECT
@@ -944,9 +992,15 @@ ALTER FUNCTION "public"."get_pending_financial_commitments"("p_start_date" "date
 
 CREATE OR REPLACE FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") RETURNS TABLE("currency" "text", "expected_inflows" numeric, "expected_outflows" numeric, "net_cash_flow" numeric, "receivables_count" integer, "payables_count" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   RETURN QUERY
   WITH commitment_settled AS (
     SELECT
@@ -1005,7 +1059,7 @@ ALTER FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "
 
 CREATE OR REPLACE FUNCTION "public"."record_account_transfer"("p_source_account_id" "uuid", "p_destination_account_id" "uuid", "p_amount" numeric, "p_destination_amount" numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_transfer_fee" numeric DEFAULT 0.00, "p_transfer_fee_currency" "text" DEFAULT NULL::"text", "p_transacted_at" timestamp with time zone DEFAULT "now"(), "p_reference" "text" DEFAULT NULL::"text", "p_description" "text" DEFAULT NULL::"text", "p_operation_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_source RECORD;
@@ -1015,6 +1069,12 @@ DECLARE
   v_rate NUMERIC(12, 6);
   v_dest_amt NUMERIC(12, 2);
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   -- 1. Validar presença e diferença entre as contas
   IF p_source_account_id IS NULL OR p_destination_account_id IS NULL THEN
     RAISE EXCEPTION 'As contas de origem e de destino são obrigatórias.';
@@ -1153,12 +1213,18 @@ COMMENT ON FUNCTION "public"."record_account_transfer"("p_source_account_id" "uu
 
 CREATE OR REPLACE FUNCTION "public"."record_balance_adjustment"("p_account_id" "uuid", "p_amount" numeric, "p_direction" "text", "p_reason" "text", "p_adjusted_at" timestamp with time zone DEFAULT "now"(), "p_reference" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_account financial_accounts%ROWTYPE;
   v_tx_id   UUID;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   IF p_direction NOT IN ('positive', 'negative') THEN
     RAISE EXCEPTION 'direction deve ser ''positive'' ou ''negative''.';
   END IF;
@@ -1232,7 +1298,7 @@ ALTER FUNCTION "public"."record_balance_adjustment"("p_account_id" "uuid", "p_am
 
 CREATE OR REPLACE FUNCTION "public"."record_commitment_settlement"("p_commitment_id" "uuid", "p_account_id" "uuid", "p_amount" numeric, "p_transacted_at" timestamp with time zone DEFAULT "now"(), "p_reference" "text" DEFAULT NULL::"text", "p_description" "text" DEFAULT NULL::"text", "p_invoice_due_date" "date" DEFAULT NULL::"date") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_commitment RECORD;
@@ -1246,6 +1312,12 @@ DECLARE
   v_invoice_commitment_id UUID := NULL;
   v_invoice_desc TEXT;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   -- 1. Validar e bloquear o compromisso
   SELECT * INTO v_commitment
   FROM public.financial_commitments
@@ -1477,7 +1549,7 @@ ALTER FUNCTION "public"."set_updated_at"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."split_financial_commitment"("p_commitment_id" "uuid", "p_first_amount" numeric DEFAULT NULL::numeric, "p_second_expected_date" "date" DEFAULT NULL::"date", "p_first_description" "text" DEFAULT NULL::"text", "p_second_description" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   v_op RECORD;
@@ -1493,6 +1565,12 @@ DECLARE
   v_updated_comm RECORD;
   v_inserted_comm RECORD;
 BEGIN
+
+  -- Bloqueia até contas anônimas do Auth, que usam o papel authenticated.
+  IF current_setting('role', true) IS DISTINCT FROM 'service_role'
+     AND (auth.uid() IS NULL OR (auth.jwt() ->> 'is_anonymous') IS DISTINCT FROM 'false') THEN
+    RAISE EXCEPTION 'Autenticação de usuário necessária.' USING ERRCODE = '42501';
+  END IF;
   -- 1. Validar parâmetro de entrada
   IF p_commitment_id IS NULL THEN
     RAISE EXCEPTION 'O identificador do compromisso é obrigatório.';
@@ -2331,42 +2409,6 @@ ALTER TABLE ONLY "public"."quotations"
 
 
 
-CREATE POLICY "Allow anon and authenticated all on favorite_services" ON "public"."favorite_services" TO "authenticated", "anon" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Allow anon and authenticated all on financial_accounts" ON "public"."financial_accounts" TO "authenticated", "anon" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Allow anon and authenticated all on financial_commitments" ON "public"."financial_commitments" TO "authenticated", "anon" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Allow anon and authenticated all on financial_operation_service" ON "public"."financial_operation_services" TO "authenticated", "anon" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Allow anon and authenticated all on package_website_contents" ON "public"."package_website_contents" TO "authenticated", "anon" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Allow anon and authenticated all on packages" ON "public"."packages" TO "authenticated", "anon" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Allow anon and authenticated all on quotations" ON "public"."quotations" TO "authenticated", "anon" USING (true) WITH CHECK (true);
-
-
-
-CREATE POLICY "Allow anon and authenticated select on financial_operations" ON "public"."financial_operations" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow anon and authenticated select on financial_transactions" ON "public"."financial_transactions" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
 ALTER TABLE "public"."favorite_services" ENABLE ROW LEVEL SECURITY;
 
 
@@ -2386,6 +2428,42 @@ ALTER TABLE "public"."financial_transactions" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."package_website_contents" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "packager_authenticated_all" ON "public"."favorite_services" TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text"))) WITH CHECK (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
+
+
+CREATE POLICY "packager_authenticated_all" ON "public"."financial_accounts" TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text"))) WITH CHECK (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
+
+
+CREATE POLICY "packager_authenticated_all" ON "public"."financial_commitments" TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text"))) WITH CHECK (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
+
+
+CREATE POLICY "packager_authenticated_all" ON "public"."financial_operation_services" TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text"))) WITH CHECK (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
+
+
+CREATE POLICY "packager_authenticated_all" ON "public"."package_website_contents" TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text"))) WITH CHECK (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
+
+
+CREATE POLICY "packager_authenticated_all" ON "public"."packages" TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text"))) WITH CHECK (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
+
+
+CREATE POLICY "packager_authenticated_all" ON "public"."quotations" TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text"))) WITH CHECK (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
+
+
+CREATE POLICY "packager_authenticated_select" ON "public"."financial_operations" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
+
+
+CREATE POLICY "packager_authenticated_select" ON "public"."financial_transactions" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") IS NOT NULL) AND (( SELECT ("auth"."jwt"() ->> 'is_anonymous'::"text")) = 'false'::"text")));
+
 
 
 ALTER TABLE "public"."packages" ENABLE ROW LEVEL SECURITY;
@@ -2553,79 +2631,78 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."approve_quotation_and_create_operation"("p_quotation_id" "uuid", "p_notes" "text") TO "anon";
+REVOKE ALL ON FUNCTION "public"."approve_quotation_and_create_operation"("p_quotation_id" "uuid", "p_notes" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."approve_quotation_and_create_operation"("p_quotation_id" "uuid", "p_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."approve_quotation_and_create_operation"("p_quotation_id" "uuid", "p_notes" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") TO "anon";
+REVOKE ALL ON FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."cancel_operation_service"("p_service_id" "uuid") TO "anon";
+REVOKE ALL ON FUNCTION "public"."cancel_operation_service"("p_service_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."cancel_operation_service"("p_service_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_operation_service"("p_service_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."cancel_operation_service_with_adjustments"("p_service_id" "uuid", "p_reason" "text", "p_supplier_refund_amount" numeric, "p_supplier_refund_currency" "text", "p_cancellation_fee_amount" numeric, "p_cancellation_fee_currency" "text", "p_fee_counterparty_name" "text") TO "anon";
+REVOKE ALL ON FUNCTION "public"."cancel_operation_service_with_adjustments"("p_service_id" "uuid", "p_reason" "text", "p_supplier_refund_amount" numeric, "p_supplier_refund_currency" "text", "p_cancellation_fee_amount" numeric, "p_cancellation_fee_currency" "text", "p_fee_counterparty_name" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."cancel_operation_service_with_adjustments"("p_service_id" "uuid", "p_reason" "text", "p_supplier_refund_amount" numeric, "p_supplier_refund_currency" "text", "p_cancellation_fee_amount" numeric, "p_cancellation_fee_currency" "text", "p_fee_counterparty_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_operation_service_with_adjustments"("p_service_id" "uuid", "p_reason" "text", "p_supplier_refund_amount" numeric, "p_supplier_refund_currency" "text", "p_cancellation_fee_amount" numeric, "p_cancellation_fee_currency" "text", "p_fee_counterparty_name" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."check_quotation_status_protection"() TO "anon";
-GRANT ALL ON FUNCTION "public"."check_quotation_status_protection"() TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."check_quotation_status_protection"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."check_quotation_status_protection"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text", "p_expected_date" "date", "p_description" "text", "p_notes" "text", "p_operation_service_id" "uuid") TO "anon";
+REVOKE ALL ON FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text", "p_expected_date" "date", "p_description" "text", "p_notes" "text", "p_operation_service_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text", "p_expected_date" "date", "p_description" "text", "p_notes" "text", "p_operation_service_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text", "p_expected_date" "date", "p_description" "text", "p_notes" "text", "p_operation_service_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_financial_account_balances"() TO "anon";
+REVOKE ALL ON FUNCTION "public"."get_financial_account_balances"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_financial_account_balances"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_financial_account_balances"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_financial_consolidated_summary"("p_reference_date" "date") TO "anon";
+REVOKE ALL ON FUNCTION "public"."get_financial_consolidated_summary"("p_reference_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_financial_consolidated_summary"("p_reference_date" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_financial_consolidated_summary"("p_reference_date" "date") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_pending_financial_commitments"("p_start_date" "date", "p_end_date" "date", "p_currency" "text", "p_type" "text", "p_account_id" "uuid", "p_is_overdue" boolean, "p_reference_date" "date") TO "anon";
+REVOKE ALL ON FUNCTION "public"."get_pending_financial_commitments"("p_start_date" "date", "p_end_date" "date", "p_currency" "text", "p_type" "text", "p_account_id" "uuid", "p_is_overdue" boolean, "p_reference_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_pending_financial_commitments"("p_start_date" "date", "p_end_date" "date", "p_currency" "text", "p_type" "text", "p_account_id" "uuid", "p_is_overdue" boolean, "p_reference_date" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_pending_financial_commitments"("p_start_date" "date", "p_end_date" "date", "p_currency" "text", "p_type" "text", "p_account_id" "uuid", "p_is_overdue" boolean, "p_reference_date" "date") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") TO "anon";
+REVOKE ALL ON FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."record_account_transfer"("p_source_account_id" "uuid", "p_destination_account_id" "uuid", "p_amount" numeric, "p_destination_amount" numeric, "p_exchange_rate" numeric, "p_transfer_fee" numeric, "p_transfer_fee_currency" "text", "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_operation_id" "uuid") TO "anon";
+REVOKE ALL ON FUNCTION "public"."record_account_transfer"("p_source_account_id" "uuid", "p_destination_account_id" "uuid", "p_amount" numeric, "p_destination_amount" numeric, "p_exchange_rate" numeric, "p_transfer_fee" numeric, "p_transfer_fee_currency" "text", "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_operation_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."record_account_transfer"("p_source_account_id" "uuid", "p_destination_account_id" "uuid", "p_amount" numeric, "p_destination_amount" numeric, "p_exchange_rate" numeric, "p_transfer_fee" numeric, "p_transfer_fee_currency" "text", "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_operation_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_account_transfer"("p_source_account_id" "uuid", "p_destination_account_id" "uuid", "p_amount" numeric, "p_destination_amount" numeric, "p_exchange_rate" numeric, "p_transfer_fee" numeric, "p_transfer_fee_currency" "text", "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_operation_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."record_balance_adjustment"("p_account_id" "uuid", "p_amount" numeric, "p_direction" "text", "p_reason" "text", "p_adjusted_at" timestamp with time zone, "p_reference" "text") TO "anon";
+REVOKE ALL ON FUNCTION "public"."record_balance_adjustment"("p_account_id" "uuid", "p_amount" numeric, "p_direction" "text", "p_reason" "text", "p_adjusted_at" timestamp with time zone, "p_reference" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."record_balance_adjustment"("p_account_id" "uuid", "p_amount" numeric, "p_direction" "text", "p_reason" "text", "p_adjusted_at" timestamp with time zone, "p_reference" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_balance_adjustment"("p_account_id" "uuid", "p_amount" numeric, "p_direction" "text", "p_reason" "text", "p_adjusted_at" timestamp with time zone, "p_reference" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."record_commitment_settlement"("p_commitment_id" "uuid", "p_account_id" "uuid", "p_amount" numeric, "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_invoice_due_date" "date") TO "anon";
+REVOKE ALL ON FUNCTION "public"."record_commitment_settlement"("p_commitment_id" "uuid", "p_account_id" "uuid", "p_amount" numeric, "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_invoice_due_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."record_commitment_settlement"("p_commitment_id" "uuid", "p_account_id" "uuid", "p_amount" numeric, "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_invoice_due_date" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_commitment_settlement"("p_commitment_id" "uuid", "p_account_id" "uuid", "p_amount" numeric, "p_transacted_at" timestamp with time zone, "p_reference" "text", "p_description" "text", "p_invoice_due_date" "date") TO "service_role";
 
@@ -2637,21 +2714,18 @@ GRANT ALL ON FUNCTION "public"."rls_auto_enable"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "anon";
-GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."set_updated_at"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "service_role";
 
 
 
 REVOKE ALL ON FUNCTION "public"."split_financial_commitment"("p_commitment_id" "uuid", "p_first_amount" numeric, "p_second_expected_date" "date", "p_first_description" "text", "p_second_description" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."split_financial_commitment"("p_commitment_id" "uuid", "p_first_amount" numeric, "p_second_expected_date" "date", "p_first_description" "text", "p_second_description" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."split_financial_commitment"("p_commitment_id" "uuid", "p_first_amount" numeric, "p_second_expected_date" "date", "p_first_description" "text", "p_second_description" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."split_financial_commitment"("p_commitment_id" "uuid", "p_first_amount" numeric, "p_second_expected_date" "date", "p_first_description" "text", "p_second_description" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."trg_check_quotation_archive"() TO "anon";
-GRANT ALL ON FUNCTION "public"."trg_check_quotation_archive"() TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."trg_check_quotation_archive"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."trg_check_quotation_archive"() TO "service_role";
 
 
@@ -2671,57 +2745,48 @@ GRANT ALL ON FUNCTION "public"."trg_check_quotation_archive"() TO "service_role"
 
 
 
-GRANT ALL ON TABLE "public"."favorite_services" TO "anon";
-GRANT ALL ON TABLE "public"."favorite_services" TO "authenticated";
 GRANT ALL ON TABLE "public"."favorite_services" TO "service_role";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."favorite_services" TO "authenticated";
 
 
 
-GRANT ALL ON TABLE "public"."financial_accounts" TO "anon";
-GRANT ALL ON TABLE "public"."financial_accounts" TO "authenticated";
 GRANT ALL ON TABLE "public"."financial_accounts" TO "service_role";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."financial_accounts" TO "authenticated";
 
 
 
-GRANT ALL ON TABLE "public"."financial_commitments" TO "anon";
-GRANT ALL ON TABLE "public"."financial_commitments" TO "authenticated";
 GRANT ALL ON TABLE "public"."financial_commitments" TO "service_role";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."financial_commitments" TO "authenticated";
 
 
 
-GRANT ALL ON TABLE "public"."financial_operation_services" TO "anon";
-GRANT ALL ON TABLE "public"."financial_operation_services" TO "authenticated";
 GRANT ALL ON TABLE "public"."financial_operation_services" TO "service_role";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."financial_operation_services" TO "authenticated";
 
 
 
-GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE "public"."financial_operations" TO "anon";
-GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE "public"."financial_operations" TO "authenticated";
 GRANT ALL ON TABLE "public"."financial_operations" TO "service_role";
+GRANT SELECT ON TABLE "public"."financial_operations" TO "authenticated";
 
 
 
-GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE "public"."financial_transactions" TO "anon";
-GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE "public"."financial_transactions" TO "authenticated";
 GRANT ALL ON TABLE "public"."financial_transactions" TO "service_role";
+GRANT SELECT ON TABLE "public"."financial_transactions" TO "authenticated";
 
 
 
-GRANT ALL ON TABLE "public"."package_website_contents" TO "anon";
-GRANT ALL ON TABLE "public"."package_website_contents" TO "authenticated";
 GRANT ALL ON TABLE "public"."package_website_contents" TO "service_role";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."package_website_contents" TO "authenticated";
 
 
 
-GRANT ALL ON TABLE "public"."packages" TO "anon";
-GRANT ALL ON TABLE "public"."packages" TO "authenticated";
 GRANT ALL ON TABLE "public"."packages" TO "service_role";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."packages" TO "authenticated";
 
 
 
-GRANT ALL ON TABLE "public"."quotations" TO "anon";
-GRANT ALL ON TABLE "public"."quotations" TO "authenticated";
 GRANT ALL ON TABLE "public"."quotations" TO "service_role";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."quotations" TO "authenticated";
 
 
 

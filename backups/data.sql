@@ -4,7 +4,7 @@ SET session_replication_role = replica;
 -- PostgreSQL database dump
 --
 
--- \restrict YVk2bu9VP5TI5GuVzv9cuZ4W3aJUQflfurec0gNdVfmsAkSOMBWfMPdgXMOu7xt
+-- \restrict TKse00gdTotgLin5eOMzoDgnYroF7CgjLtATBqqY27puCai2s13bCIvQgZvOdXz
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.11
@@ -50,7 +50,7 @@ COPY "auth"."flow_state" ("id", "user_id", "auth_code", "code_challenge_method",
 --
 
 COPY "auth"."users" ("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous") FROM stdin;
-00000000-0000-0000-0000-000000000000	133b281a-718b-4498-bcb2-fe62aea1691d	authenticated	authenticated	contato@s23.travel	$2a$10$CDguLbkpMfGSodVdhbwoBeyhz46WppoGSg0H9II6vD4VTJOIeAY9e	2026-11-01 13:32:58.529857+00	\N		\N		\N			\N	2026-11-02 17:03:42.347782+00	{"provider": "email", "providers": ["email"]}	{"email_verified": true}	\N	2026-11-01 13:32:58.488588+00	2026-11-02 17:03:42.36206+00	\N	\N			\N		0	\N		\N	f	\N	f
+00000000-0000-0000-0000-000000000000	133b281a-718b-4498-bcb2-fe62aea1691d	authenticated	authenticated	contato@s23.travel	$2a$10$CDguLbkpMfGSodVdhbwoBeyhz46WppoGSg0H9II6vD4VTJOIeAY9e	2026-11-01 13:32:58.529857+00	\N		\N		\N			\N	2026-11-02 17:29:01.885791+00	{"provider": "email", "providers": ["email"]}	{"email_verified": true}	\N	2026-11-01 13:32:58.488588+00	2026-11-02 17:29:01.930887+00	\N	\N			\N		0	\N		\N	f	\N	f
 \.
 
 
@@ -85,6 +85,7 @@ COPY "auth"."oauth_clients" ("id", "client_secret_hash", "registration_type", "r
 
 COPY "auth"."sessions" ("id", "user_id", "created_at", "updated_at", "factor_id", "aal", "not_after", "refreshed_at", "user_agent", "ip", "tag", "oauth_client_id", "refresh_token_hmac_key", "refresh_token_counter", "scopes") FROM stdin;
 b44da359-57e5-4ee6-93af-46058a70993b	133b281a-718b-4498-bcb2-fe62aea1691d	2026-11-02 17:03:42.348397+00	2026-11-02 17:03:42.348397+00	\N	aal1	\N	\N	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0	2.80.193.114	\N	\N	\N	\N	\N
+ad394c0f-ec83-4043-bca1-52ffb277d704	133b281a-718b-4498-bcb2-fe62aea1691d	2026-11-02 17:29:01.886664+00	2026-11-02 17:29:01.886664+00	\N	aal1	\N	\N	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0	2.80.193.114	\N	\N	\N	\N	\N
 \.
 
 
@@ -94,6 +95,7 @@ b44da359-57e5-4ee6-93af-46058a70993b	133b281a-718b-4498-bcb2-fe62aea1691d	2026-1
 
 COPY "auth"."mfa_amr_claims" ("session_id", "created_at", "updated_at", "authentication_method", "id") FROM stdin;
 b44da359-57e5-4ee6-93af-46058a70993b	2026-11-02 17:03:42.371841+00	2026-11-02 17:03:42.371841+00	password	61483271-6c0c-4da4-826e-fc3064ae06ab
+ad394c0f-ec83-4043-bca1-52ffb277d704	2026-11-02 17:29:01.938853+00	2026-11-02 17:29:01.938853+00	password	ef9fe0d1-4a6a-4bf3-9942-36bd931418f0
 \.
 
 
@@ -167,6 +169,7 @@ COPY "auth"."one_time_tokens" ("id", "user_id", "token_type", "token_hash", "rel
 
 COPY "auth"."refresh_tokens" ("instance_id", "id", "token", "user_id", "revoked", "created_at", "updated_at", "parent", "session_id") FROM stdin;
 00000000-0000-0000-0000-000000000000	2	6ecaoxrnscmq	133b281a-718b-4498-bcb2-fe62aea1691d	f	2026-11-02 17:03:42.358192+00	2026-11-02 17:03:42.358192+00	\N	b44da359-57e5-4ee6-93af-46058a70993b
+00000000-0000-0000-0000-000000000000	3	s3f62u6e2okk	133b281a-718b-4498-bcb2-fe62aea1691d	f	2026-11-02 17:29:01.914553+00	2026-11-02 17:29:01.914553+00	\N	ad394c0f-ec83-4043-bca1-52ffb277d704
 \.
 
 
@@ -495,13 +498,13 @@ COPY "storage"."vector_indexes" ("id", "name", "bucket_id", "data_type", "dimens
 -- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: auth; Owner: supabase_auth_admin
 --
 
-SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 2, true);
+SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 3, true);
 
 
 --
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict YVk2bu9VP5TI5GuVzv9cuZ4W3aJUQflfurec0gNdVfmsAkSOMBWfMPdgXMOu7xt
+-- \unrestrict TKse00gdTotgLin5eOMzoDgnYroF7CgjLtATBqqY27puCai2s13bCIvQgZvOdXz
 
 RESET ALL;
