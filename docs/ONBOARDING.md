@@ -50,11 +50,11 @@ O Packager é uma aplicação operacional interna da S23 para gerir pacotes de v
 - **Confirmado no código:** React Router v6 sem data router; não há camada de servidor própria; a aplicação chama Supabase; os cálculos de negócio de moeda são TypeScript puro.
 - **Confirmado no Git:** desenvolvimento histórico usou commits convencionais em pt-BR/inglês misturados; veja `docs/PROJECT-HISTORY.md`.
 - **Inferência razoável:** é uma ferramenta interna de back-office, desktop-first, com base nos fluxos e estilos; isto não define requisitos de acesso nem substitui confirmação do responsável do produto.
-- **Confirmado pelo responsável:** deploy do Packager por integração GitHub–Cloudflare Pages, automático após commit/push para `main`; autenticação da app será tratada depois do alinhamento das migrations e deploy.
+- **Confirmado pelo responsável:** deploy do Packager por integração GitHub–Cloudflare Pages, automático após commit/push para `main`.
 - **Estado verificado em 2026-10-26:** ledger PROD alinhado com as 25 migrations locais após auditoria read-only sem Docker; overload e comentários foram tratados por migrations forward. **Por confirmar:** desenho futuro de autenticação/autorização, build settings/variáveis do Cloudflare e diff integral via shadow database.
 - `README.md` contém uma descrição de fundação antiga que diz que persistência/IA ainda seriam implementadas. O código atual inclui essas integrações; prefira este onboarding e os documentos técnicos, confirmando sempre no código.
 - `docs/COMO_ADICIONAR_PACOTE.md` e `docs/ARQUITETURA_MANAGER.md` descrevem o fluxo do S23 Manager/site adjacente. Não assumir que suas rotas, diretórios ou procedimentos existem nesta SPA.
 
 ## Regra de segurança antes de começar
 
-O frontend não implementa login de utilizador e várias policies Supabase permitem operações a `anon`. Não executar suites de integração nem testar mutations contra um projeto desconhecido. Ver `docs/DEVELOPMENT.md`; confirmar um ambiente DEV isolado sem imprimir credenciais. Não executar `supabase db push` até reconciliar migrations locais e remotas.
+O frontend exige login, mas várias policies e RPCs Supabase ainda permitem operações a `anon`: a tela não protege a API diretamente. Não executar suites de integração nem testar mutations contra um projeto desconhecido. Ver `docs/DEVELOPMENT.md`; confirmar um ambiente DEV isolado sem imprimir credenciais. Não executar `supabase db push` para reconciliar o histórico.

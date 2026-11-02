@@ -198,6 +198,33 @@ a {
 }
 
 /* Layout Shell */
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.login-brand { margin-bottom: 2rem; }
+.login-card h1 { font-size: var(--text-lg); line-height: var(--line-lg); }
+.login-description { color: var(--text-secondary); margin-top: 0.4rem; }
+.login-form { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.login-form .btn { margin-top: 0.25rem; }
+.login-error { color: var(--danger); font-size: var(--text-sm); }
+.header-user { color: var(--text-secondary); font-size: var(--text-xs); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-signout-error { color: var(--danger); font-size: var(--text-xs); }
+
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -1322,6 +1349,7 @@ textarea::placeholder {
 
 /* Responsividade básica */
 @media (max-width: 768px) {
+  .header-user { display: none; }
   .app-header {
     padding: 0 1rem;
     height: auto;

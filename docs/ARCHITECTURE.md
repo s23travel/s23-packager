@@ -88,13 +88,13 @@ Outras dependências de browser/rede observáveis: Google Fonts, Clipboard API e
 
 ## Segurança e limites confirmados
 
-- Não há ecrã, provider ou fluxo de autenticação de utilizador nas rotas da SPA. O cliente usa chave pública Supabase (`anon`).
+- A SPA exige uma sessão Supabase para mostrar as rotas, com login por e-mail/senha e saída local. O cliente usa chave pública Supabase (`anon`); essa proteção da interface não impede chamadas diretas à API.
 - As migrations iniciais dão políticas `FOR ALL` a `anon`/`authenticated` em tabelas como `packages`, `quotations`, `favorite_services`, `package_website_contents`, `financial_accounts`, `financial_operation_services` e `financial_commitments`. É acesso amplo sem isolamento por utilizador/tenant; confirmar e corrigir a postura de segurança antes de expor a aplicação para além do contexto interno previsto.
 - A migration `20261010020000_harden_financial_transactions_and_operations.sql` restringe escrita direta de `anon`/`authenticated` em `financial_operations` e `financial_transactions`; a escrita passa pelas RPCs `SECURITY DEFINER`, várias concedidas também a `anon`.
 - **Verificação read-only do PROD em 2026-10-25, revalidada em 2026-10-26:** as nove tabelas `public` da aplicação existem e têm RLS ligado, mas `FORCE ROW LEVEL SECURITY` está desligado. `anon` tem `SELECT` nas nove e privilégios CRUD/policy `ALL USING (true) WITH CHECK (true)` em sete (`packages`, `quotations`, `favorite_services`, `package_website_contents`, `financial_accounts`, `financial_operation_services`, `financial_commitments`). `financial_operations` e `financial_transactions` são somente leitura direta. As 14 funções `SECURITY DEFINER` retornadas pela consulta de catálogo, incluindo RPCs financeiras, indicam `EXECUTE` para `anon`. Não foram consultadas linhas de dados.
 - `src/lib/supabase.ts` avisa quando desenvolvimento aponta para PROD e bloqueia em produção origens diferentes da PROD. O aviso em desenvolvimento **não** protege dados. `vite.config.ts` faz validação adicional do ambiente de build.
 - As Edge Functions definem CORS `*`; não foi encontrada validação de identidade de utilizador no código dos handlers. O comportamento efetivo do gateway Supabase (incluindo verificação JWT) depende da configuração/deploy e não foi confirmado remotamente.
-- O responsável confirmou que autenticação da aplicação será tratada depois de alinhados migrations e deploy. Até essa etapa, o estado atual permanece sem login; não antecipar mudanças em Auth/RLS.
+- **Pendente para restringir efetivamente o acesso:** rever e alterar as políticas e privilégios anônimos das tabelas e RPCs, verificar a autenticação das Edge Functions e desabilitar cadastro público e login anônimo no projeto Supabase. A proteção da SPA não substitui essas medidas. A configuração e eventuais integrações existentes devem ser auditadas antes de qualquer alteração no PROD.
 - `backups/*.sql` estão versionados neste checkout. O seu conteúdo não foi lido para evitar expor dados; tratar como material potencialmente sensível e não os copiar para documentação nem para a branch principal sem autorização.
 
 ## Configuração e referências
@@ -104,4 +104,4 @@ Outras dependências de browser/rede observáveis: Google Fonts, Clipboard API e
 - Hosting estático: `wrangler.jsonc` aponta para `dist/` e fallback SPA. O responsável confirmou que GitHub está integrado ao Cloudflare Pages e push para `main` publica automaticamente. O repositório tem apenas workflow de backup; build settings e variáveis do Pages não foram observadas.
 - Guia visual: `design-system/s23-packager/MASTER.md`.
 
-**Por confirmar:** diff integral via shadow database (não executável sem Docker); configuração/deploy das Edge Functions; desenho futuro do modelo de autenticação; build settings/variáveis reais do Cloudflare Pages. O ledger foi reconciliado por catálogo e o alvo PROD está registado em `docs/DEVELOPMENT.md`.
+**Por confirmar:** diff integral via shadow database (não executável sem Docker); configuração/deploy das Edge Functions; restrição efetiva de acesso no backend; build settings/variáveis reais do Cloudflare Pages. O ledger foi reconciliado por catálogo e o alvo PROD está registado em `docs/DEVELOPMENT.md`.

@@ -5,6 +5,7 @@
 // A API key nunca é exposta para o cliente. Não utiliza Google Search Grounding.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { requireUser } from '../_shared/auth.ts';
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +28,9 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const authError = await requireUser(req, corsHeaders);
+    if (authError) return authError;
 
     const body = await req.json();
     let rawImages: Array<{ imageBase64?: string; mimeType?: string; name?: string }> = [];

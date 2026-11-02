@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { Routes, Route } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { DashboardPage } from './pages/DashboardPage';
@@ -13,11 +14,30 @@ import { FinancialPage } from './pages/financial/FinancialPage';
 import { ServicesListPage } from './pages/services/ServicesListPage';
 import { ServiceFormPage } from './pages/services/ServiceFormPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { LoginPage } from './pages/LoginPage';
+import { supabase } from './lib/supabase';
 
 export const App: React.FC = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession?.user.is_anonymous ? null : nextSession);
+      setLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <main className="login-shell" role="status">Verificando sessão...</main>;
+  }
+
+  if (!session) return <LoginPage />;
+
   return (
     <div className="app-shell">
-      <Header />
+      <Header email={session.user.email} />
 
       <main className="main-content">
         <Routes>

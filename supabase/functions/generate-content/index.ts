@@ -5,6 +5,7 @@
 // NUNCA expõe a chave de API para o frontend.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { requireUser } from '../_shared/auth.ts';
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +37,9 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const authError = await requireUser(req, corsHeaders);
+    if (authError) return authError;
 
     const input = await req.json();
 

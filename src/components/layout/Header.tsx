@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { NavigationItem } from '../../types';
 import { useTheme } from '../../lib/theme';
+import { supabase } from '../../lib/supabase';
 
 const NAV_ITEMS: NavigationItem[] = [
   { label: 'Visão Geral', path: '/' },
@@ -11,8 +12,23 @@ const NAV_ITEMS: NavigationItem[] = [
   { label: 'Financeiro', path: '/financeiro' },
 ];
 
-export const Header: React.FC = () => {
+export const Header: React.FC<{ email?: string }> = ({ email }) => {
   const { theme, toggleTheme } = useTheme();
+  const [signingOut, setSigningOut] = React.useState(false);
+  const [signOutError, setSignOutError] = React.useState(false);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    setSignOutError(false);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) setSignOutError(true);
+    } catch {
+      setSignOutError(true);
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <header className="app-header">
@@ -38,6 +54,11 @@ export const Header: React.FC = () => {
       </nav>
 
       <div className="header-right">
+        {email && <span className="header-user" title={email}>{email}</span>}
+        {signOutError && <span className="header-signout-error" role="alert">Não foi possível sair.</span>}
+        <button type="button" className="btn btn-sm btn-secondary" onClick={handleSignOut} disabled={signingOut}>
+          {signingOut ? 'Saindo...' : 'Sair'}
+        </button>
         <button
           type="button"
           onClick={toggleTheme}

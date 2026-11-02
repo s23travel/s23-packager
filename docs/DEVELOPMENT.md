@@ -22,7 +22,7 @@
 
 Verificações read-only em 2026-10-25 e revalidação em 2026-10-26: o host em `.env.local` e o `supabase/.temp/project-ref` deste checkout apontam ambos para o projeto PROD. Não é uma recomendação para testar nele: confirmar novamente antes de qualquer execução com I/O e não confiar apenas no aviso da aplicação. Os valores das variáveis não foram copiados para a documentação.
 
-Também foi consultado somente o catálogo de schema/policies/grants (sem ler linhas de negócio): as nove tabelas públicas da aplicação têm RLS ligado; `anon` pode ler todas, fazer CRUD direto em sete e executar as RPCs `SECURITY DEFINER` consultadas. A análise confirma que o estado efetivo em PROD é acesso anónimo amplo, não apenas uma possibilidade descrita nas migrations. O modelo desejado continua por decidir.
+Também foi consultado somente o catálogo de schema/policies/grants (sem ler linhas de negócio): as nove tabelas públicas da aplicação têm RLS ligado; `anon` pode ler todas, fazer CRUD direto em sete e executar as RPCs `SECURITY DEFINER` consultadas. A análise confirma que o estado efetivo em PROD é acesso anónimo amplo, não apenas uma possibilidade descrita nas migrations. O login na SPA não fecha esses acessos: antes da publicação, auditar integrações e restringir tabelas, RPCs e Edge Functions a utilizadores autenticados; verificar também as opções de cadastro público e login anônimo no Supabase. Não foram alteradas configurações nem permissões remotas.
 
 ## Build e pré-visualização
 
