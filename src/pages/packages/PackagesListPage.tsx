@@ -6,8 +6,34 @@ import { Package } from '../../types';
 import { StatusBadge } from '../../components/common/Badge';
 import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { Pagination } from '../../components/common/Pagination';
+import { calculatePricePerPerson, formatMoney } from '../../services/financeService';
 
 const PAGE_SIZE = 10;
+
+/**
+ * Preço por pessoa consolidado do pacote.
+ * Prefere o valor persistido no resumo financeiro e recorre ao cálculo
+ * determinístico a partir do preço de venda e dos passageiros.
+ */
+const getPricePerPerson = (pkg: Package): number => {
+  const financials = pkg.data?.financials;
+  const stored = financials?.pricePerPerson;
+
+  if (typeof stored === 'number' && stored > 0) {
+    return stored;
+  }
+
+  const salePrice =
+    typeof financials?.salePrice === 'number'
+      ? financials.salePrice
+      : financials?.priceTotal?.amount ?? 0;
+
+  if (salePrice <= 0) {
+    return 0;
+  }
+
+  return calculatePricePerPerson(salePrice, pkg.data?.passengers);
+};
 
 export const PackagesListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -174,7 +200,7 @@ export const PackagesListPage: React.FC = () => {
                     <th>Nome do pacote</th>
                     <th>Destino e duração</th>
                     <th>Status</th>
-                    <th>Moeda</th>
+                    <th>Preço por pessoa</th>
                     <th style={{ textAlign: 'right' }}>Ações</th>
                   </tr>
                 </thead>
@@ -182,6 +208,7 @@ export const PackagesListPage: React.FC = () => {
                   {paginatedPackages.map((pkg) => {
                     const destination = pkg.data?.destination || pkg.data?.lodging?.[0]?.destination || pkg.data?.lodging?.[0]?.name || '—';
                     const duration = pkg.data?.dates?.durationDays ? `${pkg.data.dates.durationDays} dias` : null;
+                    const pricePerPerson = getPricePerPerson(pkg);
 
                     return (
                       <tr key={pkg.id}>
@@ -203,7 +230,13 @@ export const PackagesListPage: React.FC = () => {
                           <StatusBadge status={pkg.status} />
                         </td>
                         <td>
-                          <span className="badge badge-neutral">{pkg.base_currency}</span>
+                          {pricePerPerson > 0 ? (
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+                              {formatMoney(pricePerPerson, pkg.base_currency)}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          )}
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <div className="table-actions">
