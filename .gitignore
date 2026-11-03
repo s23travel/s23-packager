@@ -38,6 +38,9 @@ supabase/.temp/
 scratch/
 .agents/
 
+# Artefactos de automação do browser (Playwright MCP)
+.playwright-mcp/
+
 # Pastas locais de agentes/IDE (skills instaladas como symlinks nesta máquina)
 .claude/
 .codex/
