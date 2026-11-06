@@ -49,3 +49,6 @@ scratch/
 
 # Índice local do CodeGraph (gerado por máquina, não versionar)
 .codegraph/
+
+# Configuração local da extensão Design mode (não faz parte do produto)
+.design-studio.json
