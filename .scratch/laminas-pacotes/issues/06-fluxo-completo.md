@@ -1,11 +1,13 @@
 # Integrar criação, revisão, download e anexo
 
 Status: ready-for-agent
-Blocked by: 01, 02, 03, 04, 05
+Blocked by: 01, 02, 03, 04, 05, 07
 
 ## Objetivo
 
 Integrar a partir do detalhe do pacote a geração com IA, a revisão da prévia, as duas opções de download e o salvamento/recuperação da última lâmina.
+
+O ticket 07 antecipa a integração de geração, revisão e download; completar aqui a integração do anexo e validar o fluxo inteiro, sem considerar concluído o salvamento enquanto o ticket 05 estiver bloqueado.
 
 ## Critérios
 
