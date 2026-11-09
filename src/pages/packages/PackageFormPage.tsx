@@ -5,6 +5,7 @@ import {
   Currency,
   PackageStatus,
   PackageData,
+  PackageDraft,
   FavoriteService,
   FavoriteServiceType,
   ImportedPackageData,
@@ -55,9 +56,10 @@ export const PackageFormPage: React.FC = () => {
   const [salePrice, setSalePrice] = useState<number>(0);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [additionalInfo, setAdditionalInfo] = useState('');
+  const [paymentConditions, setPaymentConditions] = useState('');
 
-  // Metadados legados preservados sem perda
-  const [legacyExtraData, setLegacyExtraData] = useState<Record<string, unknown>>({});
+  // Preserva os campos não editados, incluindo metadados de pacotes legados.
+  const [originalData, setOriginalData] = useState<PackageData>({});
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
@@ -86,63 +88,52 @@ export const PackageFormPage: React.FC = () => {
 
   // Carregamento de Pacote existente ou Rascunho / Inicialização de Novo Pacote
   useEffect(() => {
-    if (!id) {
-      // 1. Tenta restaurar rascunho anterior de sessionStorage
-      const draft = getPackageDraft();
-      if (draft) {
-        setReference(draft.reference || '');
-        setName(draft.name || '');
-        setStatus(draft.status || 'draft');
-        setBaseCurrency(draft.baseCurrency || 'EUR');
-        setSupplier(draft.supplier || '');
-        setAdditionalInfo(draft.additionalInfo || '');
-        setStartDate(draft.startDate || '');
-        setEndDate(draft.endDate || '');
-        setDurationDays(draft.durationDays);
-        setDurationNights(draft.durationNights);
-        setAdults(draft.adults);
-        setChildren(draft.children);
-        setSalePrice(draft.salePrice || 0);
+    const restoreDraft = (draft: PackageDraft, fallbackPaymentConditions = '', fallbackExchangeRate: number | null = null) => {
+      setReference(draft.reference || '');
+      setName(draft.name || '');
+      setStatus(draft.status || 'draft');
+      setBaseCurrency(draft.baseCurrency || 'EUR');
+      setSupplier(draft.supplier || '');
+      setAdditionalInfo(draft.additionalInfo || '');
+      setPaymentConditions(draft.paymentConditions ?? fallbackPaymentConditions);
+      setExchangeRate(draft.exchangeRate === undefined ? fallbackExchangeRate : draft.exchangeRate);
+      setStartDate(draft.startDate || '');
+      setEndDate(draft.endDate || '');
+      setDurationDays(draft.durationDays ?? 0);
+      setDurationNights(draft.durationNights ?? 0);
+      setAdults(draft.adults ?? 2);
+      setChildren(draft.children ?? 0);
+      setSalePrice(draft.salePrice || 0);
 
-        setOrigin(draft.origin || '');
-        // Se o draft já tem services, usa diretamente
-        if (Array.isArray(draft.services)) {
-          setDestination(draft.destination || '');
-          setServices(draft.services);
-        } else {
-          // Se for draft antigo (formato legado de transporte/hotel), normaliza com o adapter
-          const legacyDraftData: PackageData = {
-            outboundTransport: draft.outboundRoute
-              ? { type: 'flight', route: draft.outboundRoute, carrier: draft.outboundCarrier }
-              : undefined,
-            inboundTransport: draft.inboundRoute
-              ? { type: 'flight', route: draft.inboundRoute, carrier: draft.inboundCarrier }
-              : undefined,
-            lodging: draft.hotelName
-              ? [{ id: 'hotel-draft', name: draft.hotelName, destination: draft.hotelDestination || '', mealPlan: draft.hotelMealPlan }]
-              : [],
-            financials: draft.costComponents
-              ? { components: draft.costComponents, currency: draft.baseCurrency, salePrice: draft.salePrice } as any
-              : undefined,
-          };
-          const normalized = normalizeLegacyToNewStructure(legacyDraftData);
-          setDestination(normalized.destination || draft.hotelDestination || '');
-          setServices(normalized.services);
-        }
+      setOrigin(draft.origin || '');
+      // Se o draft já tem services, usa diretamente
+      if (Array.isArray(draft.services)) {
+        setDestination(draft.destination || '');
+        setServices(draft.services);
       } else {
-        // Sugestão sequencial inteligente para novos pacotes base
-        packagesService
-          .getNextReference()
-          .then((nextRef) => {
-            setReference(nextRef);
-          })
-          .catch((err) => {
-            console.error('Erro ao sugerir referência de pacote:', err);
-            setReference(`PK-${new Date().getFullYear()}-001`);
-          });
+        // Se for draft antigo (formato legado de transporte/hotel), normaliza com o adapter
+        const legacyDraftData: PackageData = {
+          outboundTransport: draft.outboundRoute
+            ? { type: 'flight', route: draft.outboundRoute, carrier: draft.outboundCarrier }
+            : undefined,
+          inboundTransport: draft.inboundRoute
+            ? { type: 'flight', route: draft.inboundRoute, carrier: draft.inboundCarrier }
+            : undefined,
+          lodging: draft.hotelName
+            ? [{ id: 'hotel-draft', name: draft.hotelName, destination: draft.hotelDestination || '', mealPlan: draft.hotelMealPlan }]
+            : [],
+          financials: draft.costComponents
+            ? { components: draft.costComponents, currency: draft.baseCurrency, salePrice: draft.salePrice } as any
+            : undefined,
+        };
+        const normalized = normalizeLegacyToNewStructure(legacyDraftData);
+        setDestination(normalized.destination || draft.hotelDestination || '');
+        setServices(normalized.services);
       }
+    };
 
-      // 2. Se retornou de /servicos/novo com um serviço recém-criado, copia como snapshot independente
+    // Se retornou de /servicos/novo, copia o serviço como snapshot independente.
+    const applyNavigationState = (currency: Currency) => {
       const navState = location.state as {
         createdService?: FavoriteService;
         message?: string;
@@ -167,7 +158,7 @@ export const PackageFormPage: React.FC = () => {
           id: generateServiceId(),
           type: sType,
           description: created.name,
-          currency: baseCurrency,
+          currency,
           amount: 0,
           quantity: 1,
           destination: created.type === 'hotel' ? hotelDest : undefined,
@@ -186,7 +177,27 @@ export const PackageFormPage: React.FC = () => {
       if (navState?.message) {
         setFeedback({ type: 'success', message: navState.message });
       }
+    };
 
+    const draft = getPackageDraft();
+    if (!id) {
+      setOriginalData({});
+      if (draft && !draft.packageId) {
+        restoreDraft(draft);
+      } else {
+        // Sugestão sequencial inteligente para novos pacotes base
+        packagesService
+          .getNextReference()
+          .then((nextRef) => {
+            setReference(nextRef);
+          })
+          .catch((err) => {
+            console.error('Erro ao sugerir referência de pacote:', err);
+            setReference(`PK-${new Date().getFullYear()}-001`);
+          });
+      }
+
+      applyNavigationState(draft && !draft.packageId ? draft.baseCurrency : 'EUR');
       return;
     }
 
@@ -206,8 +217,10 @@ export const PackageFormPage: React.FC = () => {
         setBaseCurrency(pkg.base_currency);
 
         const rawData = pkg.data || {};
+        setOriginalData(rawData);
         setSupplier(rawData.supplier || '');
         setAdditionalInfo(rawData.additionalInfo || '');
+        setPaymentConditions(typeof rawData.paymentConditions === 'string' ? rawData.paymentConditions : '');
 
         if (rawData.dates) {
           setStartDate(rawData.dates.startDate || '');
@@ -242,28 +255,16 @@ export const PackageFormPage: React.FC = () => {
           setOrigin(normalized.origin || rawData.origin || '');
           setDestination(normalized.destination || rawData.destination || '');
           setServices(normalized.services || []);
-
-          // Preserva campos legados que possam existir
-          setLegacyExtraData({
-            localTaxNotes: normalized.localTaxNotes,
-            paymentConditions: normalized.paymentConditions,
-            transferService: normalized.transferService,
-            extraServicesNotes: normalized.extraServicesNotes,
-            customNotes: normalized.customNotes,
-          });
         } else {
           // Pacote já na nova estrutura
           setOrigin(rawData.origin || '');
           setDestination(rawData.destination || '');
           setServices(rawData.services || []);
-          setLegacyExtraData({
-            localTaxNotes: rawData.localTaxNotes,
-            paymentConditions: rawData.paymentConditions,
-            transferService: rawData.transferService,
-            extraServicesNotes: rawData.extraServicesNotes,
-            customNotes: rawData.customNotes,
-          });
         }
+        if (draft?.packageId === id) {
+          restoreDraft(draft, typeof rawData.paymentConditions === 'string' ? rawData.paymentConditions : '', rawData.financials?.exchangeRateUsed ?? null);
+        }
+        applyNavigationState(draft?.packageId === id ? draft.baseCurrency : pkg.base_currency);
       } catch (err: any) {
         setFeedback({
           type: 'error',
@@ -281,12 +282,15 @@ export const PackageFormPage: React.FC = () => {
   const handleAddNewServiceFromEditor = useCallback(
     (serviceType: FavoriteServiceType = 'hotel', currentQuery: string = '') => {
       savePackageDraft({
+        packageId: id,
         reference,
         name,
         status,
         baseCurrency,
         supplier,
         additionalInfo,
+        paymentConditions,
+        exchangeRate,
         startDate,
         endDate,
         durationDays,
@@ -314,6 +318,8 @@ export const PackageFormPage: React.FC = () => {
       baseCurrency,
       supplier,
       additionalInfo,
+      paymentConditions,
+      exchangeRate,
       startDate,
       endDate,
       durationDays,
@@ -486,36 +492,34 @@ export const PackageFormPage: React.FC = () => {
         passengers: {
           adults: Number(adults) || 2,
           children: Number(children) || 0,
-          infants: 0,
+          infants: originalData.passengers?.infants ?? 0,
         },
       });
 
       // Estrutura final do PackageData (Fase 2: Nova Estrutura Unificada de Serviços)
-      // Não cria estruturas operacionais legadas (outboundTransport, inboundTransport, lodging)
+      // Campos não editados são conservados; services[] continua sendo a estrutura operacional atual.
       const packageData: PackageData = {
+        ...originalData,
         origin: origin.trim() || undefined,
         destination: destination.trim(),
         services,
         dates: {
+          ...originalData.dates,
           startDate,
           endDate,
           durationDays: Number(durationDays) || undefined,
           durationNights: Number(durationNights) ?? undefined,
         },
         passengers: {
+          ...originalData.passengers,
           adults: Number(adults) || 2,
           children: Number(children) || 0,
-          infants: 0,
+          infants: originalData.passengers?.infants ?? 0,
         },
-        financials: calculatedFinancials,
+        financials: { ...originalData.financials, ...calculatedFinancials },
         supplier: supplier.trim() || undefined,
         additionalInfo: additionalInfo.trim() || undefined,
-        // Preserva rigorosamente campos legados sem descartar nada
-        localTaxNotes: legacyExtraData.localTaxNotes as string | undefined,
-        paymentConditions: legacyExtraData.paymentConditions as string | undefined,
-        customNotes: legacyExtraData.customNotes as string | undefined,
-        transferService: legacyExtraData.transferService as string | undefined,
-        extraServicesNotes: legacyExtraData.extraServicesNotes as string | undefined,
+        paymentConditions: paymentConditions || undefined,
       };
 
       if (isEditing && id) {
@@ -867,6 +871,20 @@ export const PackageFormPage: React.FC = () => {
             defaultDestination={destination}
             onAddNewService={handleAddNewServiceFromEditor}
           />
+
+          <div className="form-group" style={{ marginTop: '1.25rem' }}>
+            <label className="form-label" htmlFor="paymentConditions">
+              Condições de Pagamento
+            </label>
+            <textarea
+              id="paymentConditions"
+              rows={3}
+              className="form-textarea"
+              value={paymentConditions}
+              onChange={(e) => setPaymentConditions(e.target.value)}
+              placeholder="Ex: 30% de entrada e saldo antes da viagem"
+            />
+          </div>
 
           <div className="form-group" style={{ marginTop: '1.25rem' }}>
             <label className="form-label" htmlFor="additionalInfo">

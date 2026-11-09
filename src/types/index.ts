@@ -563,12 +563,15 @@ export type UpdateFavoriteServiceInput = Partial<CreateFavoriteServiceInput>;
  * Preserva o estado completo do formulário durante navegações contextuais.
  */
 export interface PackageDraft {
+  packageId?: string;
   reference: string;
   name: string;
   status: PackageStatus;
   baseCurrency: Currency;
   supplier: string;
   additionalInfo: string;
+  paymentConditions?: string;
+  exchangeRate?: number | null;
   startDate: string;
   endDate: string;
   durationDays: number | '';
