@@ -1,6 +1,6 @@
 # Condições de pagamento no pacote
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: none
 
 ## Objetivo
