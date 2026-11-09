@@ -1,6 +1,6 @@
 # Exportar lâmina em PNG e HTML
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 02
 
 ## Objetivo
