@@ -1,6 +1,6 @@
 # Gerar imagem e subtítulo por IA
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 02
 
 ## Objetivo
