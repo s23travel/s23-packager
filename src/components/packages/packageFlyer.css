@@ -59,3 +59,36 @@
 .package-flyer__footer { text-align: left; font-weight: var(--weight-regular); }
 .package-flyer__footer span { width: 48%; }
 .package-flyer__footer span:last-child { text-align: right; }
+
+.package-flyer-controls {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+}
+.package-flyer-review-image {
+  display: block;
+  width: min(100%, 18rem);
+  max-height: 32rem;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-elevated);
+}
+.package-flyer-review {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  color: var(--text-primary);
+}
+.package-flyer-review input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent-primary);
+}
+.package-flyer-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}

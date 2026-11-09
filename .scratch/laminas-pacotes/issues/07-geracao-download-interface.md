@@ -1,6 +1,6 @@
 # Integrar geração e downloads à prévia
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01, 02, 03, 04
 
 ## Objetivo
