@@ -1,6 +1,6 @@
 # Criar prévia da lâmina no pacote
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: none
 
 ## Objetivo
