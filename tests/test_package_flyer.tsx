@@ -31,6 +31,10 @@ assert.match(html, /Valor por pessoa/);
 assert.match(html, /por pessoa em quarto duplo/);
 assert.match(html, /30% de entrada e saldo antes da viagem/);
 assert.equal(result.model?.paymentConditions, '30% de entrada e saldo antes da viagem');
+const flexiblePayment = createPackageFlyer({ ...pkg, data: {
+  ...pkg.data, paymentConditions: 'Entrada de R$ 500,00 e restante em 6 parcelas sem juros.',
+} });
+assert.equal(flexiblePayment.model?.paymentConditions, 'Entrada de R$ 500,00 e restante em 6 parcelas sem juros.');
 assert.match(html, /café da manhã/i);
 assert.doesNotMatch(html, /fornecedor secreto|Hotel interno|996/);
 console.log('Prévia comercial fictícia: OK');

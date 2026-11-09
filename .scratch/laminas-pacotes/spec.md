@@ -50,12 +50,12 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 34. Como operadora, quero que os itens e o subtítulo fiquem em uma caixa semitransparente para melhorar a leitura sobre a foto.
 35. Como operadora, quero que os elementos importantes respeitem as margens de segurança da referência para não serem cobertos pela interface dos Stories.
 36. Como operadora, quero ser avisada quando faltar um dado necessário para corrigir o pacote antes de divulgar.
-37. Como operadora, quero ser informada de falhas na IA, no salvamento ou no download para saber o que aconteceu.
+37. Como operadora, quero ser informada de falhas na IA ou no download para saber o que aconteceu.
 38. Como operadora, quero que nomes longos e listas variáveis não cortem textos ou invadam margens para manter a peça legível.
 39. Como responsável pelo projeto, quero adiar armazenamento e anexos até haver uma fronteira segura de geração/validação no servidor para impedir que arquivos adulterados substituam uma lâmina válida.
 40. Como responsável pelo projeto, quero evitar testes que alterem dados de clientes ou finanças em produção para preservar a operação.
 41. Como responsável pelo projeto, quero poder usar a IA disponível no sistema durante o desenvolvimento para validar a geração real quando necessário.
-42. Como operadora, quero manter apenas a última lâmina salva para que uma nova lâmina substitua a anterior sem acumular histórico.
+42. Futuramente, como operadora, quero manter apenas a última lâmina salva para que uma nova lâmina substitua a anterior sem acumular histórico.
 
 ## Decisões de implementação
 

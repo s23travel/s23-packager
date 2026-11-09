@@ -257,6 +257,8 @@
   --flyer-text-route: 6cqw;
   --flyer-text-price: 8cqw;
   --flyer-line-height: 1.2;
+  --flyer-safe-top: 13.03%;
+  --flyer-safe-horizontal: 6%;
   --font-editorial: "Instrument Serif", ui-serif, Georgia, "Times New Roman",
     serif;
 

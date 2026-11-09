@@ -10,7 +10,7 @@
 }
 .package-flyer__safe {
   position: absolute;
-  inset: 13.03% 6%;
+  inset: var(--flyer-safe-top) var(--flyer-safe-horizontal);
   display: flex;
   flex-direction: column;
   gap: var(--flyer-gap);

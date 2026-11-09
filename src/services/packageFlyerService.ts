@@ -41,6 +41,16 @@ const mealPlans: Record<string, string> = {
   RO: 'apenas alojamento', BB: 'café da manhã', HB: 'meia-pensão', FB: 'pensão completa', AI: 'tudo incluído',
 };
 
+function safePaymentConditions(value: string): string | undefined {
+  const payment = value.trim().replace(/\s+/g, ' ');
+  const hasPaymentTerm = /\b(?:à vista|a vista|entrada|saldo|restante|parcelas?|vezes|juros|cart[aã]o|pix|boleto|transfer[êe]ncia)\b/iu.test(payment);
+  const containsInternalTerm = /\b(?:custos?|lucros?|margem|comiss[aã]o|fornecedor(?:es)?|supplier|confidencial|sigiloso|intern[oa]s?|n[aã]o divulgar|nao divulgar)\b/iu.test(payment);
+  if (payment.length > 100 || !/^[\p{L}\p{M}\d\s.,%€$()+/:;\-]+$/u.test(payment) || !hasPaymentTerm || containsInternalTerm) {
+    return undefined;
+  }
+  return payment;
+}
+
 /** Não transforma texto operacional livre em afirmação pública. */
 export function createPackageFlyer(pkg: Package): PackageFlyerResult {
   const data = pkg.data || {};
@@ -131,10 +141,8 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
 
   let paymentConditions: string | undefined;
   if (typeof data.paymentConditions === 'string' && data.paymentConditions.trim()) {
-    const payment = data.paymentConditions.trim().replace(/\s+/g, ' ');
-    const safePayment = /^(?:à vista|a vista|\d{1,2}x(?: sem juros)?|(?:entrada de (?:100|[1-9]\d?)%|(?:100|[1-9]\d?)% de entrada) e saldo antes da viagem)\.?$/iu;
-    if (safePayment.test(payment)) paymentConditions = payment;
-    else warnings.push('Condições de pagamento omitidas: revise o texto comercial antes de divulgar.');
+    paymentConditions = safePaymentConditions(data.paymentConditions);
+    if (!paymentConditions) warnings.push('Condições de pagamento omitidas: revise o texto comercial antes de divulgar.');
   } else warnings.push('Condições de pagamento não informadas.');
 
   if (errors.length || !validDate(start) || !validDate(end) || typeof amount !== 'number') return { model: null, errors, warnings };
