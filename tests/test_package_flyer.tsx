@@ -35,6 +35,8 @@ const flexiblePayment = createPackageFlyer({ ...pkg, data: {
   ...pkg.data, paymentConditions: 'Entrada de R$ 500,00 e restante em 6 parcelas sem juros.',
 } });
 assert.equal(flexiblePayment.model?.paymentConditions, 'Entrada de R$ 500,00 e restante em 6 parcelas sem juros.');
+const cashPayment = createPackageFlyer({ ...pkg, data: { ...pkg.data, paymentConditions: 'À vista' } });
+assert.equal(cashPayment.model?.paymentConditions, 'À vista', 'condição à vista com acento deve ser reconhecida');
 assert.match(html, /café da manhã/i);
 assert.doesNotMatch(html, /fornecedor secreto|Hotel interno|996/);
 console.log('Prévia comercial fictícia: OK');
@@ -71,6 +73,10 @@ const notIncluded = createPackageFlyer({ ...pkg, data: { ...pkg.data,
 assert.ok(notIncluded.model);
 assert.equal(notIncluded.model.items.length, 0);
 assert.ok(notIncluded.warnings.length);
+const taxes = createPackageFlyer({ ...pkg, data: { ...pkg.data,
+  services: [{ id: 'tax', type: 'taxes', description: 'Taxa de embarque', currency: 'BRL', amount: 0, quantity: 1 }],
+} });
+assert.ok(taxes.warnings.some(warning => /taxa.*omitida|confirme.*inclus/i.test(warning)), 'taxa sem inclusão confirmada deve gerar aviso');
 console.log('Inconsistências e itens não inclusos: OK');
 
 const unsafe = createPackageFlyer({ ...pkg, data: { ...pkg.data,

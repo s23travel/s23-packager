@@ -43,7 +43,7 @@ const mealPlans: Record<string, string> = {
 
 function safePaymentConditions(value: string): string | undefined {
   const payment = value.trim().replace(/\s+/g, ' ');
-  const hasPaymentTerm = /\b(?:à vista|a vista|entrada|saldo|restante|parcelas?|vezes|juros|cart[aã]o|pix|boleto|transfer[êe]ncia)\b/iu.test(payment);
+  const hasPaymentTerm = /(?:^|[^\p{L}\p{N}])(?:à vista|a vista|\d{1,2}x|entrada|saldo|restante|parcelas?|vezes|juros|cart[aã]o|pix|boleto|transfer[êe]ncia)(?=$|[^\p{L}\p{N}])/iu.test(payment);
   const containsInternalTerm = /\b(?:custos?|lucros?|margem|comiss[aã]o|fornecedor(?:es)?|supplier|confidencial|sigiloso|intern[oa]s?|n[aã]o divulgar|nao divulgar)\b/iu.test(payment);
   if (payment.length > 100 || !/^[\p{L}\p{M}\d\s.,%€$()+/:;\-]+$/u.test(payment) || !hasPaymentTerm || containsInternalTerm) {
     return undefined;
@@ -124,6 +124,8 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
       add('accommodation', meal ? `Hospedagem com ${meal}` : 'Hospedagem');
     } else if (isLegacy) {
       warnings.push('Serviço financeiro omitido: confirme o serviço incluído.');
+    } else if (service.type === 'taxes') {
+      warnings.push('Taxa omitida da lâmina: confirme se está incluída no pacote.');
     } else if (service.type === 'transfer') add('transfer', 'Transfer');
     else if (service.type === 'insurance') add('insurance', 'Seguro-viagem');
     else if (service.type === 'additional' || service.type === 'other') {
