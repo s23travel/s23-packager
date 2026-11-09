@@ -29,7 +29,7 @@ const pkg: Package = {
     origin: 'Porto', destination: 'Açores', dates: { startDate: '2027-04-12', endDate: '2027-04-19' },
     passengers: { adults: 2, children: 0, infants: 0 },
     financials: { currency: 'BRL', components: [], totalCost: 748, salePrice: 1496, pricePerPerson: 748, profit: 748, profitPercent: 50, taxesAndFeesTotal: 0 },
-    paymentConditions: 'Entrada e saldo antes da viagem',
+    paymentConditions: '30% de entrada e saldo antes da viagem',
     services: [{ id: 'air', type: 'outbound_transport', description: 'Voo fictício', currency: 'BRL', amount: 0, quantity: 1 }],
   },
 };
@@ -77,6 +77,7 @@ async function run() {
     assert(window.flyerFlowTest.generations.length === 0, 'A IA foi chamada sem ação explícita');
     assert(container.textContent?.includes('sugestões da IA'), 'A tela não identifica conteúdo gerado como sugestão');
     assert(container.textContent?.includes('não ficam anexados ao pacote'), 'A tela não esclarece que a lâmina não é salva no pacote');
+    assert(container.textContent?.includes('cobrança por tentativa'), 'A tela não informa que a IA pode ter custo');
 
     const htmlBeforeReview = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Baixar HTML'));
     const pngBeforeReview = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Baixar PNG'));
@@ -102,6 +103,7 @@ async function run() {
     assert(htmlModel.subtitle === 'Descubra lagoas e paisagens vulcânicas' && pngModel.subtitle === htmlModel.subtitle, 'Subtítulo revisado não foi exportado nos dois formatos');
     assert(htmlModel.price.amount === 748 && htmlModel.price.formatted.includes('748'), 'O preço comercial foi alterado pela integração de IA');
     assert(htmlModel.origin === 'Porto' && htmlModel.destination === 'Açores' && htmlModel.period.includes('12'), 'Dados comerciais foram alterados pela IA');
+    assert(htmlModel.paymentConditions === '30% de entrada e saldo antes da viagem', 'Condições comerciais cadastradas foram omitidas ou alteradas');
     assert(htmlModel.imageUrl.startsWith('data:image/png;base64,'), 'A imagem revisada não foi aplicada ao modelo exportado');
     assert(window.flyerFlowTest.downloads.join(',') === 'lamina-acores.html,lamina-acores.png', 'Nomes ou acionamento dos downloads incorretos');
 

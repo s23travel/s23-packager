@@ -12,6 +12,7 @@ const pkg: Package = {
     origin: 'Porto', destination: 'Açores',
     dates: { startDate: '2027-04-12', endDate: '2027-04-19' },
     passengers: { adults: 2, children: 0, infants: 0 },
+    paymentConditions: '30% de entrada e saldo antes da viagem',
     financials: { currency: 'BRL', components: [], totalCost: 500, salePrice: 1496,
       pricePerPerson: 748, profit: 996, profitPercent: 66.58, taxesAndFeesTotal: 0 },
     services: [{ id: '1', type: 'accommodation', description: 'Hotel interno', currency: 'BRL', amount: 500, quantity: 1, mealPlan: 'Café da manhã (BB)', notes: 'fornecedor secreto' }],
@@ -28,6 +29,8 @@ assert.match(html, /Açores/);
 assert.match(html, /R\$ 748,00/);
 assert.match(html, /Valor por pessoa/);
 assert.match(html, /por pessoa em quarto duplo/);
+assert.match(html, /30% de entrada e saldo antes da viagem/);
+assert.equal(result.model?.paymentConditions, '30% de entrada e saldo antes da viagem');
 assert.match(html, /café da manhã/i);
 assert.doesNotMatch(html, /fornecedor secreto|Hotel interno|996/);
 console.log('Prévia comercial fictícia: OK');
@@ -78,6 +81,7 @@ assert.ok(unsafe.model);
 const unsafeHtml = renderToStaticMarkup(<PackageFlyerTemplate model={unsafe.model!} />).replace(/<img[^>]+>/g, '');
 assert.match(unsafeHtml, /Transporte/);
 assert.doesNotMatch(unsafeHtml, /Aéreo|fornecedor secreto|Hotel secreto|café da manhã|123/);
+assert.equal(unsafe.model?.paymentConditions, undefined, 'condições livres não reconhecidas não devem ser anunciadas');
 assert.ok(unsafe.warnings.length >= 3);
 
 const badCurrency = createPackageFlyer({ ...pkg, data: { ...pkg.data,

@@ -166,6 +166,7 @@ export function PackageFlyerCreator({ package: pkg }: { package: Package }) {
     {flyer && <section id="package-flyer-preview" className="card" aria-labelledby="package-flyer-title" style={{ marginTop: '1.25rem' }}>
       <h2 id="package-flyer-title" className="card-title">Prévia da lâmina</h2>
       <p>A imagem e o subtítulo são sugestões da IA. Revise os dados comerciais e confirme a imagem e o texto antes de baixar.</p>
+      <p>A geração pode gerar cobrança por tentativa, inclusive quando falha. Consulte as tarifas atuais do modelo Gemini antes de usar.</p>
       <p role="status">Nesta versão, os arquivos baixados não ficam anexados ao pacote. Baixe-os agora; para obter outra cópia, gere novamente.</p>
       {flyer.errors.length > 0 && <div role="alert"><p>Não foi possível montar a prévia:</p><ul>{flyer.errors.map(error => <li key={error}>{error}</li>)}</ul></div>}
       {flyer.warnings.length > 0 && <div role="status"><p>Atenção:</p><ul>{Array.from(new Set(flyer.warnings)).map(warning => <li key={warning}>{warning}</li>)}</ul></div>}
@@ -204,7 +205,7 @@ export function PackageFlyerCreator({ package: pkg }: { package: Package }) {
         <div aria-label="Dados da lâmina em texto">
           <p><strong>Rota:</strong> {flyer.model.origin} para {flyer.model.destination}</p>
           <p><strong>Período:</strong> {flyer.model.period}</p>
-          <p><strong>Valor total:</strong> {flyer.model.price.formatted} por pessoa em quarto duplo</p>
+          <p><strong>Valor por pessoa:</strong> {flyer.model.price.formatted} por pessoa em quarto duplo</p>
           {flyer.model.paymentConditions && <p><strong>Pagamento:</strong> {flyer.model.paymentConditions}</p>}
           {flyer.model.items.length > 0 ? <><p><strong>Serviços apresentados:</strong></p><ul>{flyer.model.items.map((item, i) => <li key={i}>{item.label}</li>)}</ul></> : <p>Nenhum serviço apresentado.</p>}
         </div>

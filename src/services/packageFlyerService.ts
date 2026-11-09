@@ -131,8 +131,9 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
 
   let paymentConditions: string | undefined;
   if (typeof data.paymentConditions === 'string' && data.paymentConditions.trim()) {
-    const payment = data.paymentConditions.trim();
-    if (/^(à vista|a vista|\d{1,2}x(?:\s+sem juros)?)$/i.test(payment)) paymentConditions = payment;
+    const payment = data.paymentConditions.trim().replace(/\s+/g, ' ');
+    const safePayment = /^(?:à vista|a vista|\d{1,2}x(?: sem juros)?|(?:entrada de (?:100|[1-9]\d?)%|(?:100|[1-9]\d?)% de entrada) e saldo antes da viagem)\.?$/iu;
+    if (safePayment.test(payment)) paymentConditions = payment;
     else warnings.push('Condições de pagamento omitidas: revise o texto comercial antes de divulgar.');
   } else warnings.push('Condições de pagamento não informadas.');
 

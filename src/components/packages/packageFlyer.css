@@ -6,7 +6,7 @@
   background: var(--flyer-placeholder) center / cover;
   color: var(--color-text-inverse);
   font-family: var(--travel-flyer-font);
-  line-height: 1.2;
+  line-height: var(--flyer-line-height);
 }
 .package-flyer__safe {
   position: absolute;
