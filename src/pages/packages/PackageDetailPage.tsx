@@ -9,6 +9,8 @@ import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { AIContentGenerator } from '../../components/ai/AIContentGenerator';
 import { ServicesDetailView } from '../../components/common/ServicesDetailView';
 import { isLegacyPackageData, normalizeLegacyToNewStructure, serviceItemToCostComponent } from '../../services/legacyAdapterService';
+import { PackageFlyerCreator } from '../../components/packages/PackageFlyerCreator';
+import '../../components/packages/packageFlyer.css';
 
 export const PackageDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -168,6 +170,8 @@ export const PackageDetailPage: React.FC = () => {
           onDismiss={() => setFeedback(null)}
         />
       )}
+
+      <PackageFlyerCreator package={pkg} />
 
       {/* Barra de Status Rápida */}
       <div className="card quick-status-bar">
