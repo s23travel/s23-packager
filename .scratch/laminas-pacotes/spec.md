@@ -8,9 +8,9 @@ A pessoa responsável pela operação precisa divulgar pacotes de viagem no What
 
 ## Solução
 
-No detalhe de um pacote já criado, oferecer a ação **Criar lâmina**. O Packager apresenta uma prévia baseada no modelo visual escolhido, usando informações comerciais do próprio pacote, uma imagem do destino criada por IA e um subtítulo comercial sugerido por IA. A pessoa revisa a peça e escolhe baixar em PNG ou HTML. Deve ser possível manter a lâmina vinculada ao pacote para downloads posteriores.
+No detalhe de um pacote já criado, oferecer a ação **Criar lâmina**. O Packager apresenta uma prévia baseada no modelo visual escolhido, usando informações comerciais do próprio pacote, uma imagem do destino criada por IA e um subtítulo comercial sugerido por IA. A pessoa revisa a peça e escolhe baixar em PNG ou HTML.
 
-A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de referência, com valores e serviços fictícios, está em [referencia-visual.png](referencia-visual.png). A peça é independente da geração de conteúdo do website.
+A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de referência, com valores e serviços fictícios, está em [referencia-visual.png](referencia-visual.png). A peça é independente da geração de conteúdo do website. **Nesta primeira entrega, os arquivos não serão guardados como anexos do pacote**: o salvamento foi adiado até existir um ambiente e um caminho de renderização/validação seguros.
 
 ## Histórias de usuário
 
@@ -23,9 +23,9 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 7. Como operadora, quero baixar um PNG em 1080 × 1920 para enviar por WhatsApp ou publicar em redes sociais.
 8. Como operadora, quero escolher o download em HTML para ter outra forma de reutilizar a lâmina.
 9. Como operadora, quero que o HTML exportado apresente a mesma peça com seus recursos necessários para poder abri-lo fora do Packager.
-10. Como operadora, quero manter a lâmina junto ao pacote para baixá-la novamente mais tarde.
-11. Como operadora, quero acessar a lâmina salva pelo pacote correspondente para não confundi-la com outra viagem.
-12. Como operadora, quero baixar novamente sem gerar outra imagem de IA para evitar chamadas e custos desnecessários.
+10. Como operadora, quero baixar a lâmina revisada em HTML ou PNG para compartilhar o pacote fora do Packager.
+11. Como operadora, quero que a prévia mostre o mesmo conteúdo comercial exportado para reduzir erros de divulgação.
+12. Como operadora, quero entender que os downloads desta primeira entrega não ficam anexados ao pacote para não presumir que posso recuperá-los depois.
 13. Como operadora, quero ver a origem da viagem na lâmina para mostrar de onde parte a oferta.
 14. Como operadora, quero ver o destino principal do pacote para identificar rapidamente a viagem.
 15. Como operadora, quero que o preço seja o valor comercial por pessoa do pacote para não divulgar custos ou lucros internos.
@@ -52,7 +52,7 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 36. Como operadora, quero ser avisada quando faltar um dado necessário para corrigir o pacote antes de divulgar.
 37. Como operadora, quero ser informada de falhas na IA, no salvamento ou no download para saber o que aconteceu.
 38. Como operadora, quero que nomes longos e listas variáveis não cortem textos ou invadam margens para manter a peça legível.
-39. Como usuária autenticada, quero que a lâmina e os arquivos vinculados ao pacote sejam protegidos contra acesso não autorizado.
+39. Como responsável pelo projeto, quero adiar armazenamento e anexos até haver uma fronteira segura de geração/validação no servidor para impedir que arquivos adulterados substituam uma lâmina válida.
 40. Como responsável pelo projeto, quero evitar testes que alterem dados de clientes ou finanças em produção para preservar a operação.
 41. Como responsável pelo projeto, quero poder usar a IA disponível no sistema durante o desenvolvimento para validar a geração real quando necessário.
 42. Como operadora, quero manter apenas a última lâmina salva para que uma nova lâmina substitua a anterior sem acumular histórico.
@@ -70,7 +70,7 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 - A imagem e o subtítulo são gerados com IA. A chamada deve usar o backend existente como padrão de segurança, validar usuário autenticado e manter a chave fora do navegador. Verificar modelo de imagem, disponibilidade e custo no momento da implementação; a existência da chave de texto não garante acesso ao modelo de imagem.
 - A composição comercial é determinística: a IA não escreve preços, datas ou itens no arquivo final. A prévia serve para revisão antes da exportação.
 - A exportação em PNG e HTML usa os dados revisados e deve preservar fontes, cores, logotipo e imagem. O HTML precisa ser utilizável fora da sessão do aplicativo, sem depender de links autenticados temporários ou chaves.
-- O anexo deve permanecer vinculado ao pacote e ser recuperável por usuários autorizados sem nova geração de IA. O responsável escolheu manter apenas a última lâmina salva: ao salvar outra, a anterior é substituída, sem histórico. A versão salva representa os dados no momento da criação; alterações posteriores no pacote só entram em uma lâmina salva quando uma nova versão for gerada e salva. Uma falha na substituição não deve apagar a última versão válida. Proposta técnica sujeita a desenho: armazenamento privado para arquivos e metadados vinculados ao pacote; revisar permissões de leitura, escrita e exclusão, ciclo de vida e falhas parciais antes de implementar.
+- **Persistência/anexos estão fora da primeira entrega**, por decisão do responsável após revisão de segurança: arquivos enviados pelo browser não podem ser confiados para substituir a última versão. Retomar somente quando houver solução aprovada de renderização/validação confiável e ambiente para validar políticas, armazenamento e concorrência. A preferência futura é manter apenas a última versão e preparar limpeza automática, mas nada disso está autorizado a ser ativado em produção agora.
 - O aplicativo não publica automaticamente no WhatsApp, Instagram ou TikTok; o envio e a publicação são realizados pela operadora após o download.
 - Permanecem a definir no desenho técnico: exclusão explícita de anexos e a forma exata de revisão dos textos e da imagem. Não tratar as propostas como decisões já aprovadas.
 
@@ -91,8 +91,8 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 3. Construir a prévia 9:16 conforme a referência e validar visualmente com dados fictícios.
 4. Integrar geração de imagem e subtítulo por IA no backend autenticado e tratar falhas e custos, sem confiar à IA os dados comerciais.
 5. Implementar e validar os downloads PNG e HTML, incluindo fontes e imagem necessárias para uso fora da sessão.
-6. Projetar e implementar a associação e recuperação das lâminas com proteção de acesso, tratando falhas e decisões de ciclo de vida ainda pendentes.
-7. Executar verificações compatíveis com o ambiente disponível; registrar o que ficou sem validação real e obter autorização específica antes de qualquer escrita ou publicação em produção.
+6. Integrar, testar e revisar a experiência de geração, revisão e downloads, sem alegar que os arquivos estão anexados ao pacote.
+7. Registrar o anexo como trabalho futuro bloqueado até haver validação segura no servidor e ambiente apropriado; solicitar autorização separada antes de qualquer escrita ou publicação em produção.
 
 ## Fora de escopo
 
@@ -100,6 +100,7 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 - Publicação automática em redes sociais ou envio automático pelo WhatsApp.
 - Editor gráfico genérico, importação de templates externos ou upload de fotografias reais.
 - Formatos ou templates adicionais sem requisitos acordados.
+- Anexar, persistir, recuperar ou limpar arquivos da lâmina no Supabase nesta primeira entrega.
 - Alterações das regras financeiras, implementação de novas regras de autenticação ou refatorações não relacionadas.
 - Implantação, alteração de serviços externos, migração remota, commit ou push sem solicitação explícita.
 

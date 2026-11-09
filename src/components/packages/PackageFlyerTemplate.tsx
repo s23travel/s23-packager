@@ -10,7 +10,7 @@ export function PackageFlyerTemplate({ model }: { model: PackageFlyerModel }) {
           <span>Sua viagem, nossa missão</span><span>www.s23.travel</span>
         </header>
         <div className="package-flyer__route">{model.origin} <FlyerIcon kind="air" /> {model.destination}</div>
-        <div className="package-flyer__price"><span>Valor total</span><strong>{model.price.formatted}</strong><span>por pessoa em quarto duplo</span>{model.paymentConditions && <span>{model.paymentConditions}</span>}</div>
+        <div className="package-flyer__price"><span>Valor por pessoa</span><strong>{model.price.formatted}</strong><span>por pessoa em quarto duplo</span>{model.paymentConditions && <span>{model.paymentConditions}</span>}</div>
         <div className="package-flyer__period">{model.period}</div>
         <section className="package-flyer__items" aria-label="Serviços apresentados">
           <ul>{model.items.map((item, index) => <li key={`${item.kind}-${index}`}><FlyerIcon kind={item.kind} />{item.label}</li>)}</ul>

@@ -76,6 +76,7 @@ async function run() {
     const generate = await click('Criar lâmina');
     assert(window.flyerFlowTest.generations.length === 0, 'A IA foi chamada sem ação explícita');
     assert(container.textContent?.includes('sugestões da IA'), 'A tela não identifica conteúdo gerado como sugestão');
+    assert(container.textContent?.includes('não ficam anexados ao pacote'), 'A tela não esclarece que a lâmina não é salva no pacote');
 
     const htmlBeforeReview = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Baixar HTML'));
     const pngBeforeReview = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Baixar PNG'));
@@ -103,6 +104,15 @@ async function run() {
     assert(htmlModel.origin === 'Porto' && htmlModel.destination === 'Açores' && htmlModel.period.includes('12'), 'Dados comerciais foram alterados pela IA');
     assert(htmlModel.imageUrl.startsWith('data:image/png;base64,'), 'A imagem revisada não foi aplicada ao modelo exportado');
     assert(window.flyerFlowTest.downloads.join(',') === 'lamina-acores.html,lamina-acores.png', 'Nomes ou acionamento dos downloads incorretos');
+
+    const changedPricePackage = { ...pkg, data: {
+      ...pkg.data,
+      financials: { ...pkg.data.financials!, salePrice: 1998, pricePerPerson: 999 },
+    } };
+    await act(async () => { root.render(<PackageFlyerCreator package={changedPricePackage} />); });
+    assert(!container.querySelector('img[alt="Imagem gerada para Açores"]'), 'Alterar dados comerciais manteve a revisão de uma lâmina antiga');
+    const changedHtml = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Baixar HTML'));
+    assert((changedHtml as HTMLButtonElement | undefined)?.disabled, 'Alterar preço manteve um download aprovado anteriormente');
 
     await act(async () => { root.render(<PackageFlyerCreator package={{ ...pkg, id: 'other', data: { ...pkg.data, destination: 'Madeira' } }} />); });
     assert(!container.textContent?.includes('Descubra lagoas'), 'Estado da sugestão vazou entre pacotes');

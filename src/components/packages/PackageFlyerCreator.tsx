@@ -8,6 +8,7 @@ import { PackageFlyerTemplate } from './PackageFlyerTemplate';
 
 interface FlyerSuggestionState {
   packageId: string;
+  modelKey: string;
   imageUrl: string;
   subtitle: string;
 }
@@ -34,6 +35,8 @@ export function PackageFlyerCreator({ package: pkg }: { package: Package }) {
   const [subtitleError, setSubtitleError] = useState<string | null>(null);
   const requestId = useRef(0);
   const downloadUrls = useRef(new Set<string>());
+  const flyer = open ? createPackageFlyer(pkg) : null;
+  const modelKey = flyer?.model ? JSON.stringify(flyer.model) : '';
 
   useEffect(() => {
     requestId.current += 1;
@@ -46,7 +49,7 @@ export function PackageFlyerCreator({ package: pkg }: { package: Package }) {
     setDownloading(null);
     setError(null);
     setSubtitleError(null);
-  }, [pkg.id]);
+  }, [pkg.id, modelKey]);
 
   useEffect(() => () => {
     requestId.current += 1;
@@ -54,8 +57,7 @@ export function PackageFlyerCreator({ package: pkg }: { package: Package }) {
     downloadUrls.current.clear();
   }, []);
 
-  const flyer = open ? createPackageFlyer(pkg) : null;
-  const activeSuggestion = suggestion?.packageId === pkg.id ? suggestion : null;
+  const activeSuggestion = suggestion?.packageId === pkg.id && suggestion.modelKey === modelKey ? suggestion : null;
   const previewModel = flyer?.model && activeSuggestion
     ? { ...flyer.model, imageUrl: activeSuggestion.imageUrl, subtitle: subtitleDraft.trim() }
     : flyer?.model;
@@ -82,6 +84,7 @@ export function PackageFlyerCreator({ package: pkg }: { package: Package }) {
     if (!flyer?.model || generating) return;
     const currentRequest = ++requestId.current;
     const currentPackageId = pkg.id;
+    const currentModelKey = modelKey;
     setGenerating(true);
     setError(null);
     setSubtitleError(null);
@@ -98,7 +101,7 @@ export function PackageFlyerCreator({ package: pkg }: { package: Package }) {
         return;
       }
       const imageUrl = `data:${result.data.image.mimeType};base64,${result.data.image.data}`;
-      setSuggestion({ packageId: currentPackageId, imageUrl, subtitle: result.data.subtitle });
+      setSuggestion({ packageId: currentPackageId, modelKey: currentModelKey, imageUrl, subtitle: result.data.subtitle });
       setSubtitleDraft(result.data.subtitle);
     } catch (generationError) {
       if (requestId.current === currentRequest) {
@@ -163,6 +166,7 @@ export function PackageFlyerCreator({ package: pkg }: { package: Package }) {
     {flyer && <section id="package-flyer-preview" className="card" aria-labelledby="package-flyer-title" style={{ marginTop: '1.25rem' }}>
       <h2 id="package-flyer-title" className="card-title">Prévia da lâmina</h2>
       <p>A imagem e o subtítulo são sugestões da IA. Revise os dados comerciais e confirme a imagem e o texto antes de baixar.</p>
+      <p role="status">Nesta versão, os arquivos baixados não ficam anexados ao pacote. Baixe-os agora; para obter outra cópia, gere novamente.</p>
       {flyer.errors.length > 0 && <div role="alert"><p>Não foi possível montar a prévia:</p><ul>{flyer.errors.map(error => <li key={error}>{error}</li>)}</ul></div>}
       {flyer.warnings.length > 0 && <div role="status"><p>Atenção:</p><ul>{Array.from(new Set(flyer.warnings)).map(warning => <li key={warning}>{warning}</li>)}</ul></div>}
       {error && <div role="alert">{error}</div>}

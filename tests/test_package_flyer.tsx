@@ -26,6 +26,7 @@ const html = renderToStaticMarkup(<PackageFlyerTemplate model={result.model!} />
 assert.match(html, /Porto/);
 assert.match(html, /Açores/);
 assert.match(html, /R\$ 748,00/);
+assert.match(html, /Valor por pessoa/);
 assert.match(html, /por pessoa em quarto duplo/);
 assert.match(html, /café da manhã/i);
 assert.doesNotMatch(html, /fornecedor secreto|Hotel interno|996/);
