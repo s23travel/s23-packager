@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Espaçamento — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<style>
+  .space-row { display: grid; grid-template-columns: 150px 1fr 90px; gap: var(--space-sm); align-items: center; padding: 10px 0; border-bottom: 1px solid var(--s23-slate-200); }
+  .space-row:last-child { border-bottom: 0; }
+  .space-bar { height: 16px; background: var(--color-accent); border-radius: 3px; }
+  .space-meta { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: var(--color-text-muted); }
+  .grid-demo { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--gutter); background: var(--color-surface-tint); padding: var(--space-sm); border-radius: var(--radius-md); }
+  .grid-demo span { height: 72px; background: rgba(16,29,66,.12); border-radius: 4px; }
+  .grid-demo span:nth-child(-n+4) { background: var(--color-primary); }
+  @media (max-width: 640px) { .space-row { grid-template-columns: 110px 1fr 64px; } }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html">Cores</a>
+      <a href="./typography.html">Tipografia</a>
+      <a href="./spacing.html" aria-current="page">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Fundamento 03</p>
+    <h1>Espaçamento e grid</h1>
+    <p>Ritmo de 8 pontos com subpasso de 4. A grade de 12 colunas organiza o catálogo de destinos em três cards no desktop, dois no tablet e um no celular.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="escala">
+    <h2 id="escala">Escala</h2>
+    <div class="space-row"><div class="space-meta"><b>--space-3xs</b></div><div class="space-bar" style="width:4px"></div><div class="space-meta">4px</div></div>
+    <div class="space-row"><div class="space-meta"><b>--space-2xs</b></div><div class="space-bar" style="width:8px"></div><div class="space-meta">8px</div></div>
+    <div class="space-row"><div class="space-meta"><b>--space-xs</b></div><div class="space-bar" style="width:12px"></div><div class="space-meta">12px</div></div>
+    <div class="space-row"><div class="space-meta"><b>--space-sm</b></div><div class="space-bar" style="width:16px"></div><div class="space-meta">16px</div></div>
+    <div class="space-row"><div class="space-meta"><b>--space-md</b></div><div class="space-bar" style="width:24px"></div><div class="space-meta">24px</div></div>
+    <div class="space-row"><div class="space-meta"><b>--space-lg</b></div><div class="space-bar" style="width:32px"></div><div class="space-meta">32px</div></div>
+    <div class="space-row"><div class="space-meta"><b>--space-xl</b></div><div class="space-bar" style="width:40px"></div><div class="space-meta">40px</div></div>
+    <div class="space-row"><div class="space-meta"><b>--space-2xl</b></div><div class="space-bar" style="width:64px"></div><div class="space-meta">64px</div></div>
+    <div class="space-row"><div class="space-meta"><b>--space-3xl</b></div><div class="space-bar" style="width:96px"></div><div class="space-meta">96px</div></div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="grade">
+    <h2 id="grade">Grade de 12 colunas</h2>
+    <p>Container de 1240px, gutter de 24px. Os quatro primeiros cards de destino ocupam três colunas cada (4 + 4 + 4 = 12).</p>
+    <div class="grid-demo" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <div class="pv-grid pv-grid--3" style="margin-top:var(--space-md)">
+      <div class="pv-panel"><p class="pv-label">Desktop ≥1200px</p><p style="font-size:var(--text-small);color:var(--color-text-muted)">12 colunas · gutter 24px · margem 48px · container 1240px</p></div>
+      <div class="pv-panel"><p class="pv-label">Tablet 768–1199px</p><p style="font-size:var(--text-small);color:var(--color-text-muted)">8 colunas · gutter 20px · margem 32px · catálogo em 2 colunas</p></div>
+      <div class="pv-panel"><p class="pv-label">Mobile &lt;768px</p><p style="font-size:var(--text-small);color:var(--color-text-muted)">4 colunas · gutter 16px · margem 20px · catálogo em 1 coluna</p></div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="ritmo">
+    <h2 id="ritmo">Ritmo vertical aplicado</h2>
+    <div class="pv-panel" style="padding:0;overflow:hidden">
+      <div style="background:var(--color-inverse-bg);color:#fff;padding:var(--space-2xl) var(--space-md)">
+        <p class="t-label" style="color:var(--color-accent)">Seção de abertura · 64px acima e abaixo</p>
+        <p class="t-h2" style="margin-top:var(--space-sm);color:#fff">Onde você quer ir?</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-lg);padding:var(--space-md)">
+        <div>
+          <p class="pv-label">Card · padding 24px</p>
+          <p style="font-size:var(--text-small);color:var(--color-text-muted)">Mídia 16:10 sangra no topo; corpo respira com 24px de padding e 8px entre título e meta.</p>
+        </div>
+        <div>
+          <p class="pv-label">Grade · gap 32px</p>
+          <p style="font-size:var(--text-small);color:var(--color-text-muted)">Três cards por linha, 32px entre colunas e 32px entre linhas.</p>
+        </div>
+        <div>
+          <p class="pv-label">Seção · 64px</p>
+          <p style="font-size:var(--text-small);color:var(--color-text-muted)">Ritmo entre seções no desktop; 40px no celular.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · grade e ritmo</footer>
+</body>
+</html>

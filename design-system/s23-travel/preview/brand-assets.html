@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marca e acervo — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<style>
+  .logo-tile { display: grid; place-items: center; padding: var(--space-lg); border-radius: var(--radius-lg); min-height: 220px; }
+  .logo-tile img { width: 120px; height: 120px; }
+  .logo-tile--navy { background: var(--color-inverse-bg); }
+  .logo-tile--terra { background: var(--color-accent); }
+  .logo-tile--paper { background: var(--color-surface); border: 1px solid var(--s23-slate-200); }
+  .rule { display: grid; grid-template-columns: 24px 1fr; gap: var(--space-2xs); font-size: var(--text-small); color: var(--color-text-muted); padding: 6px 0; }
+  .rule b { display: contents; }
+  .ok { color: var(--color-success); font-weight: 700; }
+  .no { color: var(--color-error); font-weight: 700; }
+  .asset { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-sm); align-items: center; padding: var(--space-xs) 0; border-bottom: 1px solid var(--s23-slate-200); }
+  .asset:last-child { border-bottom: 0; }
+  .asset img { width: 96px; height: 72px; object-fit: contain; background: var(--color-surface-tint); border-radius: var(--radius-sm); padding: 6px; }
+  .asset b { display: block; font-size: var(--text-small); color: var(--color-text); }
+  .asset span { font-size: 12px; color: var(--color-text-muted); }
+  .shot { border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--s23-slate-200); background: var(--color-surface); }
+  .shot img { width: 100%; height: auto; display: block; }
+  .creative { border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(16,29,66,.1); }
+  .creative img { width: 100%; height: auto; display: block; }
+  .clearspace { position: relative; display: inline-grid; place-items: center; padding: 48px; background: var(--color-surface); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-lg); }
+  .clearspace img { width: 96px; height: 96px; }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html">Cores</a>
+      <a href="./typography.html">Tipografia</a>
+      <a href="./spacing.html">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html">Componentes</a>
+      <a href="./brand-assets.html" aria-current="page">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Marca</p>
+    <h1>Logotipo e acervo</h1>
+    <p>Os três logos são arquivos reais da marca — nenhum foi redesenhado. Use o circular no header e no favicon, o principal em fundo navy e o secundário em fundo terracota. Não recolorir, não distorcer, não recortar a nuvem.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="lockups">
+    <h2 id="lockups">Lockups oficiais</h2>
+    <div class="pv-grid pv-grid--3">
+      <div class="pv-swatch">
+        <div class="logo-tile logo-tile--navy"><img src="../assets/Logo_Principal.png" alt="S23 Travel — símbolo navy com nuvem branca e monograma terracota"></div>
+        <div class="pv-swatch__meta"><b>Logo_Principal · 600×600</b>fundo navy, nuvem branca, S23 terracota — uso padrão</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="logo-tile logo-tile--terra"><img src="../assets/Logo_Secundario.png" alt="S23 Travel — símbolo terracota com monograma navy"></div>
+        <div class="pv-swatch__meta"><b>Logo_Secundario · 600×600</b>fundo terracota, S23 navy — campanhas e superfícies quentes</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="logo-tile logo-tile--paper"><img src="../assets/Logo_Circulo.png" alt="S23 Travel — símbolo circular navy"></div>
+        <div class="pv-swatch__meta"><b>Logo_Circulo · 557×557</b>avatar, header, favicon e redes sociais</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="regras">
+    <h2 id="regras">Regras de uso</h2>
+    <div class="pv-grid pv-grid--2">
+      <div class="pv-panel">
+        <p class="pv-label">Área de respiro e tamanho</p>
+        <div class="clearspace"><img src="../assets/Logo_Circulo.png" alt="Demonstração de área de respiro do logo circular"></div>
+        <p style="margin-top:var(--space-sm);font-size:var(--text-small);color:var(--color-text-muted)">Respiro mínimo equivalente à altura da nuvem (cerca de 12% do símbolo) em todos os lados. Tamanho mínimo de 28px para o símbolo circular e 40px no header.</p>
+      </div>
+      <div class="pv-panel">
+        <p class="pv-label">Faça / não faça</p>
+        <div class="rule"><span class="ok">✓</span><span>Use o arquivo original, sem recolorir nem redesenhar.</span></div>
+        <div class="rule"><span class="ok">✓</span><span>Sobre navy use o principal; sobre terracota use o secundário.</span></div>
+        <div class="rule"><span class="ok">✓</span><span>Mantenha a proporção e a área de respiro.</span></div>
+        <div class="rule"><span class="no">✕</span><span>Não aplique sombra, gradiente ou contorno no símbolo.</span></div>
+        <div class="rule"><span class="no">✕</span><span>Não separe a nuvem do monograma.</span></div>
+        <div class="rule"><span class="no">✕</span><span>Não coloque o logo principal sobre foto sem scrim.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="inventario">
+    <h2 id="inventario">Inventário de arquivos</h2>
+    <p>Nomes originais preservados em `assets/` e `fonts/`. Dimensões medidas nos arquivos entregues.</p>
+    <div class="pv-grid pv-grid--2">
+      <div class="pv-panel">
+        <div class="asset"><img src="../assets/Favicon.png" alt="Favicon do S23 Travel"><div><b>Favicon.png</b><span>128×128 · aba do navegador</span></div></div>
+        <div class="asset"><img src="../assets/screenshot-1794165842684.png" alt="Captura do hero do site www.s23.travel"><div><b>screenshot-1794165842684.png</b><span>1888×1016 · hero de referência do site</span></div></div>
+        <div class="asset"><img src="../assets/Captura de tela_8-11-2026_192433_www.s23.travel.jpeg" alt="Captura da página de destinos do site"><div><b>Captura de tela…s23.travel.jpeg</b><span>1763×2972 · página de destinos</span></div></div>
+      </div>
+      <div class="pv-panel">
+        <div class="asset"><img src="../assets/SaveClip.App_841064118_17924180043431769_4097732360085032466_n.jpg" alt="Post do Instagram @s23_travel sobre réveillon"><div><b>SaveClip.App_841064118…jpg</b><span>1080×1350 · campanha réveillon</span></div></div>
+        <div class="asset"><img src="../assets/SaveClip.App_753197564_17912271273431769_5248824332372897549_n.jpg" alt="Post do Instagram @s23_travel"><div><b>SaveClip.App_753197564…jpg</b><span>1080×1350 · post de destino</span></div></div>
+        <div class="asset"><img src="../assets/travel.jpg" alt="Banner de referência Fareentips"><div><b>travel.jpg</b><span>736×981 · referência de terceiro (não usar)</span></div></div>
+      </div>
+    </div>
+    <div class="pv-note" style="margin-top:var(--space-sm)"><strong>Licença:</strong> os posts do @s23_travel são conteúdo próprio da marca. `travel.jpg` é um banner Fareentips de terceiro, sem licença registrada — mantido no acervo apenas como referência e explicitamente fora do uso no produto.</div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="aplicacao">
+    <h2 id="aplicacao">Aplicação real</h2>
+    <div class="pv-grid pv-grid--2">
+      <figure style="margin:0">
+        <div class="shot"><img src="../assets/screenshot-1794165842684.png" alt="Hero do site s23.travel com header navy, selo regional e dois CTAs"></div>
+        <figcaption class="pv-swatch__meta">Site atual · hero navy com selo "Presentes no Brasil &amp; Portugal"</figcaption>
+      </figure>
+      <figure style="margin:0">
+        <div class="creative"><img src="../assets/SaveClip.App_841064118_17924180043431769_4097732360085032466_n.jpg" alt="Post de campanha com serifa editorial em itálico e caixa terracota"></div>
+        <figcaption class="pv-swatch__meta">Campanha @s23_travel · evidência do papel editorial da Instrument Serif</figcaption>
+      </figure>
+    </div>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · marca e acervo</footer>
+</body>
+</html>

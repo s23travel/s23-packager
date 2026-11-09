@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cores — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<style>
+  .pv-grid--4 { gap: var(--space-xs); }
+  .pv-swatch__chip { min-height: 96px; }
+  .pv-swatch__meta { min-height: 62px; }
+  @media (max-width: 520px) {
+    .pv-grid--4 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+    .pv-swatch__chip { min-height: 76px; }
+  }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html">
+      <img src="../assets/Logo_Circulo.png" alt="S23 Travel">
+      S23 Travel · Design System
+    </a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html" aria-current="page">Cores</a>
+      <a href="./typography.html">Tipografia</a>
+      <a href="./spacing.html">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Fundamento 01</p>
+    <h1>Cor</h1>
+    <p>Azul-marinho carrega a confiança da operação. Terracota é o convite. Azul-céu é a atmosfera. O canvas é claro e quieto; nenhuma superfície padrão é creme ou terracota.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="marca">
+    <h2 id="marca">Primitivas de marca</h2>
+    <p>Valores extraídos do logo, do DESIGN.md de origem e da captura de www.s23.travel. Componentes consomem os papéis semânticos abaixo, nunca estas primitivas diretamente.</p>
+    <div class="pv-grid pv-grid--4">
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-navy-900)"><span style="color:#ffffff">Navy 900</span></div>
+        <div class="pv-swatch__meta"><b>Marinho profundo</b><code>--s23-navy-900</code><br>#101D42</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-navy-800)"><span style="color:#ffffff">Navy 800</span></div>
+        <div class="pv-swatch__meta"><b>Midnight</b><code>--s23-navy-800</code><br>#152340</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-navy-700)"><span style="color:#ffffff">Navy 700</span></div>
+        <div class="pv-swatch__meta"><b>Navy rico</b><code>--s23-navy-700</code><br>#162E61</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-navy-950)"><span style="color:#ffffff">Navy 950</span></div>
+        <div class="pv-swatch__meta"><b>Rodapé e noite</b><code>--s23-navy-950</code><br>#0B1533</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-terracotta-600)"><span style="color:#ffffff">Terracota 600</span></div>
+        <div class="pv-swatch__meta"><b>Marca e display</b><code>--s23-terracotta-600</code><br>#D4641C</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-terracotta-700)"><span style="color:#ffffff">Terracota 700</span></div>
+        <div class="pv-swatch__meta"><b>Preenchimento de CTA</b><code>--s23-terracotta-700</code><br>#B0500F</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-terracotta-800)"><span style="color:#ffffff">Terracota 800</span></div>
+        <div class="pv-swatch__meta"><b>Texto e selo</b><code>--s23-terracotta-800</code><br>#9A4100</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-coral-500)"><span style="color:#101D42">Coral 500</span></div>
+        <div class="pv-swatch__meta"><b>Brilho decorativo</b><code>--s23-coral-500</code><br>#FC7C3F</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-sky-300)"><span style="color:#101D42">Sky 300</span></div>
+        <div class="pv-swatch__meta"><b>Atmosfera</b><code>--s23-sky-300</code><br>#A3CBE1</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-sky-100)"><span style="color:#101D42">Sky 100</span></div>
+        <div class="pv-swatch__meta"><b>Superfície tingida</b><code>--s23-sky-100</code><br>#DCEBF4</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-paper)"><span style="color:#101D42">Paper</span></div>
+        <div class="pv-swatch__meta"><b>Canvas</b><code>--s23-paper</code><br>#F8FAFB</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--s23-slate-400)"><span style="color:#101D42">Slate 400</span></div>
+        <div class="pv-swatch__meta"><b>Bordas e divisores</b><code>--s23-slate-400</code><br>#C7CED0</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="papeis">
+    <h2 id="papeis">Papéis semânticos</h2>
+    <p>Use sempre o papel, nunca o valor. Assim a marca evolui em um só lugar.</p>
+    <div class="pv-grid pv-grid--3">
+      <div class="pv-panel">
+        <p class="pv-label">Superfícies</p>
+        <div class="pv-stack">
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-bg)"></span><code style="font-size:12px">--color-bg · #F8FAFB</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-surface)"></span><code style="font-size:12px">--color-surface · #FFFFFF</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-surface-tint)"></span><code style="font-size:12px">--color-surface-tint · #DCEBF4</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-surface-strong)"></span><code style="font-size:12px">--color-surface-strong · #A3CBE1</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-inverse-bg)"></span><code style="font-size:12px">--color-inverse-bg · #101D42</code></div>
+        </div>
+      </div>
+      <div class="pv-panel">
+        <p class="pv-label">Texto e ação</p>
+        <div class="pv-stack">
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-text)"></span><code style="font-size:12px">--color-text · #101D42</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-text-muted)"></span><code style="font-size:12px">--color-text-muted · #574238</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-primary)"></span><code style="font-size:12px">--color-primary · #B0500F</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-accent)"></span><code style="font-size:12px">--color-accent · #D4641C</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-primary-strong)"></span><code style="font-size:12px">--color-primary-strong · #9A4100</code></div>
+        </div>
+      </div>
+      <div class="pv-panel">
+        <p class="pv-label">Estado</p>
+        <div class="pv-stack">
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-success)"></span><code style="font-size:12px">--color-success · #128C4A</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-error)"></span><code style="font-size:12px">--color-error · #BA1A1A</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-error-bg)"></span><code style="font-size:12px">--color-error-bg · #FFDAD6</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-disabled-bg)"></span><code style="font-size:12px">--color-disabled-bg</code></div>
+          <div class="pv-row"><span style="width:28px;height:28px;border-radius:8px;background:var(--color-whatsapp)"></span><code style="font-size:12px">--color-whatsapp · #128C4A</code></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="contraste">
+    <h2 id="contraste">Pares de contraste homologados</h2>
+    <p>Razões medidas em WCAG 2.1. Somente estes pares estão liberados para texto; qualquer combinação nova precisa ser medida antes de entrar no produto.</p>
+    <div class="pv-grid pv-grid--3">
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--color-primary);height:120px;align-items:center">
+          <span style="color:var(--color-on-primary);text-transform:none;letter-spacing:0;font-size:15px;font-weight:600">Fale com um especialista</span>
+        </div>
+        <div class="pv-swatch__meta"><b>5.25:1 · AA</b>branco sobre CTA terracota</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--color-inverse-bg);height:120px;align-items:center">
+          <span style="color:#fff;text-transform:none;letter-spacing:0;font-size:15px;font-weight:600">Onde você quer ir?</span>
+        </div>
+        <div class="pv-swatch__meta"><b>16.45:1 · AAA</b>branco sobre navy</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--color-surface-strong);height:120px;align-items:center">
+          <span style="color:var(--color-text);text-transform:none;letter-spacing:0;font-size:14px;font-weight:600">Voo incluído · 12 noites</span>
+        </div>
+        <div class="pv-swatch__meta"><b>9.55:1 · AAA</b>navy sobre azul-céu</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--color-surface-tint);height:120px;align-items:center">
+          <span style="color:var(--color-text);text-transform:none;letter-spacing:0;font-size:16px">Roteiro revisado por quem já viajou</span>
+        </div>
+        <div class="pv-swatch__meta"><b>13.5:1 · AAA</b>navy sobre tint</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--color-inverse-bg);height:120px;align-items:center">
+          <span style="color:var(--color-accent);text-transform:none;letter-spacing:-0.01em;font-size:26px;font-weight:700">o cuidado</span>
+        </div>
+        <div class="pv-swatch__meta"><b>4.42:1 · AA large</b>terracota sobre navy, somente ≥24px</div>
+      </div>
+      <div class="pv-swatch">
+        <div class="pv-swatch__chip" style="background:var(--color-error);height:120px;align-items:center">
+          <span style="color:#fff;text-transform:none;letter-spacing:0;font-size:15px;font-weight:600">Não foi possível enviar</span>
+        </div>
+        <div class="pv-swatch__meta"><b>6.46:1 · AA</b>branco sobre erro</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="restricoes">
+    <h2 id="restricoes">Restrições</h2>
+    <div class="pv-grid pv-grid--2">
+      <div class="pv-note"><strong>Branco sobre #D4641C = 3.72:1.</strong> Reprova para texto pequeno. Por isso o CTA usa #B0500F e o selo usa #9A4100. #D4641C fica para display, filete e ícone.</div>
+      <div class="pv-note"><strong>Sem tema escuro.</strong> As referências não trazem dark mode. A faixa navy é uma seção tonal da interface clara, não um tema alternativo.</div>
+      <div class="pv-note"><strong>Nunca cor sozinha.</strong> Erro, sucesso e seleção sempre vêm com texto ou ícone.</div>
+      <div class="pv-note"><strong>Terracota não é fundo de página.</strong> O canvas é #F8FAFB. Terracota aparece como acento, mídia ou seção de campanha.</div>
+    </div>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · tokens em colors_and_type.css</footer>
+</body>
+</html>

@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S23 Travel — fixture de componentes</title>
+<!--
+  Fixture autônomo, sem build. O bloco de tokens abaixo é uma cópia fiel de
+  colors_and_type.css (apenas os caminhos de fonte foram ajustados para
+  ../fonts/). Não introduza valores novos neste arquivo.
+-->
+<style>
+/* ==========================================================================
+   S23 Travel — colors_and_type.css
+   "Warm Journey & Editorial Horizons"
+
+   Single source of truth for color, typography, spacing, radius, elevation
+   and motion. Every component in this package reads these custom properties;
+   no component may hard-code a hex value, font family or duration.
+
+   Fonts are loaded from ./fonts/ (Poppins + Instrument Serif, both OFL).
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. FONT FACES — Poppins (18 files)
+   -------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-Thin.ttf") format("truetype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-ThinItalic.ttf") format("truetype");
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-ExtraLight.ttf") format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-ExtraLightItalic.ttf") format("truetype");
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-LightItalic.ttf") format("truetype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-MediumItalic.ttf") format("truetype");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-SemiBoldItalic.ttf") format("truetype");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-BoldItalic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-ExtraBoldItalic.ttf") format("truetype");
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../fonts/Poppins/Poppins-BlackItalic.ttf") format("truetype");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* --------------------------------------------------------------------------
+   2. FONT FACES — Instrument Serif (2 files, editorial display only)
+   -------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("../fonts/Instrument_Serif/InstrumentSerif-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("../fonts/Instrument_Serif/InstrumentSerif-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* --------------------------------------------------------------------------
+   3. TOKENS
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* ---- 3.1 Brand primitives ------------------------------------------- */
+  /* Evidence: DESIGN.md prose palette + logo artwork + s23.travel capture */
+  --s23-navy-950: #0b1533;
+  --s23-navy-900: #101d42; /* deep navy, header, footer, body ink */
+  --s23-navy-800: #152340; /* midnight, layered navy panels */
+  --s23-navy-700: #162e61; /* rich navy, footers and sub-menus */
+  --s23-terracotta-600: #d4641c; /* brand terracotta, large display accents */
+  --s23-terracotta-700: #b0500f; /* accessible button fill (5.25:1 on white) */
+  --s23-terracotta-800: #9a4100; /* deep terracotta, text on white (6.71:1) */
+  --s23-terracotta-900: #7c3400; /* pressed state (8.94:1 on white) */
+  --s23-coral-500: #fc7c3f; /* hover glow, decorative emphasis only */
+  --s23-sky-300: #a3cbe1; /* atmospheric tint, tag and icon backgrounds */
+  --s23-sky-100: #dcebf4; /* quiet tinted surface */
+  --s23-slate-400: #c7ced0; /* borders and dividers */
+  --s23-slate-200: #e9edef; /* subtle separators */
+  --s23-paper: #f8fafb; /* page background */
+  --s23-cloud: #f4fafd; /* alternate canvas from the tonal ramp */
+  --s23-white: #ffffff; /* card surface */
+  --s23-ink: #161d1e; /* dense text on tinted surfaces */
+  --s23-ink-warm: #574238; /* muted copy, warm neutral from the ramp */
+  --s23-whatsapp-brand: #25d366; /* WhatsApp brand mark only */
+  --s23-green-700: #128c4a; /* accessible concierge action (4.31:1) */
+  --s23-error: #ba1a1a;
+  --s23-error-container: #ffdad6;
+  --s23-on-error-container: #93000a;
+
+  /* ---- 3.2 Surfaces and text ------------------------------------------ */
+  --color-bg: var(--s23-paper);
+  --color-bg-alt: var(--s23-cloud);
+  --color-surface: var(--s23-white);
+  --color-surface-sunken: var(--s23-slate-200);
+  --color-surface-tint: var(--s23-sky-100);
+  --color-surface-strong: var(--s23-sky-300);
+
+  --color-text: var(--s23-navy-900);
+  --color-text-strong: var(--s23-ink);
+  --color-text-muted: var(--s23-ink-warm);
+  --color-text-inverse: var(--s23-white);
+  --color-text-inverse-muted: rgba(255, 255, 255, 0.72);
+
+  /* Inverse (navy) sections: header, footer, night-sky bands */
+  --color-inverse-bg: var(--s23-navy-900);
+  --color-inverse-bg-raised: var(--s23-navy-800);
+  --color-inverse-bg-deep: var(--s23-navy-950);
+
+  /* ---- 3.3 Brand roles ------------------------------------------------- */
+  --color-primary: var(--s23-terracotta-700); /* CTA fill */
+  --color-primary-hover: var(--s23-terracotta-600); /* hover: brand tone */
+  --color-primary-active: var(--s23-terracotta-900);
+  --color-primary-strong: var(--s23-terracotta-800); /* terracotta text on light */
+  --color-primary-soft: rgba(212, 100, 28, 0.12);
+  --color-on-primary: var(--s23-white);
+
+  --color-accent: var(--s23-terracotta-600); /* display words, badges, rules */
+  --color-accent-glow: var(--s23-coral-500);
+  --color-secondary: var(--s23-navy-900);
+  --color-on-secondary: var(--s23-white);
+  --color-tertiary: var(--s23-sky-300);
+  --color-on-tertiary: var(--s23-navy-900);
+
+  /* ---- 3.4 Lines, focus and status ------------------------------------ */
+  --color-border: rgba(199, 206, 208, 0.55);
+  --color-border-strong: var(--s23-slate-400);
+  --color-border-inverse: rgba(255, 255, 255, 0.28);
+  --color-focus: var(--s23-terracotta-800);
+  --color-focus-ring: rgba(212, 100, 28, 0.35);
+  --color-success: var(--s23-green-700);
+  --color-whatsapp: var(--s23-green-700);
+  --color-whatsapp-brand: var(--s23-whatsapp-brand);
+  --color-error: var(--s23-error);
+  --color-error-bg: var(--s23-error-container);
+  --color-error-text: var(--s23-on-error-container);
+  --color-disabled-bg: #e6ecee;
+  --color-disabled-text: #7c8789;
+
+  /* ---- 3.5 Typography families ---------------------------------------- */
+  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-editorial: "Instrument Serif", ui-serif, Georgia, "Times New Roman",
+    serif;
+
+  /* Weights actually used (the family ships 100–900) */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---- 3.6 Type scale (one multiplicative-ish ladder, 8 steps) -------- */
+  --text-display: clamp(2.5rem, 5.2vw, 3.5rem); /* 40 → 56 px */
+  --text-display-leading: 1.06;
+  --text-display-tracking: -0.02em;
+
+  --text-editorial: clamp(2.25rem, 4.6vw, 3.5rem); /* editorial serif */
+  --text-editorial-leading: 1.12;
+  --text-editorial-tracking: -0.01em;
+
+  --text-h1: clamp(2rem, 3.4vw, 2.5rem); /* 32 → 40 px */
+  --text-h1-leading: 1.15;
+  --text-h1-tracking: -0.015em;
+
+  --text-h2: 1.75rem; /* 28 px */
+  --text-h2-leading: 1.2;
+  --text-h2-tracking: -0.01em;
+
+  --text-h3: 1.375rem; /* 22 px */
+  --text-h3-leading: 1.3;
+  --text-h3-tracking: -0.005em;
+
+  --text-title: 1.125rem; /* 18 px card title */
+  --text-title-leading: 1.35;
+  --text-title-tracking: 0;
+
+  --text-body-lg: 1.125rem; /* 18 px intro copy */
+  --text-body-lg-leading: 1.6;
+  --text-body: 1rem; /* 16 px body floor */
+  --text-body-leading: 1.65;
+  --text-body-tracking: 0;
+
+  --text-small: 0.875rem; /* 14 px metadata */
+  --text-small-leading: 1.55;
+  --text-caption: 0.75rem; /* 12 px captions */
+  --text-caption-leading: 1.45;
+  --text-caption-tracking: 0.01em;
+
+  --text-label: 0.75rem; /* uppercase labels and badges */
+  --text-label-leading: 1;
+  --text-label-tracking: 0.08em;
+  --text-button: 0.9375rem; /* 15 px controls */
+  --text-button-leading: 1.2;
+  --text-button-tracking: 0.01em;
+
+  /* ---- 3.7 Spacing (8 pt rhythm, 4 px sub-step) ----------------------- */
+  --space-3xs: 0.25rem; /* 4 */
+  --space-2xs: 0.5rem; /* 8 */
+  --space-xs: 0.75rem; /* 12 */
+  --space-sm: 1rem; /* 16 */
+  --space-md: 1.5rem; /* 24 */
+  --space-lg: 2rem; /* 32 */
+  --space-xl: 2.5rem; /* 40 */
+  --space-2xl: 4rem; /* 64 */
+  --space-3xl: 6rem; /* 96 */
+
+  --space-section: var(--space-2xl);
+  --space-section-mobile: var(--space-xl);
+  --space-card: var(--space-md);
+  --space-inline: var(--space-sm);
+
+  /* ---- 3.8 Grid and layout -------------------------------------------- */
+  --container-max: 1240px;
+  --grid-columns: 12;
+  --gutter: 1.5rem;
+  --gutter-mobile: 1rem;
+  --page-margin: 3rem;
+  --page-margin-mobile: 1.25rem;
+  --measure: 68ch;
+  --measure-narrow: 46ch;
+
+  /* ---- 3.9 Radii ------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 8px; /* inputs, small controls */
+  --radius-md: 12px;
+  --radius-lg: 16px; /* cards */
+  --radius-xl: 24px; /* panels, search bars */
+  --radius-2xl: 32px; /* feature blocks */
+  --radius-pill: 9999px;
+
+  /* ---- 3.10 Elevation -------------------------------------------------- */
+  --shadow-1: 0 4px 16px -2px rgba(16, 29, 66, 0.05);
+  --shadow-2: 0 12px 30px -4px rgba(16, 29, 66, 0.12);
+  --shadow-3: 0 8px 28px rgba(16, 29, 66, 0.16);
+  --shadow-focus: 0 0 0 3px var(--color-focus-ring);
+  --scrim-hero: linear-gradient(
+    180deg,
+    rgba(16, 29, 66, 0.65) 0%,
+    rgba(16, 29, 66, 0.25) 100%
+  );
+
+  /* ---- 3.11 Borders ---------------------------------------------------- */
+  --border-hairline: 1px solid var(--color-border);
+  --border-solid: 1px solid var(--color-border-strong);
+  --border-inverse: 1.5px solid rgba(255, 255, 255, 0.75);
+  --border-width: 1px;
+  --border-width-strong: 1.5px;
+
+  /* ---- 3.12 Motion ----------------------------------------------------- */
+  --duration-instant: 90ms;
+  --duration-fast: 160ms;
+  --duration-base: 220ms;
+  --duration-slow: 320ms;
+  --duration-slower: 420ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-control: color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+
+  /* ---- 3.13 Layering --------------------------------------------------- */
+  --z-base: 0;
+  --z-sticky: 100;
+  --z-overlay: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+}
+
+/* --------------------------------------------------------------------------
+   4. BASE DEFAULTS
+   Consumers may override these; they exist so a bare HTML file already looks
+   like S23 Travel.
+   -------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--text-body-leading);
+  font-weight: var(--weight-regular);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure {
+  margin: 0;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--color-primary-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+}
+
+/* --------------------------------------------------------------------------
+   5. TYPOGRAPHY UTILITIES
+   Optional helpers that bind the tokens above. Use them in prototypes and
+   previews; in production code prefer component-level styles.
+   -------------------------------------------------------------------------- */
+
+.t-display {
+  font-family: var(--font-sans);
+  font-size: var(--text-display);
+  line-height: var(--text-display-leading);
+  letter-spacing: var(--text-display-tracking);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.t-editorial {
+  font-family: var(--font-editorial);
+  font-size: var(--text-editorial);
+  line-height: var(--text-editorial-leading);
+  letter-spacing: var(--text-editorial-tracking);
+  font-weight: var(--weight-regular);
+}
+
+.t-h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h1);
+  line-height: var(--text-h1-leading);
+  letter-spacing: var(--text-h1-tracking);
+  font-weight: var(--weight-bold);
+}
+
+.t-h2 {
+  font-size: var(--text-h2);
+  line-height: var(--text-h2-leading);
+  letter-spacing: var(--text-h2-tracking);
+  font-weight: var(--weight-semibold);
+}
+
+.t-h3 {
+  font-size: var(--text-h3);
+  line-height: var(--text-h3-leading);
+  letter-spacing: var(--text-h3-tracking);
+  font-weight: var(--weight-semibold);
+}
+
+.t-title {
+  font-size: var(--text-title);
+  line-height: var(--text-title-leading);
+  font-weight: var(--weight-bold);
+}
+
+.t-body-lg {
+  font-size: var(--text-body-lg);
+  line-height: var(--text-body-lg-leading);
+}
+
+.t-body {
+  font-size: var(--text-body);
+  line-height: var(--text-body-leading);
+}
+
+.t-small {
+  font-size: var(--text-small);
+  line-height: var(--text-small-leading);
+  color: var(--color-text-muted);
+}
+
+.t-caption {
+  font-size: var(--text-caption);
+  line-height: var(--text-caption-leading);
+  letter-spacing: var(--text-caption-tracking);
+  color: var(--color-text-muted);
+}
+
+.t-label {
+  font-size: var(--text-label);
+  line-height: var(--text-label-leading);
+  letter-spacing: var(--text-label-tracking);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+}
+
+.t-accent {
+  color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+</style>
+<style>
+  body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-size: var(--text-body); line-height: var(--text-body-leading); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: var(--space-xl) var(--space-md) var(--space-2xl); }
+  h1 { font-size: var(--text-h1); line-height: var(--text-h1-leading); letter-spacing: var(--text-h1-tracking); font-weight: 700; margin: 0 0 8px; }
+  .lead { color: var(--color-text-muted); font-size: var(--text-small); max-width: 70ch; margin: 0 0 var(--space-lg); }
+  h2 { font-size: var(--text-h3); font-weight: 600; margin: var(--space-lg) 0 var(--space-2xs); padding-top: var(--space-md); border-top: 1px solid var(--s23-slate-200); }
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
+  .col { display: grid; gap: var(--space-sm); }
+  .label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--color-text-muted); margin: var(--space-xs) 0 6px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-md); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 24px; border: 1.5px solid transparent; border-radius: 9999px; background: var(--color-primary); color: var(--color-on-primary); font: 600 var(--text-button)/var(--text-button-leading) var(--font-sans); letter-spacing: var(--text-button-tracking); cursor: pointer; white-space: nowrap; transition: var(--transition-control); }
+  .btn:hover { background: var(--color-primary-hover); box-shadow: var(--shadow-2); transform: translateY(-1px); }
+  .btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; box-shadow: var(--shadow-focus); }
+  .btn:active { background: var(--color-primary-active); box-shadow: none; transform: none; }
+  .btn[disabled] { background: var(--color-disabled-bg); color: var(--color-disabled-text); cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn.is-loading { pointer-events: none; }
+  .btn.is-loading::before { content: ""; width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn--ghost { background: transparent; color: var(--color-text); border-color: var(--color-text); }
+  .btn--ghost:hover { background: rgba(16,29,66,.05); box-shadow: none; }
+  .btn--ghost-dark { background: transparent; color: #fff; border-color: rgba(255,255,255,.75); }
+  .btn--ghost-dark:hover { background: rgba(255,255,255,.1); box-shadow: none; }
+  .btn--sm { min-height: 44px; padding: 0 16px; font-size: var(--text-small); }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; background: var(--color-primary-strong); color: #fff; font-size: var(--text-label); line-height: var(--text-label-leading); letter-spacing: var(--text-label-tracking); font-weight: 700; text-transform: uppercase; }
+  .badge--neutral { background: var(--color-surface-strong); color: var(--color-text); }
+  .chip { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 12px; border-radius: 9999px; background: rgba(16,29,66,.55); color: #fff; font-size: var(--text-caption); font-weight: 600; letter-spacing: .04em; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent-glow); }
+
+  .card { display: flex; flex-direction: column; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: hidden; text-decoration: none; color: inherit; transition: var(--transition-control); }
+  .card:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
+  .card:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  .card__media { position: relative; aspect-ratio: 16/10; overflow: hidden; background: radial-gradient(120% 90% at 88% 6%, rgba(212,100,28,.42), transparent 58%), linear-gradient(158deg, var(--s23-navy-700), var(--color-inverse-bg) 52%, var(--s23-navy-950)); }
+  .card__media::before { content: ""; position: absolute; inset: -20%; background-image: repeating-radial-gradient(circle at 18% 118%, transparent 0 34px, rgba(255,255,255,.08) 34px 35px); }
+  .card__media--sky { background: radial-gradient(110% 90% at 20% 0%, rgba(255,255,255,.55), transparent 55%), linear-gradient(150deg, var(--s23-sky-300), #7fb2cd 60%, var(--s23-navy-700)); }
+  .card__media--sky .card__word { color: var(--color-text); }
+  .card__word { position: absolute; left: 24px; bottom: 16px; margin: 0; font-family: var(--font-editorial); font-style: italic; font-size: 2rem; line-height: 1; color: #fff; }
+  .card__flag { position: absolute; top: 16px; left: 16px; }
+  .card__body { display: grid; gap: 8px; padding: 24px; }
+  .card__place { font-size: var(--text-title); line-height: var(--text-title-leading); font-weight: 700; }
+  .card__country { font-size: var(--text-small); color: var(--color-text-muted); }
+  .card__copy { margin: 8px 0 0; font-size: var(--text-small); line-height: var(--text-small-leading); color: var(--color-text-muted); }
+  .card__link { margin-top: 12px; font-size: var(--text-button); font-weight: 600; color: var(--color-primary-strong); }
+  .skeleton { border-radius: var(--radius-lg); background: linear-gradient(100deg, var(--color-surface-sunken) 20%, var(--color-surface) 40%, var(--color-surface-sunken) 60%); background-size: 220% 100%; animation: shimmer 1.4s cubic-bezier(.65,0,.35,1) infinite; }
+  .skeleton--media { aspect-ratio: 16/10; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .skeleton--line { height: 12px; border-radius: 9999px; }
+  @keyframes shimmer { to { background-position: -120% 0; } }
+
+  .search { display: flex; align-items: center; gap: 8px; padding: 6px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-1); }
+  .field { display: flex; align-items: center; gap: 8px; flex: 1; padding: 0 12px; border-right: 1px solid var(--s23-slate-200); }
+  .field:last-of-type { border-right: 0; }
+  .field input, .field select { width: 100%; min-height: 44px; border: 0; background: transparent; color: var(--color-text); font-family: var(--font-sans); font-size: var(--text-small); font-weight: 500; }
+  .field:focus-within { border-radius: var(--radius-md); box-shadow: 0 0 0 2px rgba(212,100,28,.25); }
+  .field--error { border-radius: var(--radius-md); box-shadow: 0 0 0 2px rgba(186,26,26,.35); }
+  .help { margin: 8px 0 0; font-size: var(--text-small); color: var(--color-text-muted); }
+  .help--error { color: var(--color-error); }
+
+  .pagination { display: flex; gap: 8px; list-style: none; padding: 0; margin: 0; }
+  .pagination a, .pagination span { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; font-size: var(--text-small); font-weight: 600; text-decoration: none; color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); }
+  .pagination [aria-current="page"] { background: var(--color-primary-strong); border-color: var(--color-primary-strong); color: #fff; }
+  .pagination .is-disabled { color: var(--color-disabled-text); background: var(--color-disabled-bg); border-color: transparent; }
+
+  .alert { display: flex; gap: 12px; padding: 16px 24px; border-radius: var(--radius-md); font-size: var(--text-small); align-items: flex-start; }
+  .alert--error { background: var(--color-error-bg); color: var(--color-error-text); }
+  .alert--success { background: #e6f5ec; color: #0b5d31; }
+  .empty { display: grid; justify-items: center; gap: 12px; padding: 64px 24px; text-align: center; background: var(--color-surface); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-xl); }
+  .empty__icon { width: 56px; height: 56px; border-radius: 9999px; display: grid; place-items: center; background: var(--color-surface-tint); }
+  .empty h3 { font-size: var(--text-title); font-weight: 700; margin: 0; }
+  .empty p { max-width: 44ch; font-size: var(--text-small); color: var(--color-text-muted); margin: 0; }
+
+  .header { display: flex; align-items: center; gap: 24px; background: var(--color-inverse-bg); color: #fff; padding: 0 24px; min-height: 72px; border-radius: var(--radius-lg); }
+  .logo { display: flex; align-items: center; gap: 8px; color: #fff; text-decoration: none; font-weight: 600; letter-spacing: .02em; }
+  .logo img { width: 40px; height: 40px; border-radius: 9999px; }
+  .nav { display: flex; gap: 4px; margin-left: auto; }
+  .nav a { position: relative; padding: 10px 8px; color: rgba(255,255,255,.82); text-decoration: none; font-size: var(--text-small); font-weight: 500; }
+  .nav a[aria-current="page"] { color: #fff; }
+  .nav a[aria-current="page"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--color-accent); }
+
+  .footer { background: var(--color-inverse-bg-deep); color: rgba(255,255,255,.72); padding: 40px 24px 20px; border-radius: var(--radius-lg); font-size: var(--text-small); }
+  .footer h3 { font-size: var(--text-label); letter-spacing: var(--text-label-tracking); text-transform: uppercase; color: #fff; margin: 0 0 12px; }
+  .footer a { color: rgba(255,255,255,.72); text-decoration: none; }
+  .footer a:hover { color: #fff; text-decoration: underline; }
+  .footer__legal { margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.16); font-size: var(--text-caption); color: rgba(255,255,255,.56); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  .launcher { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 9999px; background: var(--color-whatsapp); color: #fff; box-shadow: var(--shadow-3); text-decoration: none; transition: var(--transition-control); }
+  .launcher:hover { background: #0e7a40; transform: scale(1.04); }
+  .launcher:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: var(--shadow-3), 0 0 0 5px var(--color-inverse-bg); }
+
+  .dark { background: var(--color-inverse-bg); padding: 24px; border-radius: var(--radius-lg); }
+
+.menu { display: none; position: relative; margin-left: auto; }
+.menu > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+.menu > summary::-webkit-details-marker { display: none; }
+.menu[open] > summary { background: rgba(255, 255, 255, 0.16); }
+.menu nav {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  min-width: 232px;
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  z-index: 40;
+}
+.menu nav a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  text-decoration: none;
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+.menu nav a:hover { background: var(--color-surface-sunken); }
+
+@media (max-width: 767px) {
+  .nav { display: none; }
+  .header .btn { display: none; }
+  .menu { display: block; }
+  .header { gap: 12px; padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>S23 Travel — componentes</h1>
+  <p class="lead">Fixture autônomo. Todos os estados, apenas com tokens do pacote. Abra este arquivo direto no navegador; as fontes vêm de <code>../fonts/</code> e as imagens de <code>../assets/</code>.</p>
+
+  <h2>Botões</h2>
+  <p class="label">Primário — default, hover, foco, pressed, desabilitado, carregando</p>
+  <div class="row">
+    <button class="btn" type="button">Fale com um especialista</button>
+    <button class="btn" type="button" style="background:var(--color-primary-hover);box-shadow:var(--shadow-2);transform:translateY(-1px)">Hover</button>
+    <button class="btn" type="button" style="outline:2px solid var(--color-focus);outline-offset:3px">Foco</button>
+    <button class="btn" type="button" style="background:var(--color-primary-active)">Pressed</button>
+    <button class="btn" type="button" disabled>Indisponível</button>
+    <button class="btn is-loading" type="button" aria-busy="true">Enviando…</button>
+  </div>
+  <p class="label">Fantasma e sobre navy</p>
+  <div class="row">
+    <button class="btn btn--ghost" type="button">Conhecer os destinos</button>
+    <button class="btn btn--ghost" type="button" disabled>Indisponível</button>
+  </div>
+  <div class="dark row" style="margin-top:12px">
+    <button class="btn" type="button">Quero planejar minha viagem →</button>
+    <button class="btn btn--ghost-dark" type="button">Conhecer os destinos</button>
+  </div>
+
+  <h2>Selos e chips</h2>
+  <div class="dark row">
+    <span class="badge">Em alta</span>
+    <span class="badge badge--neutral">Mais procurado</span>
+    <span class="chip">Presentes no Brasil &amp; Portugal</span>
+  </div>
+
+  <h2>Card de destino</h2>
+  <div class="grid3">
+    <a class="card" href="#">
+      <div class="card__media">
+        <span class="badge card__flag">Em alta</span>
+        <p class="card__word">Chile</p>
+      </div>
+      <div class="card__body">
+        <span class="card__place">Andes, Cordilheira</span>
+        <span class="card__country">Chile</span>
+        <p class="card__copy">Montanhas, vinhedos e o silêncio da cordilheira em um roteiro de 8 noites.</p>
+        <span class="card__link">Conhecer destino →</span>
+      </div>
+    </a>
+    <a class="card" href="#">
+      <div class="card__media card__media--sky">
+        <span class="badge badge--neutral card__flag">Mais procurado</span>
+        <p class="card__word">Brasil</p>
+      </div>
+      <div class="card__body">
+        <span class="card__place">Costa Verde</span>
+        <span class="card__country">Brasil</span>
+        <p class="card__copy">Praias de água calma, trilhas na mata e pousadas pequenas entre Angra e Paraty.</p>
+        <span class="card__link">Conhecer destino →</span>
+      </div>
+    </a>
+    <div class="card" aria-busy="true">
+      <div class="skeleton skeleton--media"></div>
+      <div class="card__body" style="gap:12px">
+        <div class="skeleton skeleton--line" style="width:60%"></div>
+        <div class="skeleton skeleton--line" style="width:36%"></div>
+        <div class="skeleton skeleton--line" style="width:86%"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Busca</h2>
+  <form class="search" role="search" aria-label="Buscar destinos">
+    <div class="field">
+      <label for="h-busca" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Pesquisar destinos</label>
+      <input id="h-busca" type="search" placeholder="Pesquisar destinos…">
+    </div>
+    <div class="field">
+      <select aria-label="Região"><option>Todas as regiões</option><option>Europa</option></select>
+    </div>
+    <button class="btn" type="submit">Buscar destinos</button>
+  </form>
+  <form class="search" role="search" aria-label="Buscar destinos — erro" style="margin-top:12px" aria-describedby="h-erro">
+    <div class="field field--error">
+      <label for="h-busca2" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Pesquisar destinos</label>
+      <input id="h-busca2" type="search" value="  " aria-invalid="true" aria-describedby="h-erro">
+    </div>
+    <button class="btn" type="submit">Buscar destinos</button>
+  </form>
+  <p class="help help--error" id="h-erro" role="alert">Digite um destino, país ou região para buscar.</p>
+
+  <h2>Paginação</h2>
+  <nav aria-label="Paginação">
+    <ul class="pagination">
+      <li><span class="is-disabled" aria-hidden="true">←</span></li>
+      <li><a href="#" aria-current="page">1</a></li>
+      <li><a href="#">2</a></li>
+      <li><a href="#">3</a></li>
+      <li><a href="#" aria-label="Próxima página">→</a></li>
+    </ul>
+  </nav>
+
+  <h2>Feedback</h2>
+  <div class="col">
+    <div class="alert alert--error" role="alert">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+      <span>Não foi possível enviar o formulário. Confira o e-mail e tente novamente.</span>
+    </div>
+    <div class="alert alert--success" role="status">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+      <span>Recebemos o seu pedido. Um especialista responde em até um dia útil.</span>
+    </div>
+    <div class="empty">
+      <span class="empty__icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-2 4-4 2 2-4Z"/></svg>
+      </span>
+      <h3>Ainda não temos destinos aqui</h3>
+      <p>Conte para a nossa equipe o que você procura. Montamos roteiros fora do catálogo com frequência.</p>
+      <a class="btn btn--sm" href="#">Falar com um especialista</a>
+    </div>
+  </div>
+
+  <h2>Navegação</h2>
+  <header class="header">
+    <a class="logo" href="#"><img src="../assets/Logo_Circulo.png" alt="">s23 travel</a>
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="#" aria-current="page">Início</a>
+      <a href="#">Viagens</a>
+      <a href="#">Destinos</a>
+      <a href="#">Serviços</a>
+      <a href="#">Blog</a>
+    </nav>
+
+    <details class="menu">
+      <summary>Menu</summary>
+      <nav aria-label="Menu móvel">
+        <a href="#" aria-current="page">Início</a>
+        <a href="#">Viagens</a>
+        <a href="#">Destinos</a>
+        <a href="#">Serviços</a>
+        <a href="#">Blog</a>
+        <a href="#">Fale com um especialista</a>
+      </nav>
+    </details>
+    <a class="btn btn--sm" href="#">Fale com um especialista</a>
+  </header>
+
+  <h2>Atendimento</h2>
+  <a class="launcher" href="#" aria-label="Falar com um especialista no WhatsApp">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.4A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 9.5c0 3 2.5 5.5 5.5 5.5"/></svg>
+  </a>
+
+  <h2>Rodapé</h2>
+  <footer class="footer">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:24px">
+      <div>
+        <a class="logo" href="#" style="margin-bottom:12px"><img src="../assets/Logo_Circulo.png" alt="">s23 travel</a>
+        <p style="margin:12px 0 0;max-width:32ch">Viagens sob medida entre Brasil e Portugal, com atendimento próximo.</p>
+      </div>
+      <div><h3>Destinos</h3><p style="display:grid;gap:8px;margin:0"><a href="#">América do Sul</a><a href="#">Europa</a><a href="#">África</a></p></div>
+      <div><h3>Contato</h3><p style="display:grid;gap:8px;margin:0"><a href="tel:+551140028922">+55 11 4002-8922</a><a href="tel:+351210000000">+351 21 000 0000</a><a href="mailto:ola@s23.travel">ola@s23.travel</a></p></div>
+    </div>
+    <div class="footer__legal"><span>© 2026 S23 Viagens e Turismo · Cadastur ativo</span><span>Política de privacidade · Termos de uso</span></div>
+  </footer>
+</div>
+</body>
+</html>

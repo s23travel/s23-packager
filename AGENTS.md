@@ -40,3 +40,24 @@ Aplicação web interna para gerir pacotes de viagem, cotações e operações f
 - `docs/COMO_ADICIONAR_PACOTE.md` e `docs/ARQUITETURA_MANAGER.md` descrevem fluxos do S23 Manager/site, não rotas desta SPA; usar apenas como referência editorial quando aplicável.
 - `README.md` contém trechos de fundação antiga que descrevem backend e funcionalidades como futuras; validar sempre com código e documentação técnica atual.
 - Não publicar, fazer push/commit, alterar serviços externos ou operar dados partilhados sem pedido explícito.
+
+
+## Design system S23 Travel (superfícies Travel)
+
+O kit compartilhado do S23 Travel está em `design-system/s23-travel/`. Use apenas para telas, guia, campanhas e artefatos do S23 Travel; a UI interna do Packager continua seguindo `design-system/s23-packager/MASTER.md` e os tokens de `src/index.css`.
+
+Antes de qualquer mudança de UI Travel, leia nesta ordem:
+
+1. `design-system/s23-travel/handoff/USAGE.md`
+2. `design-system/s23-travel/DESIGN.md`
+3. `design-system/s23-travel/colors_and_type.css`
+4. `design-system/s23-travel/handoff/components.html`
+5. `design-system/s23-travel/ui_kits/app/index.html`
+
+Regras:
+
+- Importe `design-system/s23-travel/colors_and_type.css` no lugar (os `url("./fonts/...")` resolvem para `design-system/s23-travel/fonts/`). Não copie só o CSS.
+- Use apenas `var(--...)`. Nada de hex, família de fonte, espaçamento, raio, sombra ou duração soltos.
+- Todo elemento interativo precisa de default, hover, focus-visible, active e disabled. Listas precisam de loading e empty. Erro sempre com texto.
+- Alvos de toque de 44px; contraste 4.5:1 no corpo; respeite `prefers-reduced-motion`.
+- Se faltar um token, adicione ao kit e registre a decisão; não invente um valor.

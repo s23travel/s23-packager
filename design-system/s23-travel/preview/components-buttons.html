@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Botões — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<link rel="stylesheet" href="../ui_kits/app/app.css">
+<style>
+  .state { padding: var(--space-sm) 0; border-bottom: 1px solid var(--s23-slate-200); }
+  .state:last-child { border-bottom: 0; }
+  .state p { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 8px; font-weight: 700; }
+  .dark { background: var(--color-inverse-bg); padding: var(--space-md); border-radius: var(--radius-lg); }
+  .is-hover { background: var(--color-primary-hover); box-shadow: var(--shadow-2); transform: translateY(-1px); }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html">Cores</a>
+      <a href="./typography.html">Tipografia</a>
+      <a href="./spacing.html">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html" aria-current="page">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Componentes · foco</p>
+    <h1>Botões</h1>
+    <p>Pill de 48px e rótulo de 15px/600. Oito estados, todos com anel de foco visível e área mínima de 44px.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="estados">
+    <h2 id="estados">Estados</h2>
+    <div class="state"><p>Default</p><button class="s23-btn" type="button">Fale com um especialista</button></div>
+    <div class="state"><p>Hover</p><button class="s23-btn is-hover" type="button">Fale com um especialista</button></div>
+    <div class="state"><p>Focus-visible</p><button class="s23-btn" type="button" style="outline:2px solid var(--color-focus);outline-offset:3px;box-shadow:var(--shadow-focus)">Fale com um especialista</button></div>
+    <div class="state"><p>Pressed</p><button class="s23-btn" type="button" style="background:var(--color-primary-active)">Fale com um especialista</button></div>
+    <div class="state"><p>Disabled</p><button class="s23-btn" type="button" disabled>Fale com um especialista</button></div>
+    <div class="state"><p>Loading</p><button class="s23-btn is-loading" type="button" aria-busy="true">Enviando…</button></div>
+    <div class="state"><p>Fantasma</p><button class="s23-btn s23-btn--ghost" type="button">Conhecer os destinos</button></div>
+    <div class="state"><p>Sobre navy</p><div class="dark pv-row"><button class="s23-btn" type="button">Quero planejar minha viagem →</button><button class="s23-btn s23-btn--ghost-dark" type="button">Conhecer os destinos</button></div></div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="medidas">
+    <h2 id="medidas">Medidas</h2>
+    <p class="t-small">Altura 48px (44px compacto) · padding lateral 24px · gap de ícone 8px · raio pill · alvo mínimo 44×44px · ícone 16px.</p>
+    <p class="t-small" style="margin-top:8px">O preenchimento é <code>#B0500F</code> (5.25:1) e não clareia para <code>#D4641C</code> em texto pequeno. <code>#D4641C</code> só entra em rótulo ≥18px/700.</p>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · botões</footer>
+</body>
+</html>

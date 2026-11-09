@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cor primária — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<style>
+  .shelf { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-sm); }
+  .chip-block { border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--color-border); background: var(--color-surface); }
+  .chip-block__fill { height: 120px; display: flex; align-items: flex-end; padding: var(--space-2xs); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .chip-block__meta { padding: 8px 12px; font-size: 11px; line-height: 1.6; color: var(--color-text-muted); }
+  .chip-block__meta b { display: block; color: var(--color-text); font-size: var(--text-caption); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-sm); }
+  .pair div { border-radius: var(--radius-md); padding: var(--space-md); font-size: var(--text-small); }
+  .pair b { display: block; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; opacity: .8; }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html" aria-current="page">Cores</a>
+      <a href="./typography.html">Tipografia</a>
+      <a href="./spacing.html">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Cor · foco</p>
+    <h1>Terracota e navy</h1>
+    <p>O par que define a marca: navy para confiança e leitura, terracota para convite e display. O terracota de preenchimento é escurecido para passar AA em texto pequeno.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="ramp">
+    <h2 id="ramp">Rampa de terracota</h2>
+    <div class="shelf">
+      <div class="chip-block"><div class="chip-block__fill" style="background:var(--s23-terracotta-600);color:#fff">600</div><div class="chip-block__meta"><b>#D4641C · marca</b>display, ícone, filete</div></div>
+      <div class="chip-block"><div class="chip-block__fill" style="background:var(--s23-terracotta-700);color:#fff">700</div><div class="chip-block__meta"><b>#B0500F · CTA</b>5.25:1 com branco</div></div>
+      <div class="chip-block"><div class="chip-block__fill" style="background:var(--s23-terracotta-800);color:#fff">800</div><div class="chip-block__meta"><b>#9A4100 · texto</b>6.71:1 com branco</div></div>
+      <div class="chip-block"><div class="chip-block__fill" style="background:var(--s23-terracotta-900);color:#fff">900</div><div class="chip-block__meta"><b>#7C3400 · pressed</b>8.94:1 com branco</div></div>
+      <div class="chip-block"><div class="chip-block__fill" style="background:var(--s23-coral-500);color:#101D42">500</div><div class="chip-block__meta"><b>#FC7C3F · brilho</b>decorativo, nunca texto</div></div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="pares">
+    <h2 id="pares">Pares aprovados</h2>
+    <div class="pair">
+      <div style="background:var(--color-primary);color:#fff"><b>5.25:1</b>Branco sobre CTA terracota</div>
+      <div style="background:var(--color-primary-strong);color:#fff"><b>6.71:1</b>Branco sobre selo</div>
+      <div style="background:var(--color-inverse-bg);color:#fff"><b>16.45:1</b>Branco sobre navy</div>
+      <div style="background:var(--color-inverse-bg);color:var(--color-accent)"><b>4.42:1</b>Terracota sobre navy (≥24px)</div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="proibido">
+    <h2 id="proibido">Combinações proibidas</h2>
+    <div class="pv-note">Branco sobre <code>#D4641C</code> = 3.72:1. Reprovado para texto abaixo de 24px. Use <code>#B0500F</code> (CTA) ou <code>#9A4100</code> (selo e texto).</div>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · cor primária</footer>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interface aplicada — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<link rel="stylesheet" href="../ui_kits/app/app.css">
+<style>
+  .frame { border: 1px solid var(--s23-slate-400); border-radius: var(--radius-xl); overflow: hidden; background: var(--color-bg); }
+  .frame__bar { display: flex; align-items: center; gap: 6px; padding: 10px var(--space-sm); background: var(--color-surface-sunken); border-bottom: 1px solid var(--s23-slate-400); }
+  .frame__bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--color-border-strong); }
+  .frame__bar span { margin-left: var(--space-xs); font-size: 11px; color: var(--color-text-muted); }
+  .frame .s23-header { position: static; }
+  .frame .s23-container { padding: 0 var(--space-lg); }
+  .frame .s23-hero__inner { padding: var(--space-2xl) 0 var(--space-xl); }
+  .frame .s23-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .frame .s23-footer { margin-top: 0; }
+  .mobile-strip { display: grid; grid-template-columns: 300px 1fr; gap: var(--space-lg); align-items: start; }
+  .phone { width: 300px; border: 8px solid var(--s23-navy-950); border-radius: 36px; overflow: hidden; background: var(--color-bg); }
+  .phone .s23-container { padding: 0 16px; }
+  .phone .s23-hero__inner { grid-template-columns: 1fr; padding: var(--space-lg) 0; }
+  .phone .s23-hero h1 { font-size: 1.75rem; }
+  .phone .s23-hero__sub { font-size: var(--text-small); }
+  .phone .s23-cards { grid-template-columns: 1fr; }
+  .phone .s23-search { flex-direction: column; align-items: stretch; border-radius: var(--radius-lg); }
+  .phone .s23-field { border-right: 0; border-bottom: 1px solid var(--s23-slate-200); }
+  .phone .s23-nav { display: none; }
+  .phone .s23-header__inner { min-height: 56px; }
+  @media (max-width: 900px) { .mobile-strip { grid-template-columns: 1fr; } .frame .s23-cards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html">Cores</a>
+      <a href="./typography.html">Tipografia</a>
+      <a href="./spacing.html">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html" aria-current="page">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Aplicação</p>
+    <h1>Interface aplicada</h1>
+    <p>A mesma linguagem em página real: header navy, hero de campanha, busca, catálogo de destinos e rodapé. A interface completa está em <a href="../ui_kits/app/index.html">ui_kits/app/index.html</a>.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="desktop">
+    <h2 id="desktop">Desktop</h2>
+    <div class="frame">
+      <div class="frame__bar"><i></i><i></i><i></i><span>www.s23.travel</span></div>
+      <header class="s23-header">
+        <div class="s23-container s23-header__inner">
+          <a class="s23-logo" href="../ui_kits/app/index.html" aria-label="S23 Travel — início">
+            <img src="../assets/Logo_Circulo.png" alt="">
+            <span class="s23-logo__word">s23 <span>travel</span></span>
+          </a>
+          <nav class="s23-nav" aria-label="Navegação principal">
+            <a href="../ui_kits/app/index.html" aria-current="page">Início</a>
+            <a href="#desktop">Viagens</a>
+            <a href="#desktop">Destinos</a>
+            <a href="#desktop">Serviços</a>
+            <a href="#desktop">Blog</a>
+          </nav>
+          <a class="s23-btn s23-btn--sm" href="#desktop">Fale com um especialista</a>
+        </div>
+      </header>
+      <section class="s23-hero">
+        <div class="s23-container s23-hero__inner">
+          <div>
+            <span class="s23-chip s23-hero__eyebrow">Presentes no Brasil &amp; Portugal</span>
+            <h1>A viagem que você imaginou com o <em>cuidado</em> que você merece.</h1>
+            <p class="s23-hero__sub">Atendimento personalizado e suporte próximo para quem valoriza uma experiência sem surpresas.</p>
+            <div class="s23-hero__actions">
+              <a class="s23-btn" href="../ui_kits/app/index.html">Quero planejar minha viagem →</a>
+              <a class="s23-btn s23-btn--ghost-dark" href="#desktop">Conhecer os destinos</a>
+            </div>
+          </div>
+          <aside class="s23-hero__aside">
+            <h2>Dois lados do Atlântico, um só time.</h2>
+            <div class="s23-hero__stat"><span>Atendimento</span><b>em português</b></div>
+            <div class="s23-hero__stat"><span>Suporte no destino</span><b>+55 / +351</b></div>
+          </aside>
+        </div>
+      </section>
+      <div class="s23-container">
+        <form class="s23-search" role="search" aria-label="Buscar destinos" style="margin-top:calc(-1 * var(--space-md))">
+          <div class="s23-field">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <label for="ap-busca" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Pesquisar destinos</label>
+            <input id="ap-busca" type="search" placeholder="Pesquisar destinos…">
+          </div>
+          <div class="s23-field">
+            <select aria-label="Região"><option>Todas as regiões</option><option>Europa</option></select>
+          </div>
+          <button class="s23-btn" type="submit">Buscar destinos</button>
+        </form>
+      </div>
+      <div class="s23-container" style="padding-top:var(--space-lg);padding-bottom:var(--space-lg)">
+        <div class="s23-cards">
+          <a class="s23-card" href="../ui_kits/app/index.html">
+            <div class="s23-media">
+              <span class="s23-badge s23-media__flag">Em alta</span>
+              <p class="s23-media__word">Emirados</p>
+            </div>
+            <div class="s23-card__body">
+              <span class="s23-card__place">Dubai</span>
+              <span class="s23-card__country">Emirados Árabes Unidos</span>
+              <p class="s23-card__copy">Cidade, deserto e praia na mesma viagem, com hospedagem central.</p>
+              <span class="s23-card__link">Conhecer destino <span>→</span></span>
+            </div>
+          </a>
+          <a class="s23-card" href="../ui_kits/app/index.html">
+            <div class="s23-media s23-media--sky">
+              <span class="s23-badge s23-badge--neutral s23-media__flag">Mais procurado</span>
+              <p class="s23-media__word">Reino Unido</p>
+            </div>
+            <div class="s23-card__body">
+              <span class="s23-card__place">Londres</span>
+              <span class="s23-card__country">Reino Unido</span>
+              <p class="s23-card__copy">Museus, bairros e o interior inglês em um roteiro para famílias.</p>
+              <span class="s23-card__link">Conhecer destino <span>→</span></span>
+            </div>
+          </a>
+          <a class="s23-card" href="../ui_kits/app/index.html">
+            <div class="s23-media s23-media--terra">
+              <span class="s23-badge s23-media__flag">Em alta</span>
+              <p class="s23-media__word">Marrocos</p>
+            </div>
+            <div class="s23-card__body">
+              <span class="s23-card__place">Marrakech</span>
+              <span class="s23-card__country">Marrocos</span>
+              <p class="s23-card__copy">Medina, jardins e o Atlas ao fundo, com guias que falam português.</p>
+              <span class="s23-card__link">Conhecer destino <span>→</span></span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="mobile">
+    <h2 id="mobile">Mobile</h2>
+    <div class="mobile-strip">
+      <div class="phone">
+        <header class="s23-header">
+          <div class="s23-container s23-header__inner">
+            <a class="s23-logo" href="../ui_kits/app/index.html" aria-label="S23 Travel — início">
+              <img src="../assets/Logo_Circulo.png" alt="" style="width:32px;height:32px">
+              <span class="s23-logo__word" style="font-size:1rem">s23 <span>travel</span></span>
+            </a>
+            <button class="s23-btn s23-btn--icon" type="button" aria-label="Abrir menu" style="margin-left:auto;border-color:rgba(255,255,255,.4);color:#fff;width:40px;min-height:40px">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            </button>
+          </div>
+        </header>
+        <section class="s23-hero">
+          <div class="s23-container s23-hero__inner">
+            <div>
+              <span class="s23-chip s23-hero__eyebrow">Brasil &amp; Portugal</span>
+              <h1>A viagem que você imaginou com o <em>cuidado</em> que merece.</h1>
+              <p class="s23-hero__sub">Suporte próximo, do primeiro roteiro ao retorno.</p>
+              <div class="s23-hero__actions">
+                <a class="s23-btn" href="../ui_kits/app/index.html">Planejar minha viagem</a>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div class="s23-container" style="padding-top:var(--space-sm);padding-bottom:var(--space-md)">
+          <form class="s23-search" role="search" aria-label="Buscar destinos">
+            <div class="s23-field">
+              <label for="mob-busca" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Pesquisar destinos</label>
+              <input id="mob-busca" type="search" placeholder="Pesquisar destinos…">
+            </div>
+            <div class="s23-field"><select aria-label="Região"><option>Todas as regiões</option></select></div>
+            <button class="s23-btn" type="submit">Buscar</button>
+          </form>
+          <div class="s23-cards" style="margin-top:var(--space-md)">
+            <a class="s23-card" href="../ui_kits/app/index.html">
+              <div class="s23-media">
+                <span class="s23-badge s23-media__flag">Em alta</span>
+                <p class="s23-media__word">Chile</p>
+              </div>
+              <div class="s23-card__body">
+                <span class="s23-card__place">Andes, Cordilheira</span>
+                <span class="s23-card__country">Chile</span>
+                <span class="s23-card__link">Conhecer destino <span>→</span></span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="pv-label">Decisões no celular</p>
+        <p class="t-body" style="max-width:52ch;color:var(--color-text-muted)">Header de 56px com menu em painel, hero em uma coluna, busca empilhada com botão de largura total, cards em coluna única e launcher de atendimento acima da barra do sistema. O corpo do texto continua em 16px e nenhum alvo fica abaixo de 44px.</p>
+        <p class="t-body" style="max-width:52ch;color:var(--color-text-muted);margin-top:var(--space-sm)">A página completa, com os seis destinos, faixa de valores, editorial e rodapé, está em <a href="../ui_kits/app/index.html">ui_kits/app/index.html</a>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · interface aplicada</footer>
+</body>
+</html>

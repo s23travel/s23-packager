@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selos e chips — componentes S23 Travel</title>
+<link rel="stylesheet" href="../../../colors_and_type.css">
+<link rel="stylesheet" href="../app.css">
+<style>
+  body { padding: var(--space-lg) var(--page-margin); }
+  h1 { font-size: var(--text-h2); line-height: var(--text-h2-leading); margin-bottom: var(--space-2xs); }
+  p.lead { color: var(--color-text-muted); font-size: var(--text-small); margin-bottom: var(--space-lg); max-width: 60ch; }
+  .demo-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--color-text-muted); margin: var(--space-md) 0 var(--space-2xs); }
+  .shelf { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; padding: var(--space-md); background: var(--color-inverse-bg); border-radius: var(--radius-lg); }
+  .shelf--light { background: var(--color-surface); border: 1px solid var(--s23-slate-200); }
+</style>
+</head>
+<body>
+<h1>Selos e chips</h1>
+<p class="lead">Selo de campanha em terracota profunda (12px, caixa alta, +0.08em). Chip regional com fundo frosted e ponto terracota. Ambos são pill.</p>
+
+<p class="demo-label">Sobre foto / navy</p>
+<div class="shelf">
+  <span class="s23-badge">Em alta</span>
+  <span class="s23-badge">Mais procurado</span>
+  <span class="s23-chip">Presentes no Brasil &amp; Portugal</span>
+  <span class="s23-badge s23-badge--neutral">Novo roteiro</span>
+</div>
+
+<p class="demo-label">Sobre superfície clara</p>
+<div class="shelf shelf--light">
+  <span class="s23-badge">Em alta</span>
+  <span class="s23-badge s23-badge--neutral">12 noites</span>
+  <span class="s23-badge s23-badge--outline">Aéreo incluído</span>
+</div>
+
+<p class="demo-label">Regra de contraste</p>
+<p class="lead" style="margin:0">Texto branco de 12px sobre <code>#D4641C</code> rende 3.72:1 e reprova. Por isso o selo usa <code>#9A4100</code> (6.71:1). O terracota de marca fica para display, filete e ícone.</p>
+</body>
+</html>

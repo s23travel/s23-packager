@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tipografia — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<style>
+  .type-row { display: grid; grid-template-columns: 190px 1fr; gap: var(--space-sm); align-items: baseline; padding: var(--space-sm) 0; border-bottom: 1px solid var(--s23-slate-200); }
+  .type-row:last-child { border-bottom: 0; }
+  .type-meta { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.7; color: var(--color-text-muted); }
+  .type-meta b { display: block; color: var(--color-primary-strong); font-weight: 700; font-size: 12px; letter-spacing: 0.02em; }
+  .specimen { padding: var(--space-lg) var(--space-md); border-radius: var(--radius-lg); background: var(--color-inverse-bg); color: #fff; }
+  .specimen p { color: var(--color-text-inverse-muted); font-size: var(--text-small); max-width: 46ch; }
+  .measure-demo { max-width: var(--measure); }
+  @media (max-width: 640px) { .type-row { grid-template-columns: 1fr; gap: 4px; } }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html">Cores</a>
+      <a href="./typography.html" aria-current="page">Tipografia</a>
+      <a href="./spacing.html">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Fundamento 02</p>
+    <h1>Tipografia</h1>
+    <p>Poppins conduz a operação com geometria calorosa. Instrument Serif entra só quando a marca conta uma história — manchete de campanha, editorial, citação. Duas famílias, três pesos, nenhuma exceção.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="familias">
+    <h2 id="familias">Famílias</h2>
+    <div class="pv-grid pv-grid--2">
+      <div class="pv-panel">
+        <p class="pv-label">Poppins · UI e corpo</p>
+        <p style="font-size:2rem;line-height:1.2;font-weight:700;letter-spacing:-0.02em">Onde você quer ir?</p>
+        <p style="margin-top:var(--space-2xs);color:var(--color-text-muted);font-size:var(--text-small)">400 Regular · 500 Medium · 600 SemiBold · 700 Bold — 100 a 900 disponíveis, mas UI usa três pesos.</p>
+        <div class="pv-stack" style="margin-top:var(--space-md)">
+          <p style="font-weight:400">400 — Atendimento personalizado nos dois lados do Atlântico.</p>
+          <p style="font-weight:500">500 — Destinos curados, sem roteiro engessado.</p>
+          <p style="font-weight:600">600 — Fale com um especialista</p>
+          <p style="font-weight:700">700 — Presentes no Brasil &amp; Portugal</p>
+        </div>
+      </div>
+      <div class="pv-panel" style="background:var(--color-inverse-bg);border-color:transparent">
+        <p class="pv-label" style="color:rgba(255,255,255,.6)">Instrument Serif · editorial</p>
+        <p style="font-family:var(--font-editorial);font-size:2.25rem;line-height:1.12;color:#fff">Ainda não sabe onde passar o <em>réveillon</em>?</p>
+        <p style="margin-top:var(--space-xs);font-family:var(--font-editorial);font-style:italic;font-size:1.5rem;line-height:1.2;color:var(--color-accent)">Cinco destinos, cinco formas de começar 2027.</p>
+        <p style="margin-top:var(--space-md);font-size:var(--text-small);color:rgba(255,255,255,.7)">Uso exclusivo em display ≥24px. Nunca em corpo, botão, preço, label ou navegação.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="escada">
+    <h2 id="escada">Escala</h2>
+    <p>Oito degraus, do display ao selo. Cada degrau já carrega tamanho, leading e tracking no token composto.</p>
+
+    <div class="type-row">
+      <div class="type-meta"><b>--text-display</b>40 → 56px · 1.06 · −0.02em · 700</div>
+      <p style="font-size:var(--text-display);line-height:var(--text-display-leading);letter-spacing:var(--text-display-tracking);font-weight:700">A viagem que você imaginou</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-editorial</b>36 → 56px · 1.12 · −0.01em · serif</div>
+      <p style="font-family:var(--font-editorial);font-size:var(--text-editorial);line-height:var(--text-editorial-leading);letter-spacing:var(--text-editorial-tracking)">O cuidado que você merece</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-h1</b>32 → 40px · 1.15 · −0.015em · 700</div>
+      <p style="font-size:var(--text-h1);line-height:var(--text-h1-leading);letter-spacing:var(--text-h1-tracking);font-weight:700">Destinos para viajar com calma</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-h2</b>28px · 1.2 · −0.01em · 600</div>
+      <p style="font-size:var(--text-h2);line-height:var(--text-h2-leading);letter-spacing:var(--text-h2-tracking);font-weight:600">Experiências perto do mar</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-h3</b>22px · 1.3 · 600</div>
+      <p style="font-size:var(--text-h3);line-height:var(--text-h3-leading);font-weight:600">Roteiro de 12 noites com aéreo incluído</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-title</b>18px · 1.35 · 700</div>
+      <p style="font-size:var(--text-title);line-height:var(--text-title-leading);font-weight:700">Andes, Cordilheira — Chile</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-body-lg</b>18px · 1.6 · 400</div>
+      <p style="font-size:var(--text-body-lg);line-height:var(--text-body-lg-leading)">Montanhas, vinhedos e o silêncio que só a cordilheira oferece, com atendimento em português do início ao fim.</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-body</b>16px · 1.65 · 400</div>
+      <p style="font-size:var(--text-body);line-height:var(--text-body-leading);max-width:var(--measure)">Um especialista acompanha cada etapa: escolha do destino, datas, documentação e o suporte por telefone enquanto você estiver fora.</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-small</b>14px · 1.55 · 400</div>
+      <p style="font-size:var(--text-small);line-height:var(--text-small-leading);color:var(--color-text-muted)">Valores por pessoa, sujeitos à disponibilidade aérea na data da reserva.</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-caption</b>12px · 1.45 · +0.01em</div>
+      <p style="font-size:var(--text-caption);line-height:var(--text-caption-leading);letter-spacing:var(--text-caption-tracking);color:var(--color-text-muted)">CADASTUR 26.123456.00-1 · S23 Viagens e Turismo</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-label</b>12px · uppercase · +0.08em · 700</div>
+      <p class="t-label">Presentes no Brasil &amp; Portugal</p>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>--text-button</b>15px · 1.2 · +0.01em · 600</div>
+      <p style="font-size:var(--text-button);line-height:var(--text-button-leading);letter-spacing:var(--text-button-tracking);font-weight:600">Quero planejar minha viagem →</p>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="tracking">
+    <h2 id="tracking">Tracking e medida</h2>
+    <div class="pv-grid pv-grid--2">
+      <div class="pv-panel">
+        <p class="pv-label">Caixa alta sempre com +0.08em</p>
+        <p style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Em alta · mais procurado</p>
+        <p style="margin-top:var(--space-sm);font-size:12px;font-weight:700;letter-spacing:0;text-transform:uppercase;color:var(--color-text-muted)">Em alta — sem tracking, reprovado</p>
+      </div>
+      <div class="pv-panel">
+        <p class="pv-label">Prosa em 68ch</p>
+        <p class="t-body measure-demo">Viajar com o S23 começa por uma conversa. Você conta o que imagina, o especialista monta o roteiro, e a viagem nasce desse encontro — com fuso, documento e imprevisto resolvidos em português.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="specimen">
+    <h2 id="specimen">Specimen aplicado</h2>
+    <div class="specimen">
+      <p class="t-label" style="color:var(--color-accent);margin-bottom:var(--space-sm)">Campanha · Réveillon 2027</p>
+      <p style="font-family:var(--font-editorial);font-size:clamp(2rem,4.6vw,3.5rem);line-height:1.12;color:#fff;max-width:18ch">Ainda não sabe onde passar o <em>réveillon</em>?</p>
+      <p style="margin-top:var(--space-md)">Cinco destinos, cinco formas de começar 2027. Roteiros com aéreo, hospedagem e o suporte do S23 do outro lado do Atlântico.</p>
+      <div class="pv-row" style="margin-top:var(--space-md)">
+        <a href="./applied-ui.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 20px;border-radius:9999px;background:var(--color-primary);color:#fff;text-decoration:none;font-size:15px;font-weight:600">Ver destinos →</a>
+        <a href="./brand-assets.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 20px;border-radius:9999px;border:1.5px solid rgba(255,255,255,.75);color:#fff;text-decoration:none;font-size:15px;font-weight:600">Peças da marca</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · Poppins + Instrument Serif · OFL 1.1</footer>
+</body>
+</html>

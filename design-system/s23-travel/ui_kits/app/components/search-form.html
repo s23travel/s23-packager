@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Busca e filtros — componentes S23 Travel</title>
+<link rel="stylesheet" href="../../../colors_and_type.css">
+<link rel="stylesheet" href="../app.css">
+<style>
+  body { padding: var(--space-lg) var(--page-margin); }
+  h1 { font-size: var(--text-h2); line-height: var(--text-h2-leading); margin-bottom: var(--space-2xs); }
+  p.lead { color: var(--color-text-muted); font-size: var(--text-small); margin-bottom: var(--space-lg); max-width: 60ch; }
+  .demo-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--color-text-muted); margin: var(--space-md) 0 var(--space-2xs); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<h1>Busca e filtros</h1>
+<p class="lead">Barra branca de raio 24px com divisórias de 1px. Campo de texto, região, ordenação e ação primária. Em telas pequenas, empilha e o botão ocupa a largura toda.</p>
+
+<p class="demo-label">Default</p>
+<form class="s23-search" role="search" aria-label="Buscar destinos">
+  <div class="s23-field">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <label class="sr" for="q1">Pesquisar destinos</label>
+    <input id="q1" type="search" placeholder="Pesquisar destinos…">
+  </div>
+  <div class="s23-field">
+    <label class="sr" for="r1">Região</label>
+    <select id="r1">
+      <option>Todas as regiões</option>
+      <option>América do Sul</option>
+      <option>Europa</option>
+      <option>África</option>
+    </select>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+  </div>
+  <button class="s23-btn" type="submit">Buscar destinos</button>
+</form>
+
+<p class="demo-label">Foco no campo</p>
+<form class="s23-search" role="search" aria-label="Buscar destinos — foco">
+  <div class="s23-field" style="border-radius:var(--radius-md);box-shadow:0 0 0 2px rgba(212,100,28,.25)">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <label class="sr" for="q2">Pesquisar destinos</label>
+    <input id="q2" type="search" value="Marrocos">
+  </div>
+  <div class="s23-field">
+    <select aria-label="Região"><option>África</option></select>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+  </div>
+  <button class="s23-btn" type="submit">Buscar destinos</button>
+</form>
+
+<p class="demo-label">Erro de validação</p>
+<form class="s23-search" role="search" aria-label="Buscar destinos — erro" aria-describedby="erro-busca">
+  <div class="s23-field s23-field--error">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <label class="sr" for="q3">Pesquisar destinos</label>
+    <input id="q3" type="search" value="  " aria-invalid="true" aria-describedby="erro-busca">
+  </div>
+  <button class="s23-btn" type="submit">Buscar destinos</button>
+</form>
+<p class="s23-help s23-help--error" id="erro-busca" role="alert">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+  Digite um destino, país ou região para buscar.
+</p>
+
+<p class="demo-label">Loading</p>
+<form class="s23-search" role="search" aria-label="Buscar destinos — carregando">
+  <div class="s23-field">
+    <label class="sr" for="q4">Pesquisar destinos</label>
+    <input id="q4" type="search" value="Lisboa">
+  </div>
+  <button class="s23-btn is-loading" type="submit" aria-busy="true">Buscando…</button>
+</form>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tokens de espaçamento — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<style>
+  .scale { display: grid; gap: 0; }
+  .scale__row { display: grid; grid-template-columns: 112px 1fr 64px; gap: var(--space-sm); align-items: center; padding: 9px 0; border-bottom: 1px solid var(--s23-slate-200); }
+  .scale__row:last-child { border-bottom: 0; }
+  .scale__bar { height: 14px; border-radius: 3px; background: var(--color-accent); }
+  .scale__row code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: var(--color-text-muted); }
+  .mini-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 24px; background: var(--color-surface-tint); padding: 16px; border-radius: var(--radius-md); }
+  .mini-grid span { height: 56px; border-radius: 3px; background: rgba(16,29,66,.14); }
+  .mini-grid span:nth-child(-n+4) { background: var(--color-primary); }
+  .token-table { width: 100%; border-collapse: collapse; font-size: var(--text-small); }
+  .token-table th, .token-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--s23-slate-200); }
+  .token-table th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); }
+  .token-table code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: var(--color-primary-strong); }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html">Cores</a>
+      <a href="./typography.html">Tipografia</a>
+      <a href="./spacing.html" aria-current="page">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Espaçamento · foco</p>
+    <h1>Escala de 8 pontos</h1>
+    <p>Nove degraus, do ajuste óptico de 4px ao respiro de seção de 96px. Gutter 24px, container 1240px, catálogo em 12 colunas.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="tokens">
+    <h2 id="tokens">Tokens</h2>
+    <div class="scale">
+      <div class="scale__row"><code>--space-3xs</code><div class="scale__bar" style="width:4px"></div><code>4px</code></div>
+      <div class="scale__row"><code>--space-2xs</code><div class="scale__bar" style="width:8px"></div><code>8px</code></div>
+      <div class="scale__row"><code>--space-xs</code><div class="scale__bar" style="width:12px"></div><code>12px</code></div>
+      <div class="scale__row"><code>--space-sm</code><div class="scale__bar" style="width:16px"></div><code>16px</code></div>
+      <div class="scale__row"><code>--space-md</code><div class="scale__bar" style="width:24px"></div><code>24px</code></div>
+      <div class="scale__row"><code>--space-lg</code><div class="scale__bar" style="width:32px"></div><code>32px</code></div>
+      <div class="scale__row"><code>--space-xl</code><div class="scale__bar" style="width:40px"></div><code>40px</code></div>
+      <div class="scale__row"><code>--space-2xl</code><div class="scale__bar" style="width:64px"></div><code>64px</code></div>
+      <div class="scale__row"><code>--space-3xl</code><div class="scale__bar" style="width:96px"></div><code>96px</code></div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="grade">
+    <h2 id="grade">Grade</h2>
+    <div class="mini-grid" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <table class="token-table" style="margin-top:var(--space-md)">
+      <thead><tr><th>Breakpoint</th><th>Colunas</th><th>Gutter</th><th>Margem</th><th>Catálogo</th></tr></thead>
+      <tbody>
+        <tr><td>Desktop ≥1200px</td><td>12</td><td><code>24px</code></td><td><code>48px</code></td><td>3 colunas</td></tr>
+        <tr><td>Tablet 768–1199px</td><td>8</td><td><code>20px</code></td><td><code>32px</code></td><td>2 colunas</td></tr>
+        <tr><td>Mobile &lt;768px</td><td>4</td><td><code>16px</code></td><td><code>20px</code></td><td>1 coluna</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · tokens de espaçamento</footer>
+</body>
+</html>

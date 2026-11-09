@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Botões — componentes S23 Travel</title>
+<link rel="stylesheet" href="../../../colors_and_type.css">
+<link rel="stylesheet" href="../app.css">
+<style>
+  body { padding: var(--space-lg) var(--page-margin); }
+  h1 { font-size: var(--text-h2); line-height: var(--text-h2-leading); margin-bottom: var(--space-2xs); }
+  p.lead { color: var(--color-text-muted); font-size: var(--text-small); margin-bottom: var(--space-lg); max-width: 60ch; }
+  .demo { display: grid; gap: var(--space-md); }
+  .demo-row { padding: var(--space-sm) 0; border-bottom: 1px solid var(--s23-slate-200); }
+  .demo-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--color-text-muted); margin-bottom: var(--space-2xs); }
+  .on-dark { background: var(--color-inverse-bg); padding: var(--space-md); border-radius: var(--radius-lg); }
+  .is-hover { background: var(--color-primary-hover); box-shadow: var(--shadow-2); transform: translateY(-1px); }
+</style>
+</head>
+<body>
+<h1>Botões</h1>
+<p class="lead">Pill de 48px, rótulo 15px/600, alvo mínimo de 44px. Primário terracota, fantasma com contorno, ícone circular. Estados obrigatórios: default, hover, focus-visible, active, disabled e loading.</p>
+
+<div class="demo">
+  <div class="demo-row">
+    <p class="demo-label">Primário — default, hover, focus, active, disabled, loading</p>
+    <div class="s23-row">
+      <button class="s23-btn" type="button">Fale com um especialista</button>
+      <button class="s23-btn is-hover" type="button">Hover</button>
+      <button class="s23-btn" type="button" style="outline:2px solid var(--color-focus);outline-offset:3px;box-shadow:var(--shadow-focus)">Foco</button>
+      <button class="s23-btn" type="button" style="background:var(--color-primary-active)">Active</button>
+      <button class="s23-btn" type="button" disabled>Indisponível</button>
+      <button class="s23-btn is-loading" type="button" aria-busy="true">Enviando…</button>
+    </div>
+  </div>
+
+  <div class="demo-row">
+    <p class="demo-label">Fantasma sobre claro</p>
+    <div class="s23-row">
+      <button class="s23-btn s23-btn--ghost" type="button">Conhecer os destinos</button>
+      <button class="s23-btn s23-btn--ghost" type="button" style="background:rgba(16,29,66,.05)">Hover</button>
+      <button class="s23-btn s23-btn--ghost" type="button" disabled>Indisponível</button>
+    </div>
+  </div>
+
+  <div class="demo-row">
+    <p class="demo-label">Fantasma sobre navy</p>
+    <div class="on-dark">
+      <div class="s23-row">
+        <button class="s23-btn" type="button">Quero planejar minha viagem →</button>
+        <button class="s23-btn s23-btn--ghost-dark" type="button">Conhecer os destinos</button>
+        <button class="s23-btn s23-btn--ghost-dark" type="button" style="background:rgba(255,255,255,.1)">Hover</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-row">
+    <p class="demo-label">Compacto e ícone</p>
+    <div class="s23-row">
+      <button class="s23-btn s23-btn--sm" type="button">Buscar destinos</button>
+      <button class="s23-btn s23-btn--sm s23-btn--ghost" type="button">Ver todos</button>
+      <button class="s23-btn s23-btn--icon" type="button" aria-label="Página anterior">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

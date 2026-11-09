@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Specimens tipográficos — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<style>
+  .spec { padding: var(--space-md); border-radius: var(--radius-lg); background: var(--color-surface); border: 1px solid var(--color-border); }
+  .spec + .spec { margin-top: var(--space-sm); }
+  .spec small { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: var(--color-primary-strong); margin-bottom: 6px; }
+  .sans { font-family: var(--font-sans); }
+  .serif { font-family: var(--font-editorial); font-weight: 400; }
+  .weights { display: grid; gap: 6px; margin-top: var(--space-sm); }
+  .dark { background: var(--color-inverse-bg); color: #fff; border-color: transparent; }
+  .dark small { color: var(--color-accent); }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html">Cores</a>
+      <a href="./typography.html" aria-current="page">Tipografia</a>
+      <a href="./spacing.html">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Tipografia · foco</p>
+    <h1>Poppins e Instrument Serif</h1>
+    <p>Uma família para operar, uma para narrar. Nada de terceira via.</p>
+  </div>
+
+  <section class="pv-section" aria-labelledby="poppins">
+    <h2 id="poppins">Poppins — 18 arquivos, três pesos em uso</h2>
+    <div class="spec sans">
+      <small>--text-display · 700 · -0.02em</small>
+      <p style="font-size:var(--text-display);line-height:var(--text-display-leading);letter-spacing:var(--text-display-tracking);font-weight:700">Onde você quer ir?</p>
+      <div class="weights">
+        <p style="font-weight:400;font-size:var(--text-body)">400 — O roteiro começa com uma conversa, não com um formulário.</p>
+        <p style="font-weight:500;font-size:var(--text-body)">500 — Destinos no Brasil, em Portugal e no resto do mundo.</p>
+        <p style="font-weight:600;font-size:var(--text-body)">600 — Fale com um especialista</p>
+        <p style="font-weight:700;font-size:var(--text-body)">700 — Presentes no Brasil &amp; Portugal</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="serif">
+    <h2 id="serif">Instrument Serif — display editorial</h2>
+    <div class="spec dark serif">
+      <small>--text-editorial · 400 · itálico opcional</small>
+      <p style="font-size:var(--text-editorial);line-height:var(--text-editorial-leading);letter-spacing:var(--text-editorial-tracking);color:#fff">Ainda não sabe onde passar o <em>réveillon</em>?</p>
+      <p style="font-size:1.5rem;line-height:1.2;margin-top:12px;color:var(--color-accent);font-style:italic">Cinco destinos, cinco formas de começar 2027.</p>
+      <p style="margin-top:12px;font-size:var(--text-small);color:rgba(255,255,255,.7)">Somente ≥24px. Nunca em corpo, botão, preço, label ou navegação.</p>
+    </div>
+  </section>
+
+  <section class="pv-section" aria-labelledby="escada">
+    <h2 id="escada">Escada completa</h2>
+    <p class="t-small">h1 32–40 · h2 28 · h3 22 · title 18 · body-lg 18 · body 16 · small 14 · caption 12 · label 12</p>
+    <div class="spec">
+      <small>--text-h1 · 700</small>
+      <p style="font-size:var(--text-h1);line-height:var(--text-h1-leading);letter-spacing:var(--text-h1-tracking);font-weight:700">Destinos para viajar com calma</p>
+      <p style="font-size:var(--text-h2);line-height:var(--text-h2-leading);font-weight:600;margin-top:12px">Experiências perto do mar</p>
+      <p style="font-size:var(--text-title);font-weight:700;margin-top:12px">Andes, Cordilheira — Chile</p>
+      <p style="font-size:var(--text-body);line-height:var(--text-body-leading);margin-top:12px;max-width:var(--measure);color:var(--color-text-muted)">Um especialista acompanha cada etapa: destino, datas, documentação e o suporte por telefone enquanto você estiver fora.</p>
+      <p class="t-label" style="margin-top:12px;color:var(--color-primary-strong)">Em alta · mais procurado</p>
+    </div>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · specimens</footer>
+</body>
+</html>

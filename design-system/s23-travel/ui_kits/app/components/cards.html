@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cards de destino — componentes S23 Travel</title>
+<link rel="stylesheet" href="../../../colors_and_type.css">
+<link rel="stylesheet" href="../app.css">
+<style>
+  body { padding: var(--space-lg) var(--page-margin); }
+  h1 { font-size: var(--text-h2); line-height: var(--text-h2-leading); margin-bottom: var(--space-2xs); }
+  p.lead { color: var(--color-text-muted); font-size: var(--text-small); margin-bottom: var(--space-lg); max-width: 60ch; }
+  .demo { display: grid; gap: var(--space-md); }
+  .demo-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--color-text-muted); margin-bottom: var(--space-2xs); }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-md); }
+  .frame { background: var(--color-bg); border: 1px solid var(--s23-slate-200); border-radius: var(--radius-xl); padding: var(--space-md); }
+</style>
+</head>
+<body>
+<h1>Card de destino</h1>
+<p class="lead">Mídia 16:10 com selo no canto, corpo em 24px, local 18px/700, país e descrição em 14px, link "Conhecer destino →". Repouso, hover, foco, loading (esqueleto) e vazio.</p>
+
+<div class="demo">
+  <div class="frame">
+    <p class="demo-label">Default e hover</p>
+    <div class="demo-grid">
+      <a class="s23-card" href="#">
+        <div class="s23-media">
+          <span class="s23-badge s23-media__flag">Em alta</span>
+          <p class="s23-media__word">Chile</p>
+          <svg class="s23-media__pin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        </div>
+        <div class="s23-card__body">
+          <span class="s23-card__place">Andes, Cordilheira</span>
+          <span class="s23-card__country">Chile</span>
+          <p class="s23-card__copy">Montanhas, vinhedos e o silêncio da cordilheira em um roteiro de 8 noites.</p>
+          <span class="s23-card__link">Conhecer destino <span>→</span></span>
+        </div>
+      </a>
+
+      <a class="s23-card" href="#" style="box-shadow:var(--shadow-2);transform:translateY(-2px)">
+        <div class="s23-media s23-media--sky">
+          <span class="s23-badge s23-badge--neutral s23-media__flag">Mais procurado</span>
+          <p class="s23-media__word">Brasil</p>
+          <svg class="s23-media__pin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        </div>
+        <div class="s23-card__body">
+          <span class="s23-card__place">Costa Verde</span>
+          <span class="s23-card__country">Brasil</span>
+          <p class="s23-card__copy">Praias de água calma, trilhas na mata e pousadas pequenas entre Angra e Paraty.</p>
+          <span class="s23-card__link" style="text-decoration:underline;text-underline-offset:.25em">Conhecer destino <span>→</span></span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="frame">
+    <p class="demo-label">Loading — esqueleto com shimmer</p>
+    <div class="demo-grid">
+      <div class="s23-card" aria-busy="true">
+        <div class="s23-skeleton s23-skeleton--media"></div>
+        <div class="s23-card__body" style="gap:var(--space-xs)">
+          <div class="s23-skeleton s23-skeleton--line" style="width:62%"></div>
+          <div class="s23-skeleton s23-skeleton--line" style="width:38%"></div>
+          <div class="s23-skeleton s23-skeleton--line" style="width:88%"></div>
+        </div>
+      </div>
+      <div class="s23-card" aria-busy="true">
+        <div class="s23-skeleton s23-skeleton--media"></div>
+        <div class="s23-card__body" style="gap:var(--space-xs)">
+          <div class="s23-skeleton s23-skeleton--line" style="width:54%"></div>
+          <div class="s23-skeleton s23-skeleton--line" style="width:32%"></div>
+          <div class="s23-skeleton s23-skeleton--line" style="width:92%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame">
+    <p class="demo-label">Empty — sem destinos nesta região</p>
+    <div class="s23-empty">
+      <span class="s23-empty__icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-2 4-4 2 2-4Z"/></svg>
+      </span>
+      <h3>Ainda não temos destinos aqui</h3>
+      <p>Conte para a nossa equipe o que você procura. Montamos roteiros fora do catálogo com frequência.</p>
+      <a class="s23-btn s23-btn--sm" href="#">Falar com um especialista</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

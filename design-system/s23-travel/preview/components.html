@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Componentes — S23 Travel Design System</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="./preview.css">
+<link rel="stylesheet" href="../ui_kits/app/app.css">
+<style>
+  .cmp-block { padding: var(--space-md) 0; border-bottom: 1px solid var(--s23-slate-200); }
+  .cmp-block:last-child { border-bottom: 0; }
+  .cmp-title { display: flex; align-items: baseline; gap: var(--space-xs); flex-wrap: wrap; margin-bottom: var(--space-2xs); }
+  .cmp-title h3 { font-size: var(--text-title); font-weight: 700; }
+  .cmp-title a { font-size: 11px; color: var(--color-primary-strong); }
+  .cmp-note { font-size: var(--text-caption); color: var(--color-text-muted); margin-bottom: var(--space-sm); max-width: 66ch; }
+  .dark-shelf { background: var(--color-inverse-bg); padding: var(--space-md); border-radius: var(--radius-lg); }
+  .demo-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-md); }
+  .is-hover { background: var(--color-primary-hover); box-shadow: var(--shadow-2); transform: translateY(-1px); }
+</style>
+</head>
+<body>
+<header class="pv-bar">
+  <div class="pv-bar__inner">
+    <a class="pv-brand" href="./colors.html"><img src="../assets/Logo_Circulo.png" alt="S23 Travel">S23 Travel · Design System</a>
+    <nav class="pv-nav" aria-label="Cards do design system">
+      <a href="./colors.html">Cores</a>
+      <a href="./typography.html">Tipografia</a>
+      <a href="./spacing.html">Espaçamento</a>
+      <a href="./radius-shadows.html">Raios e sombras</a>
+      <a href="./components.html" aria-current="page">Componentes</a>
+      <a href="./brand-assets.html">Marca</a>
+      <a href="./applied-ui.html">Interface</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pv-main">
+  <div class="pv-head">
+    <p class="pv-eyebrow">Biblioteca</p>
+    <h1>Componentes</h1>
+    <p>Todos os estados obrigatórios — default, hover, focus-visible, active, disabled, loading, error e empty — usando apenas tokens. Cada bloco aponta para o snippet correspondente em <code>ui_kits/app/components/</code>.</p>
+  </div>
+
+  <section class="pv-section">
+    <div class="cmp-block">
+      <div class="cmp-title"><h3>Botão primário</h3><a href="../ui_kits/app/components/buttons.html">snippet completo</a></div>
+      <p class="cmp-note">Pill de 48px, 15px/600. Default, hover, foco, pressed, desabilitado e carregando.</p>
+      <div class="pv-row">
+        <button class="s23-btn" type="button">Fale com um especialista</button>
+        <button class="s23-btn is-hover" type="button">Hover</button>
+        <button class="s23-btn" type="button" style="outline:2px solid var(--color-focus);outline-offset:3px">Foco</button>
+        <button class="s23-btn" type="button" style="background:var(--color-primary-active)">Pressed</button>
+        <button class="s23-btn" type="button" disabled>Indisponível</button>
+        <button class="s23-btn is-loading" type="button" aria-busy="true">Enviando…</button>
+      </div>
+    </div>
+
+    <div class="cmp-block">
+      <div class="cmp-title"><h3>Fantasma e ícone</h3></div>
+      <p class="cmp-note">Contorno de 1.5px. Sobre claro usa navy; sobre navy usa branco a 75%. Ícone circular de 44px sempre com aria-label.</p>
+      <div class="pv-row" style="margin-bottom:var(--space-sm)">
+        <button class="s23-btn s23-btn--ghost" type="button">Conhecer os destinos</button>
+        <button class="s23-btn s23-btn--ghost s23-btn--sm" type="button" disabled>Indisponível</button>
+        <button class="s23-btn s23-btn--icon" type="button" aria-label="Página anterior">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        </button>
+      </div>
+      <div class="dark-shelf pv-row">
+        <button class="s23-btn" type="button">Quero planejar minha viagem →</button>
+        <button class="s23-btn s23-btn--ghost-dark" type="button">Conhecer os destinos</button>
+      </div>
+    </div>
+
+    <div class="cmp-block">
+      <div class="cmp-title"><h3>Selos e chips</h3><a href="../ui_kits/app/components/badges.html">snippet</a></div>
+      <p class="cmp-note">Selo em #9A4100, 12px/700, +0.08em. Chip frosted com ponto terracota.</p>
+      <div class="dark-shelf pv-row">
+        <span class="s23-badge">Em alta</span>
+        <span class="s23-badge s23-badge--neutral">Mais procurado</span>
+        <span class="s23-chip">Presentes no Brasil &amp; Portugal</span>
+      </div>
+    </div>
+
+    <div class="cmp-block">
+      <div class="cmp-title"><h3>Card de destino</h3><a href="../ui_kits/app/components/cards.html">snippet</a></div>
+      <p class="cmp-note">Mídia 16:10, selo 16px do canto, corpo de 24px, link terracota. Hover levanta 2px e reforça a sombra.</p>
+      <div class="demo-cards">
+        <a class="s23-card" href="../ui_kits/app/index.html">
+          <div class="s23-media">
+            <span class="s23-badge s23-media__flag">Em alta</span>
+            <p class="s23-media__word">Chile</p>
+            <svg class="s23-media__pin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          </div>
+          <div class="s23-card__body">
+            <span class="s23-card__place">Andes, Cordilheira</span>
+            <span class="s23-card__country">Chile</span>
+            <p class="s23-card__copy">Montanhas, vinhedos e o silêncio da cordilheira em um roteiro de 8 noites.</p>
+            <span class="s23-card__link">Conhecer destino <span>→</span></span>
+          </div>
+        </a>
+        <div class="s23-card" aria-busy="true">
+          <div class="s23-skeleton s23-skeleton--media"></div>
+          <div class="s23-card__body" style="gap:var(--space-xs)">
+            <div class="s23-skeleton s23-skeleton--line" style="width:60%"></div>
+            <div class="s23-skeleton s23-skeleton--line" style="width:36%"></div>
+            <div class="s23-skeleton s23-skeleton--line" style="width:86%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cmp-block">
+      <div class="cmp-title"><h3>Busca e filtros</h3><a href="../ui_kits/app/components/search-form.html">snippet</a></div>
+      <p class="cmp-note">Raio 24px, divisórias de 1px, foco com anel terracota. Empilha no celular.</p>
+      <form class="s23-search" role="search" aria-label="Buscar destinos">
+        <div class="s23-field">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <label for="pv-busca" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Pesquisar destinos</label>
+          <input id="pv-busca" type="search" placeholder="Pesquisar destinos…">
+        </div>
+        <div class="s23-field">
+          <label for="pv-regiao" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Região</label>
+          <select id="pv-regiao"><option>Todas as regiões</option><option>Europa</option></select>
+        </div>
+        <button class="s23-btn" type="submit">Buscar destinos</button>
+      </form>
+      <p class="s23-help s23-help--error" style="margin-top:var(--space-xs)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        Digite um destino, país ou região para buscar.
+      </p>
+    </div>
+
+    <div class="cmp-block">
+      <div class="cmp-title"><h3>Feedback</h3><a href="../ui_kits/app/components/feedback.html">snippet</a></div>
+      <div class="pv-grid pv-grid--2">
+        <div class="s23-alert s23-alert--error" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span>Não foi possível enviar o formulário. Tente novamente.</span>
+        </div>
+        <div class="s23-alert s23-alert--success" role="status">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+          <span>Recebemos o seu pedido. Respondemos em um dia útil.</span>
+        </div>
+      </div>
+      <div class="s23-empty" style="margin-top:var(--space-sm)">
+        <span class="s23-empty__icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-2 4-4 2 2-4Z"/></svg>
+        </span>
+        <h3>Ainda não temos destinos aqui</h3>
+        <p>Conte para a nossa equipe o que você procura. Montamos roteiros fora do catálogo.</p>
+        <a class="s23-btn s23-btn--sm" href="./applied-ui.html">Falar com um especialista</a>
+      </div>
+    </div>
+
+    <div class="cmp-block">
+      <div class="cmp-title"><h3>Paginação e atendimento</h3><a href="../ui_kits/app/components/navigation.html">snippet</a></div>
+      <p class="cmp-note">Itens circulares de 44px; ativo em #9A4100. Launcher fixo de 56px em verde acessível.</p>
+      <div class="pv-row" style="justify-content:space-between">
+        <ul class="s23-pagination" style="margin:0">
+          <li><span class="is-disabled" aria-hidden="true">←</span></li>
+          <li><a href="./components.html" aria-current="page">1</a></li>
+          <li><a href="./components.html">2</a></li>
+          <li><a href="./components.html" aria-label="Próxima página">→</a></li>
+        </ul>
+        <a class="s23-launcher" style="position:static" href="../ui_kits/app/index.html" aria-label="Falar com um especialista no WhatsApp">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.4A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 9.5c0 3 2.5 5.5 5.5 5.5"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="pv-foot">S23 Travel Design System · biblioteca de componentes</footer>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Navegação — componentes S23 Travel</title>
+<link rel="stylesheet" href="../../../colors_and_type.css">
+<link rel="stylesheet" href="../app.css">
+<style>
+  body { padding: 0 0 var(--space-lg); }
+  .wrap { padding: var(--space-lg) var(--page-margin); }
+  h1 { font-size: var(--text-h2); line-height: var(--text-h2-leading); margin-bottom: var(--space-2xs); }
+  p.lead { color: var(--color-text-muted); font-size: var(--text-small); margin-bottom: var(--space-lg); max-width: 60ch; }
+  .demo-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--color-text-muted); margin: var(--space-lg) 0 var(--space-2xs); }
+  .faux-hero { height: 160px; background: linear-gradient(160deg, var(--s23-navy-700), var(--color-inverse-bg)); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Navegação</h1>
+  <p class="lead">Header navy de 72px, marca à esquerda, links brancos com filete terracota no item ativo e CTA pill à direita. Sticky, com sombra nível 3 ao rolar. No celular, os links viram menu em painel navy.</p>
+</div>
+
+<header class="s23-header">
+  <div class="s23-container s23-header__inner">
+    <a class="s23-logo" href="#" aria-label="S23 Travel — início">
+      <img src="../../../assets/Logo_Circulo.png" alt="">
+      <span class="s23-logo__word">s23 <span>travel</span></span>
+    </a>
+    <nav class="s23-nav" aria-label="Navegação principal">
+      <a href="#" aria-current="page">Início</a>
+      <a href="#">Viagens</a>
+      <a href="#">Destinos</a>
+      <a href="#">Serviços</a>
+      <a href="#">Blog</a>
+    </nav>
+    <a class="s23-btn s23-btn--sm" href="#">Fale com um especialista</a>
+  </div>
+</header>
+<div class="faux-hero"></div>
+
+<div class="wrap">
+  <p class="demo-label">Paginação</p>
+  <nav aria-label="Paginação de destinos">
+    <ul class="s23-pagination">
+      <li><span class="is-disabled" aria-hidden="true">←</span></li>
+      <li><a href="#" aria-current="page">1</a></li>
+      <li><a href="#">2</a></li>
+      <li><a href="#">3</a></li>
+      <li><a href="#" aria-label="Próxima página">→</a></li>
+    </ul>
+  </nav>
+</div>
+</body>
+</html>
