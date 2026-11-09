@@ -242,6 +242,20 @@
   /* ---- 3.5 Typography families ---------------------------------------- */
   --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  /* Lâmina 9:16: alias isolado do --font-sans da interface Packager. */
+  --travel-flyer-font: "Poppins", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --flyer-scrim: rgba(16, 29, 66, 0.72);
+  --flyer-panel: rgba(16, 29, 66, 0.82);
+  --flyer-placeholder: linear-gradient(160deg, var(--s23-sky-300), var(--s23-navy-700), var(--s23-navy-950));
+  --flyer-gap: 2.5cqw;
+  --flyer-padding: 3cqw;
+  --flyer-radius: 2.2cqw;
+  --flyer-text-small: 2.2cqw;
+  --flyer-text-body: 2.8cqw;
+  --flyer-text-items: 4cqw;
+  --flyer-text-route: 6cqw;
+  --flyer-text-price: 8cqw;
   --font-editorial: "Instrument Serif", ui-serif, Georgia, "Times New Roman",
     serif;
 
