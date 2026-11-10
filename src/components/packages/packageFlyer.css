@@ -142,7 +142,19 @@
 .package-flyer-downloads {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: .5rem;
+}
+.package-flyer-preview-review {
+  display: grid;
+  gap: .6rem;
+  justify-items: start;
+}
+.package-flyer-review-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
 }
 .package-flyer-items-editor {
   display: grid;

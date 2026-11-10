@@ -426,19 +426,21 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
           </button>
         </fieldset>
         {activeSuggestion && <div className="package-flyer-downloads" aria-label="Salvar lâmina no pacote">
-          <button type="button" className="btn btn-primary" disabled={!canPreviewOnServer} aria-busy={previewing} onClick={() => void handleServerPreview()}>
-            {previewing ? 'Gerando prévia final no servidor…' : serverPreviewMatches ? 'Atualizar prévia final do servidor' : 'Gerar prévia final no servidor'}
-          </button>
-          {serverPreviewMatches && <>
+          {!serverPreviewMatches && <button type="button" className="btn btn-primary" disabled={!canPreviewOnServer} aria-busy={previewing} onClick={() => void handleServerPreview()}>
+            {previewing ? 'Gerando prévia final no servidor…' : 'Gerar prévia final no servidor'}
+          </button>}
+          {serverPreviewMatches && <div className="package-flyer-preview-review">
             <img className="package-flyer-review-image" src={serverPreview?.url} alt="Prévia final da lâmina gerada no servidor" />
-            <label className="package-flyer-review">
-              <input type="checkbox" checked={serverPreviewReviewed} onChange={event => setServerPreviewReviewed(event.target.checked)} />
-              Revisei a prévia final gerada no servidor
-            </label>
-            <button type="button" className="btn btn-secondary" disabled={!canSave} aria-busy={saving} onClick={() => void handleSave()}>
-              {saving ? 'Salvando no pacote…' : attachment ? 'Substituir a lâmina salva' : 'Salvar lâmina no pacote'}
-            </button>
-          </>}
+            <div className="package-flyer-review-row">
+              <label className="package-flyer-review">
+                <input type="checkbox" checked={serverPreviewReviewed} onChange={event => setServerPreviewReviewed(event.target.checked)} />
+                Revisei a prévia final gerada no servidor
+              </label>
+              <button type="button" className="btn btn-secondary" disabled={!canSave} aria-busy={saving} onClick={() => void handleSave()}>
+                {saving ? 'Salvando no pacote…' : attachment ? 'Substituir a lâmina salva' : 'Salvar lâmina no pacote'}
+              </button>
+            </div>
+          </div>}
         </div>}
         {attachment && <div className="package-flyer-downloads" aria-label="Baixar a última lâmina salva">
           <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('html')}>Baixar HTML salvo</button>
