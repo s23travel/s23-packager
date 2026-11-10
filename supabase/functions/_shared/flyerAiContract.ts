@@ -1,13 +1,31 @@
 /** Dados não aprovados: a operadora deve revisar imagem e texto antes de publicar. */
-export interface FlyerAiInput { destination: string }
+export interface FlyerAiInput {
+  destination: string;
+  /** Indicação opcional da operadora: orienta apenas o assunto da imagem. */
+  hint?: string;
+}
 export interface FlyerAiSuggestion {
   subtitle: string;
   image: { mimeType: 'image/png' | 'image/jpeg'; data: string };
 }
 
+/** Acima deste tamanho a indicação deixa de orientar o assunto e vira instrução. */
+export const HINT_MAX_LENGTH = 200;
+
 export function validDestination(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length >= 2 && value.trim().length <= 80 &&
     /^[\p{L}\p{M}][\p{L}\p{M} .,'’()\-]*$/u.test(value.trim());
+}
+
+/** Alfabeto da indicação: texto livre de uma linha, sem símbolos que montem prompt. */
+export function validHint(value: unknown): value is string {
+  return typeof value === 'string' && value === value.trim() && value.length >= 3 &&
+    value.length <= HINT_MAX_LENGTH && /^[\p{L}\p{M}\p{N} .,'’()\/&:-]+$/u.test(value);
+}
+
+/** Mantém o campo aceito pelo contrato enquanto a operadora digita. */
+export function sanitizeHint(value: string): string {
+  return value.replace(/[^\p{L}\p{M}\p{N} .,'’()\/&:-]/gu, '').replace(/\s+/gu, ' ').slice(0, HINT_MAX_LENGTH);
 }
 
 export function validSubtitle(value: unknown): value is string {

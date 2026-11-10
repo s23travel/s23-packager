@@ -92,6 +92,48 @@ Deno.test('cliente tipado envia somente o destino e exige resposta válida', asy
   assert(JSON.stringify(transmitted) === '{"destination":"Lisboa"}', 'somente destino enviado');
 });
 
+Deno.test('indicação opcional orienta só a imagem e é validada no servidor', async () => {
+  const prompts: string[] = [];
+  const handler = createFlyerAiHandler({ requireUser: async () => null, getApiKey: () => 'chave-ficticia',
+    fetch: async (_input, init) => {
+      prompts.push(JSON.parse(String((init as { body?: unknown } | undefined)?.body)).contents[0].parts[0].text);
+      return Response.json({ candidates: [{ finishReason: 'STOP', content: { parts: [
+        { text: 'Descubra novos horizontes' },
+        { inlineData: { mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aXcAAAAASUVORK5CYII=' } },
+      ] } }] });
+    } });
+  const response = await handler(new Request('https://example.test', { method: 'POST', body: JSON.stringify({
+    destination: 'Milão', hint: 'Trem Bernina-Express entre paisagens de gelo' }) }));
+  assert(response.status === 200, 'indicação válida deve ser aceita');
+  assert(prompts.length === 1 && prompts[0].includes('Trem Bernina-Express') && prompts[0].includes('Milão'),
+    'indicação e destino chegam ao modelo');
+  for (const hint of ['<script>alert(1)</script>', 'linha\nquebrada', 'x'.repeat(201), 'ai']) {
+    let calls = 0;
+    const rejecting = createFlyerAiHandler({ requireUser: async () => null, getApiKey: () => 'teste',
+      fetch: async () => { calls++; return new Response(); } });
+    const invalid = await rejecting(new Request('https://example.test', { method: 'POST', body: JSON.stringify({ destination: 'Milão', hint }) }));
+    assert(invalid.status === 400 && (await invalid.json()).error === 'INVALID_HINT' && calls === 0,
+      'indicação inválida é recusada antes de chamar a IA');
+  }
+});
+
+Deno.test('cliente envia indicação opcional e a valida antes da chamada', async () => {
+  let transmitted: unknown;
+  let calls = 0;
+  const generate = createFlyerAiGenerator(async (_name, options) => {
+    calls += 1;
+    transmitted = options.body;
+    return { data: { success: true, data: { subtitle: 'Descubra novos horizontes', image: {
+      mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aXcAAAAASUVORK5CYII=',
+    } } }, error: null };
+  });
+  const rejected = await generate({ destination: 'Milão', hint: 'gelo <script>' });
+  assert(!rejected.success && rejected.code === 'INVALID_HINT' && calls === 0, 'indicação inválida não sai do cliente');
+  const response = await generate({ destination: 'Milão', hint: '  Trem Bernina-Express  ' });
+  assert(response.success, 'indicação válida segue para o servidor');
+  assert(JSON.stringify(transmitted) === '{"destination":"Milão","hint":"Trem Bernina-Express"}', 'indicação enviada aparada');
+});
+
 Deno.test('não propaga campos adicionais da resposta não confiável', async () => {
   const handler = createFlyerAiHandler({ requireUser: async () => null, getApiKey: () => 'teste',
     fetch: async () => Response.json({ candidates: [{ content: { parts: [

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Package } from '../../types';
 import { createPackageFlyer } from '../../services/packageFlyerService';
 import { generateFlyerAi } from '../../services/flyerAiService';
-import { validSubtitle } from '../../../supabase/functions/_shared/flyerAiContract';
+import { HINT_MAX_LENGTH, sanitizeHint, validSubtitle } from '../../../supabase/functions/_shared/flyerAiContract';
 import { PackageFlyerTemplate } from './PackageFlyerTemplate';
 import {
   createPackageFlyerServerPreview,
@@ -38,6 +38,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
   const open = openProp ?? internalOpen;
   const [suggestion, setSuggestion] = useState<FlyerSuggestionState | null>(null);
   const [subtitleDraft, setSubtitleDraft] = useState('');
+  const [hint, setHint] = useState('');
   const [imageReviewed, setImageReviewed] = useState(false);
   const [subtitleReviewed, setSubtitleReviewed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -80,6 +81,9 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     setServerPreview(null);
     setServerPreviewReviewed(false);
   }, [pkg.id, modelKey]);
+
+  // A indicação vale para o pacote aberto; trocar de pacote troca o destino.
+  useEffect(() => { setHint(''); }, [pkg.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -127,6 +131,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     requestId.current += 1;
     setSuggestion(null);
     setSubtitleDraft('');
+    setHint('');
     setImageReviewed(false);
     setSubtitleReviewed(false);
     setImageFailed(false);
@@ -163,7 +168,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     setSubtitleReviewed(false);
     setImageFailed(false);
     try {
-      const result = await generateFlyerAi({ destination: flyer.model.destination });
+      const result = await generateFlyerAi({ destination: flyer.model.destination, hint: hint.trim() || undefined });
       if (requestId.current !== currentRequest) return;
       if (!result.success) {
         setError(result.error);
@@ -307,6 +312,13 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
         <p>{error}</p>
       </div>}
       {flyer.model && <div className="package-flyer-controls">
+        <label className="form-group">
+          <span className="form-label">Indicação para a imagem (opcional)</span>
+          <textarea className="form-textarea" aria-label="Indicação para a imagem" value={hint} maxLength={HINT_MAX_LENGTH}
+            placeholder="Ex.: Trem Bernina-Express entre paisagens de gelo" disabled={generating}
+            onChange={event => setHint(sanitizeHint(event.target.value))} />
+          <span className="package-flyer-help">Orienta só o assunto da imagem; o subtítulo continua sobre o destino. Até {HINT_MAX_LENGTH} caracteres.</span>
+        </label>
         <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating || previewing || saving || downloading !== null} aria-busy={generating}>
           {generating ? 'Gerando imagem e subtítulo…' : activeSuggestion ? 'Gerar outra sugestão de IA' : 'Gerar imagem e subtítulo com IA'}
         </button>

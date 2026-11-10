@@ -1,4 +1,4 @@
-import { validDestination, validImage, validSubtitle } from '../../supabase/functions/_shared/flyerAiContract';
+import { validDestination, validHint, validImage, validSubtitle } from '../../supabase/functions/_shared/flyerAiContract';
 import type { FlyerAiInput, FlyerAiSuggestion } from '../../supabase/functions/_shared/flyerAiContract';
 
 export type FlyerAiResult =
@@ -9,6 +9,7 @@ type Invoke = (name: string, options: { body: FlyerAiInput }) => Promise<{ data:
 
 const messages: Record<string, string> = {
   INVALID_INPUT: 'Informe um destino válido.',
+  INVALID_HINT: 'Revise a indicação da imagem: use de 3 a 200 caracteres, em uma linha e sem símbolos como < > { }.',
   UNAUTHORIZED: 'Entre na sua conta para gerar a lâmina.',
   AUTH_UNAVAILABLE: 'Não foi possível validar sua sessão.',
   AI_NOT_CONFIGURED: 'A geração de IA não está configurada no servidor.',
@@ -23,12 +24,15 @@ function failure(code: string): FlyerAiResult {
   return { success: false, code, error: messages[code] || 'Não foi possível gerar a imagem e o subtítulo.' };
 }
 
-/** Aceita somente destino; o resultado é sugestão não aprovada, sem alterar o modelo comercial. */
+/** Aceita destino e indicação opcional; o resultado é sugestão não aprovada, sem alterar o modelo comercial. */
 export function createFlyerAiGenerator(invoke: Invoke) {
   return async (input: FlyerAiInput): Promise<FlyerAiResult> => {
     if (!input || !validDestination(input.destination)) return failure('INVALID_INPUT');
+    const hint = typeof input.hint === 'string' ? input.hint.trim() : undefined;
+    if (hint !== undefined && !validHint(hint)) return failure('INVALID_HINT');
     try {
-      const { data, error } = await invoke('generate-flyer-ai', { body: { destination: input.destination.trim() } });
+      const body: FlyerAiInput = hint ? { destination: input.destination.trim(), hint } : { destination: input.destination.trim() };
+      const { data, error } = await invoke('generate-flyer-ai', { body });
       if (error) {
         const context = (error as { context?: unknown }).context;
         if (context instanceof Response) {

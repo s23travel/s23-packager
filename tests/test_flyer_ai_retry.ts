@@ -8,10 +8,11 @@ type Reply = { status?: number; body: unknown };
 const modelReply = (parts: unknown[]): Reply => ({ body: { candidates: [{ finishReason: 'STOP', content: { parts } }] } });
 
 function createHarness(replies: Reply[]) {
-  const calls: Array<{ modalities: unknown; promptLength: number }> = [];
+  const calls: Array<{ modalities: unknown; promptLength: number; prompt: string }> = [];
   const fetchMock: typeof fetch = async (_input, init) => {
     const body = JSON.parse(String(init?.body || '{}'));
-    calls.push({ modalities: body?.generationConfig?.responseModalities, promptLength: String(body?.contents?.[0]?.parts?.[0]?.text || '').length });
+    const prompt = String(body?.contents?.[0]?.parts?.[0]?.text || '');
+    calls.push({ modalities: body?.generationConfig?.responseModalities, promptLength: prompt.length, prompt });
     const reply = replies.shift() || { status: 500, body: {} };
     return new Response(JSON.stringify(reply.body), { status: reply.status || 200, headers: { 'Content-Type': 'application/json' } });
   };
@@ -24,7 +25,8 @@ function createHarness(replies: Reply[]) {
 }
 
 const request = () => new Request('https://edge.example/generate-flyer-ai', {
-  method: 'POST', headers: { Authorization: 'Bearer user', 'Content-Type': 'application/json' }, body: JSON.stringify({ destination: 'Maiorca' }),
+  method: 'POST', headers: { Authorization: 'Bearer user', 'Content-Type': 'application/json' },
+  body: JSON.stringify({ destination: 'Maiorca', hint: 'Trem Bernina entre paisagens de gelo' }),
 });
 
 async function run() {
@@ -41,6 +43,8 @@ async function run() {
   assert.equal(retry.calls.length, 2);
   assert.deepEqual(retry.calls[0].modalities, ['TEXT', 'IMAGE']);
   assert.deepEqual(retry.calls[1].modalities, ['IMAGE']);
+  assert.match(retry.calls[0].prompt, /Maiorca.*Trem Bernina entre paisagens de gelo/s);
+  assert.match(retry.calls[1].prompt, /Maiorca.*Trem Bernina entre paisagens de gelo/s);
 
   const firstTry = createHarness([modelReply([{ text: 'Uma frase qualquer.' }, { inlineData: { mimeType: 'image/png', data: PNG } }])]);
   const firstResponse = await firstTry.handler(request());

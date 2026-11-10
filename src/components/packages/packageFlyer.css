@@ -122,6 +122,7 @@
 .package-flyer-notice--error > strong { color: var(--danger); }
 .package-flyer-notice .btn { margin-top: 0.5rem; }
 .package-flyer-controls .form-group { display: grid; gap: 0.35rem; width: min(100%, 32rem); }
+.package-flyer-help { color: var(--text-muted); font-size: var(--text-xs); line-height: 1.4; }
 
 .package-flyer-controls {
   display: grid;
