@@ -72,10 +72,22 @@ async function run() {
 
   const invalidSubtitle = createHarness([
     modelReply([{ text: 'Texto com preço e hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
+    modelReply([{ text: 'Oferta com voos inclusos.' }]),
   ]);
   const invalid = await invalidSubtitle.handler(request());
   assert.equal(invalid.status, 502);
   assert.equal((await invalid.json() as { error: string }).error, 'AI_SUBTITLE_INVALID');
+
+  const recoveredSubtitle = createHarness([
+    modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
+    modelReply([{ text: 'Entre montanhas, o destino revela paisagens inesquecíveis.' }]),
+  ]);
+  const recovered = await recoveredSubtitle.handler(request());
+  assert.equal(recovered.status, 200);
+  assert.equal((await recovered.json() as { data: { subtitle: string } }).data.subtitle,
+    'Entre montanhas, o destino revela paisagens inesquecíveis.');
+  assert.equal(recoveredSubtitle.calls.length, 2);
+  assert.deepEqual(recoveredSubtitle.calls[1].modalities, ['TEXT']);
 
   console.log('generate-flyer-ai retry tests passed');
 }
