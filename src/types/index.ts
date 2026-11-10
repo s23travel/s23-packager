@@ -734,5 +734,5 @@ export interface ImageImportResponse {
 }
 
 // Módulo Financeiro (Fase 1)
-export * from './financial';
+export * from './financial.ts';
 

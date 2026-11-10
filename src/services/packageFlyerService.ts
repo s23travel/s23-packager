@@ -1,6 +1,6 @@
-import type { Currency, Package, ServiceItem } from '../types';
-import { calculatePricePerPerson, formatMoney } from './financeService';
-import { normalizeLegacyToNewStructure } from './legacyAdapterService';
+import type { Currency, Package, ServiceItem } from '../types/index.ts';
+import { calculatePricePerPerson, formatMoney } from './financeService.ts';
+import { normalizeLegacyToNewStructure } from './legacyAdapterService.ts';
 
 /** Contrato público da lâmina v1: somente dados destinados à divulgação. */
 export interface PackageFlyerModel {
@@ -30,6 +30,23 @@ function validDate(value: unknown): value is string {
 
 function displayDate(value: string): string {
   return new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`));
+}
+
+/** Encurta o período sem repetir mês/ano quando não é necessário. */
+function displayPeriod(start: string, end: string): string {
+  const startDate = new Date(`${start}T00:00:00Z`);
+  const endDate = new Date(`${end}T00:00:00Z`);
+  const day = (date: Date) => new Intl.DateTimeFormat('pt-BR', { day: 'numeric', timeZone: 'UTC' }).format(date);
+  const month = (date: Date) => new Intl.DateTimeFormat('pt-BR', { month: 'long', timeZone: 'UTC' }).format(date);
+  const startYear = startDate.getUTCFullYear();
+  const endYear = endDate.getUTCFullYear();
+  if (startYear === endYear && startDate.getUTCMonth() === endDate.getUTCMonth()) {
+    return `${day(startDate)} a ${day(endDate)} de ${month(endDate)} de ${endYear}`;
+  }
+  if (startYear === endYear) {
+    return `${day(startDate)} de ${month(startDate)} a ${day(endDate)} de ${month(endDate)} de ${endYear}`;
+  }
+  return `${displayDate(start)} a ${displayDate(end)}`;
 }
 
 const mealPlans: Record<string, string> = {
@@ -149,7 +166,7 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
 
   if (errors.length || !validDate(start) || !validDate(end) || typeof amount !== 'number') return { model: null, errors, warnings };
   return {
-    model: { version: 1, origin, destination, period: `${displayDate(start)} a ${displayDate(end)}`,
+    model: { version: 1, origin, destination, period: displayPeriod(start, end),
       price: { amount, currency, formatted: formatMoney(amount, currency) }, items, paymentConditions },
     errors, warnings,
   };

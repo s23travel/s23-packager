@@ -2,7 +2,7 @@
 // REGRA FUNDAMENTAL: 100% Determinístico, sem IA, em memória, não altera dados originais,
 // não executa queries de banco ou migrations, e preserva rigorosamente todos os campos.
 
-import {
+import type {
   CostCategory,
   CostComponent,
   Currency,
@@ -14,8 +14,8 @@ import {
   QuotationData,
   ServiceItem,
   ServiceType,
-} from '../types';
-import { calculateFinancialSummary } from './financeService';
+} from '../types/index.ts';
+import { calculateFinancialSummary } from './financeService.ts';
 
 /**
  * Gera UUID seguro via crypto.randomUUID() com fallback para compatibilidade.

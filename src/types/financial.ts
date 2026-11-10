@@ -1,4 +1,4 @@
-import { Currency } from './index';
+import type { Currency } from './index.ts';
 
 // 1. Tipos para Contas Financeiras
 export type FinancialAccountType = 'bank_account' | 'cash' | 'credit_card' | 'other';

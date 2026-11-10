@@ -22,26 +22,36 @@ const bundle = await build({
   plugins: [{
     name: 'offline-flyer-apis',
     setup(builder) {
-      builder.onResolve({ filter: /(?:flyerAiService|packageFlyerExport)$/ }, args => ({
+      builder.onResolve({ filter: /(?:flyerAiService|packageFlyerAttachmentService)$/ }, args => ({
         path: args.path.split('/').pop(), namespace: 'offline-flyer',
       }));
       builder.onLoad({ filter: /.*/, namespace: 'offline-flyer' }, args => ({
         loader: 'tsx', resolveDir: process.cwd(), contents: args.path === 'flyerAiService'
           ? `export async function generateFlyerAi(input) {
-               const test = window.flyerFlowTest;
-               test.generations.push(input);
-               const suggestion = {success:true,data:{image:{mimeType:'image/png',data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aR8AAAAASUVORK5CYII='},subtitle:'Explore lagoas e paisagens'}};
-               if (test.deferGeneration) return await new Promise(resolve => { test.resolveGeneration = resolve; });
-               return suggestion;
-             }`
-          : `export async function createPackageFlyerHtml(model) {
-               window.flyerFlowTest.htmlModels.push(structuredClone(model));
-               return new Blob(['<!doctype html><title>fixture</title>'], {type:'text/html;charset=utf-8'});
-             }
-             export async function createPackageFlyerPng(model) {
-               window.flyerFlowTest.pngModels.push(structuredClone(model));
-               return new Blob(['png fixture'], {type:'image/png'});
-             }`,
+                const test = window.flyerFlowTest;
+                test.generations.push(input);
+                const suggestion = {success:true,data:{image:{mimeType:'image/png',data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aR8AAAAASUVORK5CYII='},subtitle:'Explore lagoas e paisagens'}};
+                if (test.deferGeneration) return await new Promise(resolve => { test.resolveGeneration = resolve; });
+                return suggestion;
+              }`
+          : args.path === 'packageFlyerAttachmentService'
+          ? `export async function getCurrentPackageFlyer(packageId) {
+                 window.flyerFlowTest.currentReads.push(packageId);
+                 return null;
+               }
+               export async function createPackageFlyerServerPreview(input) {
+                 window.flyerFlowTest.previews.push(structuredClone(input));
+                 return {requestId:input.requestId,expectedRevision:input.expectedRevision,preview:new Blob(['png fixture'],{type:'image/png'})};
+               }
+               export async function publishPackageFlyer(input) {
+                 window.flyerFlowTest.publications.push(structuredClone(input));
+                 return {revision:1,savedAt:'2026-11-09T12:00:00.000Z'};
+               }
+               export async function downloadSavedPackageFlyer(packageId,format) {
+                 window.flyerFlowTest.savedDownloads.push(packageId+':'+format);
+                 return new Blob(['saved fixture'],{type:format==='png'?'image/png':'text/html'});
+               }`
+          : '',
       }));
     },
   }],

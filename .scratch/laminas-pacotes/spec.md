@@ -8,9 +8,9 @@ A pessoa responsável pela operação precisa divulgar pacotes de viagem no What
 
 ## Solução
 
-No detalhe de um pacote já criado, oferecer a ação **Criar lâmina**. O Packager apresenta uma prévia baseada no modelo visual escolhido, usando informações comerciais do próprio pacote, uma imagem do destino criada por IA e um subtítulo comercial sugerido por IA. A pessoa revisa a peça e escolhe baixar em PNG ou HTML.
+No detalhe de um pacote já criado, oferecer a ação **Criar lâmina**. O Packager apresenta uma prévia baseada no modelo visual escolhido, usando informações comerciais do próprio pacote, uma imagem do destino criada por IA e um subtítulo comercial sugerido por IA. A pessoa revisa a peça e escolhe baixar em PNG ou HTML. Após confirmar uma prévia final gerada no servidor, pode salvá-la como o único anexo atual do pacote.
 
-A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de referência, com valores e serviços fictícios, está em [referencia-visual.png](referencia-visual.png). A peça é independente da geração de conteúdo do website. **Nesta primeira entrega, os arquivos não serão guardados como anexos do pacote**: o salvamento foi adiado até existir um ambiente e um caminho de renderização/validação seguros.
+A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de referência, com valores e serviços fictícios, está em [referencia-visual.png](referencia-visual.png). A peça é independente da geração de conteúdo do website. A validação de segurança e o renderer confiável vivem no backend; HTML/PNG recebidos do browser nunca são aceitos para substituir um anexo.
 
 ## Histórias de usuário
 
@@ -25,7 +25,7 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 9. Como operadora, quero que o HTML exportado apresente a mesma peça com seus recursos necessários para poder abri-lo fora do Packager.
 10. Como operadora, quero baixar a lâmina revisada em HTML ou PNG para compartilhar o pacote fora do Packager.
 11. Como operadora, quero que a prévia mostre o mesmo conteúdo comercial exportado para reduzir erros de divulgação.
-12. Como operadora, quero entender que os downloads desta primeira entrega não ficam anexados ao pacote para não presumir que posso recuperá-los depois.
+12. Como operadora, quero baixar novamente a última lâmina salva sem gerar outra imagem de IA para evitar chamadas e custos desnecessários.
 13. Como operadora, quero ver a origem da viagem na lâmina para mostrar de onde parte a oferta.
 14. Como operadora, quero ver o destino principal do pacote para identificar rapidamente a viagem.
 15. Como operadora, quero que o preço seja o valor comercial por pessoa do pacote para não divulgar custos ou lucros internos.
@@ -52,10 +52,10 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 36. Como operadora, quero ser avisada quando faltar um dado necessário para corrigir o pacote antes de divulgar.
 37. Como operadora, quero ser informada de falhas na IA ou no download para saber o que aconteceu.
 38. Como operadora, quero que nomes longos e listas variáveis não cortem textos ou invadam margens para manter a peça legível.
-39. Como responsável pelo projeto, quero adiar armazenamento e anexos até haver uma fronteira segura de geração/validação no servidor para impedir que arquivos adulterados substituam uma lâmina válida.
+39. Como usuária autenticada, quero que o servidor gere e valide os arquivos do anexo para impedir que arquivos adulterados substituam uma lâmina válida.
 40. Como responsável pelo projeto, quero evitar testes que alterem dados de clientes ou finanças em produção para preservar a operação.
 41. Como responsável pelo projeto, quero poder usar a IA disponível no sistema durante o desenvolvimento para validar a geração real quando necessário.
-42. Futuramente, como operadora, quero manter apenas a última lâmina salva para que uma nova lâmina substitua a anterior sem acumular histórico.
+42. Como operadora, quero manter apenas a última lâmina salva para que uma nova lâmina substitua a anterior sem acumular histórico.
 
 ## Decisões de implementação
 
@@ -71,7 +71,9 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 - A imagem e o subtítulo são gerados com IA. A chamada deve usar o backend existente como padrão de segurança, validar usuário autenticado e manter a chave fora do navegador. Verificar modelo de imagem, disponibilidade e custo no momento da implementação; a existência da chave de texto não garante acesso ao modelo de imagem.
 - A composição comercial é determinística: a IA não escreve preços, datas ou itens no arquivo final. A prévia serve para revisão antes da exportação.
 - A exportação em PNG e HTML usa os dados revisados e deve preservar fontes, cores, logotipo e imagem. O HTML precisa ser utilizável fora da sessão do aplicativo, sem depender de links autenticados temporários ou chaves.
-- **Persistência/anexos estão fora da primeira entrega**, por decisão do responsável após revisão de segurança: arquivos enviados pelo browser não podem ser confiados para substituir a última versão. Retomar somente quando houver solução aprovada de renderização/validação confiável e ambiente para validar políticas, armazenamento e concorrência. A preferência futura é manter apenas a última versão e preparar limpeza automática, mas nada disso está autorizado a ser ativado em produção agora.
+- A renderização e validação dos arquivos do anexo ocorrem num Worker Cloudflare dedicado com Browser Run, chamado somente pela Edge Function autenticada. O Worker existente `s23-packager` que atende `packager.s23.travel` não deve ser alterado. A Edge Function consulta/valida o pacote e envia um modelo público canônico e os recursos revisados ao renderer; nunca aceita HTML/PNG do browser para publicação.
+- Antes do salvamento, o backend retorna uma prévia PNG final. HTML e PNG correspondentes ficam em paths imutáveis privados e em estado staged, ainda sem alterar o ponteiro atual. Após a revisão explícita da imagem final, uma RPC transacional/CAS publica o par e só então aposenta a versão anterior. Repetição idempotente e conflitos não apagam a versão ativa. A versão salva permanece imutável se o pacote mudar; apenas uma nova prévia revisada pode substituí-la.
+- Preparar limpeza automática de versões antigas, tentativas órfãs e previews staged abandonadas (expiração em 24h) via tombstones duráveis e Storage API, sem apagar objeto ativo. O código, configurações e migration ficam locais nesta fase; ativar em produção, provisionar o bucket, definir secrets/agendamento e testar escrita/limpeza real exige autorização específica e ambiente aprovado.
 - O aplicativo não publica automaticamente no WhatsApp, Instagram ou TikTok; o envio e a publicação são realizados pela operadora após o download.
 - Permanecem a definir no desenho técnico: exclusão explícita de anexos e a forma exata de revisão dos textos e da imagem. Não tratar as propostas como decisões já aprovadas.
 
@@ -92,8 +94,9 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 3. Construir a prévia 9:16 conforme a referência e validar visualmente com dados fictícios.
 4. Integrar geração de imagem e subtítulo por IA no backend autenticado e tratar falhas e custos, sem confiar à IA os dados comerciais.
 5. Implementar e validar os downloads PNG e HTML, incluindo fontes e imagem necessárias para uso fora da sessão.
-6. Integrar, testar e revisar a experiência de geração, revisão e downloads, sem alegar que os arquivos estão anexados ao pacote.
-7. Registrar o anexo como trabalho futuro bloqueado até haver validação segura no servidor e ambiente apropriado; solicitar autorização separada antes de qualquer escrita ou publicação em produção.
+6. Projetar e testar um renderer Cloudflare separado, com Preview/mock e Browser Run, sem alterar o Worker de produção.
+7. Implementar Edge Function autenticada, persistência imutável em bucket privado e ponteiro transacional da última versão; cobrir falhas/retries e preparar limpeza automática.
+8. Integrar salvamento e recuperação do anexo à tela. Registrar testes reais de RLS/Storage/concorrência como pendentes até que o responsável autorize um ambiente seguro e as operações remotas necessárias.
 
 ## Fora de escopo
 
@@ -101,7 +104,6 @@ A primeira referência é vertical, 9:16, em 1080 × 1920 pixels. A imagem de re
 - Publicação automática em redes sociais ou envio automático pelo WhatsApp.
 - Editor gráfico genérico, importação de templates externos ou upload de fotografias reais.
 - Formatos ou templates adicionais sem requisitos acordados.
-- Anexar, persistir, recuperar ou limpar arquivos da lâmina no Supabase nesta primeira entrega.
 - Alterações das regras financeiras, implementação de novas regras de autenticação ou refatorações não relacionadas.
 - Implantação, alteração de serviços externos, migração remota, commit ou push sem solicitação explícita.
 

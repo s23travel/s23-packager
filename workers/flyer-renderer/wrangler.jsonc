@@ -1,0 +1,14 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "s23-flyer-renderer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "browser": { "binding": "BROWSER" },
+  "rules": [
+    { "type": "Text", "globs": ["**/*.css"], "fallthrough": true },
+    { "type": "Data", "globs": ["**/*.png", "**/*.ttf"], "fallthrough": true }
+  ],
+  "triggers": { "crons": ["0 3 * * *"] }
+}
