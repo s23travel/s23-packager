@@ -99,7 +99,7 @@ async function run() {
     const generate = await click('Criar lâmina');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.generations.length === 0, 'A IA foi chamada sem ação explícita');
-    assert(container.textContent?.includes('Gerar imagem e subtítulo com IA'), 'A ação de IA não está identificada');
+    assert(container.textContent?.includes('Gerar imagem e subtítulo'), 'A ação de IA não está identificada');
     assert(container.textContent?.includes('Ainda não há uma lâmina salva neste pacote'), 'A tela não apresenta o estado vazio do anexo');
     assert(container.textContent?.includes('pode gerar cobrança'), 'A tela não informa que a IA pode ter custo');
 
@@ -107,7 +107,7 @@ async function run() {
     assert(previewBeforeReview() === undefined, 'Prévia final não deveria existir antes de gerar a sugestão');
 
     await fillHint('Trem Bernina-Express entre paisagens de gelo');
-    await click('Gerar imagem e subtítulo com IA');
+    await click('Gerar imagem e subtítulo');
     assert(window.flyerFlowTest.generations.length === 1 && window.flyerFlowTest.generations[0].destination === 'Açores', 'A IA recebeu destino incorreto');
     assert(window.flyerFlowTest.generations[0].hint === 'Trem Bernina-Express entre paisagens de gelo', 'A indicação da imagem não chegou à IA');
     assert(container.querySelector('img[alt="Imagem gerada para Açores"]'), 'A imagem sugerida não foi apresentada');
@@ -166,7 +166,7 @@ async function run() {
     assert(generate.isConnected, 'A tela não manteve o botão de criação no pacote atual');
 
     window.flyerFlowTest.deferGeneration = true;
-    await click('Gerar imagem e subtítulo com IA');
+    await click('Gerar imagem e subtítulo');
     assert(window.flyerFlowTest.resolveGeneration, 'A geração simulada não ficou pendente');
     await act(async () => {
       root.render(<PackageFlyerCreator package={{ ...pkg, id: 'third', data: { ...pkg.data, destination: 'Lisboa' } }} />);

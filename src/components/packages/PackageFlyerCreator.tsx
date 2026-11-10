@@ -363,7 +363,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
           <span className="package-flyer-help">Orienta só o assunto da imagem; o subtítulo continua sobre o destino. Até {HINT_MAX_LENGTH} caracteres.</span>
         </label>
         <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating || previewing || saving || downloading !== null} aria-busy={generating}>
-          {generating ? 'Gerando imagem e subtítulo…' : activeSuggestion ? 'Gerar nova sugestão' : 'Gerar imagem e subtítulo com IA'}
+          {generating ? 'Gerando imagem e subtítulo…' : activeSuggestion ? 'Gerar nova sugestão' : 'Gerar imagem e subtítulo'}
         </button>
         <span className="package-flyer-help">Cada geração pode gerar cobrança, inclusive quando falha.</span>
         {activeSuggestion && <>
