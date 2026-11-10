@@ -239,6 +239,75 @@ COMMENT ON FUNCTION "public"."approve_quotation_and_create_operation"("p_quotati
 
 
 
+CREATE OR REPLACE FUNCTION "public"."begin_package_flyer_upload"("p_package_id" "uuid", "p_package_updated_at" timestamp with time zone, "p_expected_revision" integer, "p_request_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_updated_at timestamptz;
+  v_revision integer;
+  v_operation public.package_flyer_operations%rowtype;
+begin
+  select p.updated_at into v_updated_at
+  from public.packages as p
+  where p.id = p_package_id
+  for update;
+  if not found then return jsonb_build_object('status', 'not_found'); end if;
+  if v_updated_at is distinct from p_package_updated_at then
+    return jsonb_build_object('status', 'conflict');
+  end if;
+
+  select o.* into v_operation
+  from public.package_flyer_operations as o
+  where o.package_id = p_package_id and o.request_id = p_request_id
+  for update;
+  if found then
+    if v_operation.expected_package_updated_at is distinct from p_package_updated_at or
+       v_operation.expected_revision <> p_expected_revision then
+      return jsonb_build_object('status', 'conflict');
+    end if;
+    if v_operation.status = 'published' then
+      if exists (select 1 from public.package_flyer_attachments a where a.package_id = p_package_id and a.operation_id = v_operation.id) then
+        return jsonb_build_object('status', 'published', 'revision', (select a.revision from public.package_flyer_attachments a where a.package_id = p_package_id));
+      end if;
+      return jsonb_build_object('status', 'conflict');
+    end if;
+    select coalesce(a.revision, 0) into v_revision
+    from public.package_flyer_attachments a where a.package_id = p_package_id;
+    v_revision := coalesce(v_revision, 0);
+    if v_revision <> p_expected_revision then return jsonb_build_object('status', 'conflict'); end if;
+    if v_operation.status = 'uploaded' then
+      return jsonb_build_object('status', 'uploaded', 'operation_id', v_operation.id,
+        'html_path', v_operation.html_path, 'png_path', v_operation.png_path,
+        'png_sha256', v_operation.png_sha256);
+    end if;
+    if v_operation.status <> 'rendering' then return jsonb_build_object('status', v_operation.status); end if;
+    return jsonb_build_object('status', 'ready', 'operation_id', v_operation.id,
+      'html_path', v_operation.html_path, 'png_path', v_operation.png_path);
+  end if;
+
+  select coalesce(a.revision, 0) into v_revision
+  from public.package_flyer_attachments as a
+  where a.package_id = p_package_id;
+  v_revision := coalesce(v_revision, 0);
+  if v_revision <> p_expected_revision then return jsonb_build_object('status', 'conflict'); end if;
+
+  insert into public.package_flyer_operations (
+    package_id, request_id, expected_package_updated_at, expected_revision, html_path, png_path
+  ) values (
+    p_package_id, p_request_id, p_package_updated_at, p_expected_revision,
+    p_package_id::text || '/' || p_request_id::text || '.html',
+    p_package_id::text || '/' || p_request_id::text || '.png'
+  ) returning * into v_operation;
+  return jsonb_build_object('status', 'ready', 'operation_id', v_operation.id,
+    'html_path', v_operation.html_path, 'png_path', v_operation.png_path);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."begin_package_flyer_upload"("p_package_id" "uuid", "p_package_updated_at" timestamp with time zone, "p_expected_revision" integer, "p_request_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'pg_temp'
@@ -569,6 +638,43 @@ $$;
 ALTER FUNCTION "public"."check_quotation_status_protection"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."claim_package_flyer_cleanup"("p_limit" integer DEFAULT 50) RETURNS TABLE("object_path" "text", "operation_id" "uuid")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+#variable_conflict use_column
+begin
+  update public.package_flyer_operations o
+  set status = 'failed', updated_at = now()
+  where o.status in ('rendering', 'uploaded') and o.updated_at < now() - interval '24 hours';
+  insert into public.package_flyer_cleanup_queue (object_path, operation_id)
+  select o.html_path, o.id from public.package_flyer_operations o
+  where o.status = 'failed' and o.created_at < now() - interval '24 hours'
+  union all
+  select o.png_path, o.id from public.package_flyer_operations o
+  where o.status = 'failed' and o.created_at < now() - interval '24 hours'
+  on conflict (object_path) do nothing;
+
+  return query
+  with due as (
+    select q.object_path from public.package_flyer_cleanup_queue q
+    where q.next_attempt_at <= now() and (q.leased_at is null or q.leased_at < now() - interval '10 minutes')
+    order by q.next_attempt_at, q.created_at
+    for update skip locked
+    limit greatest(1, least(coalesce(p_limit, 50), 100))
+  )
+  update public.package_flyer_cleanup_queue q
+  set leased_at = now()
+  from due
+  where q.object_path = due.object_path
+  returning q.object_path, q.operation_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."claim_package_flyer_cleanup"("p_limit" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text" DEFAULT NULL::"text", "p_expected_date" "date" DEFAULT NULL::"date", "p_description" "text" DEFAULT NULL::"text", "p_notes" "text" DEFAULT NULL::"text", "p_operation_service_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'pg_temp'
@@ -696,6 +802,80 @@ $$;
 
 
 ALTER FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text", "p_expected_date" "date", "p_description" "text", "p_notes" "text", "p_operation_service_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."enqueue_package_flyer_cleanup_before_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  insert into public.package_flyer_cleanup_queue (object_path, operation_id)
+  select o.html_path, o.id from public.package_flyer_operations o where o.package_id = old.id
+  union all
+  select o.png_path, o.id from public.package_flyer_operations o where o.package_id = old.id
+  on conflict (object_path) do nothing;
+  return old;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."enqueue_package_flyer_cleanup_before_delete"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."fail_package_flyer_upload"("p_request_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_operation public.package_flyer_operations%rowtype;
+begin
+  select o.* into v_operation from public.package_flyer_operations o where o.request_id = p_request_id for update;
+  if not found then return jsonb_build_object('status', 'not_found'); end if;
+  if v_operation.status = 'published' then return jsonb_build_object('status', 'published'); end if;
+  update public.package_flyer_operations set status = 'failed', updated_at = now() where id = v_operation.id;
+  insert into public.package_flyer_cleanup_queue (object_path, operation_id)
+  values (v_operation.html_path, v_operation.id), (v_operation.png_path, v_operation.id)
+  on conflict (object_path) do nothing;
+  return jsonb_build_object('status', 'failed');
+end;
+$$;
+
+
+ALTER FUNCTION "public"."fail_package_flyer_upload"("p_request_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."finish_package_flyer_cleanup"("p_object_path" "text", "p_success" boolean, "p_error_code" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_operation_id uuid;
+begin
+  select q.operation_id into v_operation_id from public.package_flyer_cleanup_queue q where q.object_path = p_object_path;
+  if not found then return jsonb_build_object('status', 'missing'); end if;
+  if p_success then
+    delete from public.package_flyer_cleanup_queue where object_path = p_object_path;
+    if v_operation_id is not null and not exists (
+      select 1 from public.package_flyer_attachments a where a.operation_id = v_operation_id
+    ) and not exists (
+      select 1 from public.package_flyer_cleanup_queue q where q.operation_id = v_operation_id
+    ) then
+      delete from public.package_flyer_operations where id = v_operation_id;
+    end if;
+    return jsonb_build_object('status', 'deleted');
+  end if;
+  update public.package_flyer_cleanup_queue
+  set attempts = attempts + 1,
+      next_attempt_at = now() + make_interval(mins => least(1440, power(2, least(attempts + 1, 10))::integer)),
+      leased_at = null,
+      last_error = left(coalesce(p_error_code, 'storage_error'), 80)
+  where object_path = p_object_path;
+  return jsonb_build_object('status', 'retry');
+end;
+$$;
+
+
+ALTER FUNCTION "public"."finish_package_flyer_cleanup"("p_object_path" "text", "p_success" boolean, "p_error_code" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_financial_account_balances"() RETURNS TABLE("account_id" "uuid", "account_name" "text", "account_type" "text", "currency" "text", "active" boolean, "initial_balance" numeric, "initial_balance_date" "date", "current_balance" numeric, "pending_receivables" numeric, "pending_payables" numeric, "projected_balance" numeric)
@@ -1055,6 +1235,109 @@ $$;
 
 
 ALTER FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."mark_package_flyer_uploaded"("p_request_id" "uuid", "p_html_sha256" "text", "p_png_sha256" "text", "p_html_bytes" integer, "p_png_bytes" integer) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  v_operation public.package_flyer_operations%rowtype;
+begin
+  if p_html_sha256 is null or p_png_sha256 is null or p_html_bytes is null or p_png_bytes is null or
+     p_html_sha256 !~ '^[0-9a-f]{64}$' or p_png_sha256 !~ '^[0-9a-f]{64}$' or
+     p_html_bytes not between 1 and 10485760 or p_png_bytes not between 1 and 12582912 then
+    return jsonb_build_object('status', 'invalid');
+  end if;
+  select o.* into v_operation
+  from public.package_flyer_operations o
+  where o.request_id = p_request_id
+  for update;
+  if not found then return jsonb_build_object('status', 'not_found'); end if;
+  if v_operation.status = 'published' then return jsonb_build_object('status', 'idempotent'); end if;
+  if v_operation.status = 'uploaded' then
+    if v_operation.html_sha256 = p_html_sha256 and v_operation.png_sha256 = p_png_sha256 and
+       v_operation.html_bytes = p_html_bytes and v_operation.png_bytes = p_png_bytes then
+      return jsonb_build_object('status', 'uploaded');
+    end if;
+    return jsonb_build_object('status', 'conflict');
+  end if;
+  if v_operation.status <> 'rendering' then return jsonb_build_object('status', v_operation.status); end if;
+  update public.package_flyer_operations
+  set status = 'uploaded', html_sha256 = p_html_sha256, png_sha256 = p_png_sha256,
+      html_bytes = p_html_bytes, png_bytes = p_png_bytes, updated_at = now()
+  where id = v_operation.id;
+  return jsonb_build_object('status', 'uploaded');
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."mark_package_flyer_uploaded"("p_request_id" "uuid", "p_html_sha256" "text", "p_png_sha256" "text", "p_html_bytes" integer, "p_png_bytes" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."publish_package_flyer"("p_package_id" "uuid", "p_package_updated_at" timestamp with time zone, "p_expected_revision" integer, "p_request_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_operation public.package_flyer_operations%rowtype;
+  v_package_updated_at timestamptz;
+  v_revision integer;
+begin
+  select p.updated_at into v_package_updated_at
+  from public.packages p where p.id = p_package_id for update;
+  if not found then return jsonb_build_object('status', 'not_found'); end if;
+
+  select o.* into v_operation
+  from public.package_flyer_operations o
+  where o.package_id = p_package_id and o.request_id = p_request_id
+  for update;
+  if not found then return jsonb_build_object('status', 'not_found'); end if;
+  if v_operation.expected_package_updated_at is distinct from p_package_updated_at or
+     v_operation.expected_revision <> p_expected_revision then
+    return jsonb_build_object('status', 'conflict');
+  end if;
+  if v_operation.status = 'published' then
+    select a.revision into v_revision from public.package_flyer_attachments a
+    where a.package_id = v_operation.package_id and a.operation_id = v_operation.id;
+    if found then return jsonb_build_object('status', 'idempotent', 'revision', v_revision); end if;
+    return jsonb_build_object('status', 'conflict');
+  end if;
+  if v_operation.status <> 'uploaded' then return jsonb_build_object('status', 'invalid_state'); end if;
+
+  select a.revision into v_revision from public.package_flyer_attachments a where a.package_id = v_operation.package_id;
+  v_revision := coalesce(v_revision, 0);
+  if v_package_updated_at is distinct from v_operation.expected_package_updated_at or v_revision <> v_operation.expected_revision then
+    update public.package_flyer_operations set status = 'failed', updated_at = now() where id = v_operation.id;
+    insert into public.package_flyer_cleanup_queue (object_path, operation_id)
+    values (v_operation.html_path, v_operation.id), (v_operation.png_path, v_operation.id)
+    on conflict (object_path) do nothing;
+    return jsonb_build_object('status', 'conflict');
+  end if;
+
+  if v_revision > 0 then
+    insert into public.package_flyer_cleanup_queue (object_path, operation_id)
+    select old.html_path, old.id from public.package_flyer_attachments a
+    join public.package_flyer_operations old on old.id = a.operation_id
+    where a.package_id = v_operation.package_id
+    union all
+    select old.png_path, old.id from public.package_flyer_attachments a
+    join public.package_flyer_operations old on old.id = a.operation_id
+    where a.package_id = v_operation.package_id
+    on conflict (object_path) do nothing;
+  end if;
+
+  insert into public.package_flyer_attachments (package_id, operation_id, revision, saved_at)
+  values (v_operation.package_id, v_operation.id, v_revision + 1, now())
+  on conflict (package_id) do update set
+    operation_id = excluded.operation_id, revision = excluded.revision, saved_at = excluded.saved_at;
+  update public.package_flyer_operations set status = 'published', updated_at = now() where id = v_operation.id;
+  return jsonb_build_object('status', 'published', 'revision', v_revision + 1);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."publish_package_flyer"("p_package_id" "uuid", "p_package_updated_at" timestamp with time zone, "p_expected_revision" integer, "p_request_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."record_account_transfer"("p_source_account_id" "uuid", "p_destination_account_id" "uuid", "p_amount" numeric, "p_destination_amount" numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric, "p_transfer_fee" numeric DEFAULT 0.00, "p_transfer_fee_currency" "text" DEFAULT NULL::"text", "p_transacted_at" timestamp with time zone DEFAULT "now"(), "p_reference" "text" DEFAULT NULL::"text", "p_description" "text" DEFAULT NULL::"text", "p_operation_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
@@ -2021,6 +2304,75 @@ COMMENT ON COLUMN "public"."financial_transactions"."adjustment_direction" IS 'D
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."package_flyer_attachments" (
+    "package_id" "uuid" NOT NULL,
+    "operation_id" "uuid" NOT NULL,
+    "revision" integer NOT NULL,
+    "saved_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "package_flyer_attachments_revision_check" CHECK (("revision" > 0))
+);
+
+
+ALTER TABLE "public"."package_flyer_attachments" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."package_flyer_attachments" IS 'Pointer to the only current flyer attachment for each package.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."package_flyer_cleanup_queue" (
+    "object_path" "text" NOT NULL,
+    "operation_id" "uuid",
+    "attempts" integer DEFAULT 0 NOT NULL,
+    "next_attempt_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "leased_at" timestamp with time zone,
+    "last_error" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "package_flyer_cleanup_queue_attempts_check" CHECK (("attempts" >= 0)),
+    CONSTRAINT "package_flyer_cleanup_queue_object_path_check" CHECK (("object_path" ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.(html|png)$'::"text"))
+);
+
+
+ALTER TABLE "public"."package_flyer_cleanup_queue" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."package_flyer_cleanup_queue" IS 'Durable tombstones for removing superseded or orphaned flyer objects through the Storage API.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."package_flyer_operations" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "package_id" "uuid" NOT NULL,
+    "request_id" "uuid" NOT NULL,
+    "expected_package_updated_at" timestamp with time zone NOT NULL,
+    "expected_revision" integer NOT NULL,
+    "html_path" "text" NOT NULL,
+    "png_path" "text" NOT NULL,
+    "status" "text" DEFAULT 'rendering'::"text" NOT NULL,
+    "html_sha256" "text",
+    "png_sha256" "text",
+    "html_bytes" integer,
+    "png_bytes" integer,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "package_flyer_operations_check" CHECK (("html_path" = (((("package_id")::"text" || '/'::"text") || ("request_id")::"text") || '.html'::"text"))),
+    CONSTRAINT "package_flyer_operations_check1" CHECK (("png_path" = (((("package_id")::"text" || '/'::"text") || ("request_id")::"text") || '.png'::"text"))),
+    CONSTRAINT "package_flyer_operations_expected_revision_check" CHECK (("expected_revision" >= 0)),
+    CONSTRAINT "package_flyer_operations_html_bytes_check" CHECK ((("html_bytes" IS NULL) OR (("html_bytes" >= 1) AND ("html_bytes" <= 10485760)))),
+    CONSTRAINT "package_flyer_operations_html_sha256_check" CHECK ((("html_sha256" IS NULL) OR ("html_sha256" ~ '^[0-9a-f]{64}$'::"text"))),
+    CONSTRAINT "package_flyer_operations_png_bytes_check" CHECK ((("png_bytes" IS NULL) OR (("png_bytes" >= 1) AND ("png_bytes" <= 12582912)))),
+    CONSTRAINT "package_flyer_operations_png_sha256_check" CHECK ((("png_sha256" IS NULL) OR ("png_sha256" ~ '^[0-9a-f]{64}$'::"text"))),
+    CONSTRAINT "package_flyer_operations_status_check" CHECK (("status" = ANY (ARRAY['rendering'::"text", 'uploaded'::"text", 'published'::"text", 'failed'::"text"])))
+);
+
+
+ALTER TABLE "public"."package_flyer_operations" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."package_flyer_operations" IS 'Server-rendered immutable HTML/PNG upload attempts for package flyer attachments.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."package_website_contents" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "package_id" "uuid" NOT NULL,
@@ -2140,6 +2492,41 @@ ALTER TABLE ONLY "public"."financial_operations"
 
 ALTER TABLE ONLY "public"."financial_transactions"
     ADD CONSTRAINT "financial_transactions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_attachments"
+    ADD CONSTRAINT "package_flyer_attachments_operation_id_key" UNIQUE ("operation_id");
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_attachments"
+    ADD CONSTRAINT "package_flyer_attachments_pkey" PRIMARY KEY ("package_id");
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_cleanup_queue"
+    ADD CONSTRAINT "package_flyer_cleanup_queue_pkey" PRIMARY KEY ("object_path");
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_operations"
+    ADD CONSTRAINT "package_flyer_operations_html_path_key" UNIQUE ("html_path");
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_operations"
+    ADD CONSTRAINT "package_flyer_operations_package_id_request_id_key" UNIQUE ("package_id", "request_id");
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_operations"
+    ADD CONSTRAINT "package_flyer_operations_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_operations"
+    ADD CONSTRAINT "package_flyer_operations_png_path_key" UNIQUE ("png_path");
 
 
 
@@ -2292,6 +2679,10 @@ CREATE INDEX "idx_quotations_status" ON "public"."quotations" USING "btree" ("st
 
 
 
+CREATE INDEX "package_flyer_cleanup_due_idx" ON "public"."package_flyer_cleanup_queue" USING "btree" ("next_attempt_at", "created_at") WHERE ("leased_at" IS NULL);
+
+
+
 CREATE UNIQUE INDEX "uq_packages_reference" ON "public"."packages" USING "btree" ("reference");
 
 
@@ -2301,6 +2692,10 @@ CREATE UNIQUE INDEX "uq_quotations_reference" ON "public"."quotations" USING "bt
 
 
 CREATE OR REPLACE TRIGGER "check_quotation_archive_trigger" BEFORE UPDATE OF "archived_at" ON "public"."quotations" FOR EACH ROW EXECUTE FUNCTION "public"."trg_check_quotation_archive"();
+
+
+
+CREATE OR REPLACE TRIGGER "packages_enqueue_flyer_cleanup" BEFORE DELETE ON "public"."packages" FOR EACH ROW EXECUTE FUNCTION "public"."enqueue_package_flyer_cleanup_before_delete"();
 
 
 
@@ -2399,6 +2794,21 @@ ALTER TABLE ONLY "public"."financial_transactions"
 
 
 
+ALTER TABLE ONLY "public"."package_flyer_attachments"
+    ADD CONSTRAINT "package_flyer_attachments_operation_id_fkey" FOREIGN KEY ("operation_id") REFERENCES "public"."package_flyer_operations"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_attachments"
+    ADD CONSTRAINT "package_flyer_attachments_package_id_fkey" FOREIGN KEY ("package_id") REFERENCES "public"."packages"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."package_flyer_operations"
+    ADD CONSTRAINT "package_flyer_operations_package_id_fkey" FOREIGN KEY ("package_id") REFERENCES "public"."packages"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."package_website_contents"
     ADD CONSTRAINT "package_website_contents_package_id_fkey" FOREIGN KEY ("package_id") REFERENCES "public"."packages"("id") ON DELETE CASCADE;
 
@@ -2425,6 +2835,15 @@ ALTER TABLE "public"."financial_operations" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."financial_transactions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."package_flyer_attachments" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."package_flyer_cleanup_queue" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."package_flyer_operations" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."package_website_contents" ENABLE ROW LEVEL SECURITY;
@@ -2637,6 +3056,11 @@ GRANT ALL ON FUNCTION "public"."approve_quotation_and_create_operation"("p_quota
 
 
 
+REVOKE ALL ON FUNCTION "public"."begin_package_flyer_upload"("p_package_id" "uuid", "p_package_updated_at" timestamp with time zone, "p_expected_revision" integer, "p_request_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."begin_package_flyer_upload"("p_package_id" "uuid", "p_package_updated_at" timestamp with time zone, "p_expected_revision" integer, "p_request_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_financial_operation"("p_operation_id" "uuid", "p_reason" "text") TO "service_role";
@@ -2660,9 +3084,28 @@ GRANT ALL ON FUNCTION "public"."check_quotation_status_protection"() TO "service
 
 
 
+REVOKE ALL ON FUNCTION "public"."claim_package_flyer_cleanup"("p_limit" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."claim_package_flyer_cleanup"("p_limit" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text", "p_expected_date" "date", "p_description" "text", "p_notes" "text", "p_operation_service_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text", "p_expected_date" "date", "p_description" "text", "p_notes" "text", "p_operation_service_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_cancellation_adjustment"("p_operation_id" "uuid", "p_adjustment_type" "text", "p_counterparty_name" "text", "p_amount" numeric, "p_currency" "text", "p_counterparty_type" "text", "p_expected_date" "date", "p_description" "text", "p_notes" "text", "p_operation_service_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."enqueue_package_flyer_cleanup_before_delete"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "public"."fail_package_flyer_upload"("p_request_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."fail_package_flyer_upload"("p_request_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."finish_package_flyer_cleanup"("p_object_path" "text", "p_success" boolean, "p_error_code" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."finish_package_flyer_cleanup"("p_object_path" "text", "p_success" boolean, "p_error_code" "text") TO "service_role";
 
 
 
@@ -2687,6 +3130,16 @@ GRANT ALL ON FUNCTION "public"."get_pending_financial_commitments"("p_start_date
 REVOKE ALL ON FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_period_cash_flow_forecast"("p_start_date" "date", "p_end_date" "date") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."mark_package_flyer_uploaded"("p_request_id" "uuid", "p_html_sha256" "text", "p_png_sha256" "text", "p_html_bytes" integer, "p_png_bytes" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."mark_package_flyer_uploaded"("p_request_id" "uuid", "p_html_sha256" "text", "p_png_sha256" "text", "p_html_bytes" integer, "p_png_bytes" integer) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."publish_package_flyer"("p_package_id" "uuid", "p_package_updated_at" timestamp with time zone, "p_expected_revision" integer, "p_request_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."publish_package_flyer"("p_package_id" "uuid", "p_package_updated_at" timestamp with time zone, "p_expected_revision" integer, "p_request_id" "uuid") TO "service_role";
 
 
 
@@ -2772,6 +3225,18 @@ GRANT SELECT ON TABLE "public"."financial_operations" TO "authenticated";
 
 GRANT ALL ON TABLE "public"."financial_transactions" TO "service_role";
 GRANT SELECT ON TABLE "public"."financial_transactions" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."package_flyer_attachments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."package_flyer_cleanup_queue" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."package_flyer_operations" TO "service_role";
 
 
 
