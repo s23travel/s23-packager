@@ -106,7 +106,7 @@ function validImage(value: unknown): value is { mimeType: 'image/png' | 'image/j
   } catch { return false; }
 }
 
-function createHtml(model: RenderModel, image: { mimeType: 'image/png' | 'image/jpeg'; data: string }): string {
+export function createHtml(model: RenderModel, image: { mimeType: 'image/png' | 'image/jpeg'; data: string }): string {
   const flyerModel = { ...model, imageUrl: `data:${image.mimeType};base64,${image.data}` };
   const logo = dataUrl('image/png', logoBytes);
   const regular = dataUrl('font/ttf', regularFont);
@@ -115,9 +115,12 @@ function createHtml(model: RenderModel, image: { mimeType: 'image/png' | 'image/
   const tokens = travelTokens.replace(/@font-face\s*\{[^}]*\}/g, '');
   const fonts = [[400, regular], [600, semibold], [700, bold]]
     .map(([weight, source]) => `@font-face{font-family:Poppins;src:url("${source}") format("truetype");font-weight:${weight};font-style:normal;font-display:block;}`).join('\n');
-  const style = `${fonts}\n${tokens}\n${flyerStyles}\nhtml,body{margin:0;width:1080px;height:1920px;overflow:hidden}body{background:var(--color-inverse-bg)}.package-flyer{width:1080px;height:1920px;max-width:none}`;
+  // O mesmo documento serve para o PNG 1080x1920 e para o HTML descarregado.
+  // Em 1080x1920 a peça mede exatamente a viewport; em ecrãs menores encolhe
+  // proporcionalmente (9:16), em vez de transbordar sem barra de scroll.
+  const style = `${fonts}\n${tokens}\n${flyerStyles}\nhtml,body{margin:0;background:var(--color-inverse-bg)}body{display:flex;align-items:center;justify-content:center;min-height:100vh}.package-flyer{width:min(100vw,calc(100vh * 9 / 16));width:min(100vw,calc(100dvh * 9 / 16));height:auto;max-width:none}`;
   const markup = renderPackageFlyerMarkup(flyerModel, logo);
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=1080,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-src 'none'"><title>Lâmina S23 Travel</title><style>${style}</style></head><body>${markup}</body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-src 'none'"><title>Lâmina S23 Travel</title><style>${style}</style></head><body>${markup}</body></html>`;
 }
 
 async function render(request: Request, env: Env): Promise<Response> {

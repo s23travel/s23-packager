@@ -10,4 +10,6 @@ Os itens públicos vêm dos serviços do pacote. Serviços `additional` entram c
 
 Os novos tokens `--flyer-*` e `--travel-flyer-font` foram registrados nos dois arquivos de tokens do kit. A camada CSS evita que as regras globais do Travel substituam a UI Packager. O fundo sem imagem é uma moldura editorial provisória, não representação do destino. Conteúdo longo é limitado; a prévia não substitui testes de exportação ou revisão comercial, e a implementação posterior deve verificar overflow e contraste sobre a imagem definitiva.
 
+O HTML exportado e o PNG são gerados do mesmo documento no worker. A viewport do arquivo é `width=device-width` e a peça ocupa `min(100vw, 100dvh × 9/16)`, mantendo 9:16 e encolhendo para caber em qualquer ecrã; na viewport de 1080 × 1920 usada para o PNG mede exatamente 1080 × 1920, por isso a imagem salva não muda. Sem isso, o `width:1080px` fixo transbordava no telefone (WhatsApp) e no browser, sem barra para ver o resto. Lâminas salvas antes desta correção mantêm o HTML antigo até serem geradas e salvas novamente.
+
 O rodapé usa o contato literal `zap: +351 960 153 290`, fornecido diretamente pelo responsável do produto; o agente não consultou nem inventou esse número.
