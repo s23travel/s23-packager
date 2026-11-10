@@ -402,24 +402,28 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
           {itemsDraft.map((item, index) => {
             const problem = itemProblems[index];
             const problemId = `flyer-item-problem-${index}`;
-            return <div className="package-flyer-item-row" key={index}>
-              <label className="form-group">
-                <span className="form-label">Tipo</span>
-                <select className="form-select" aria-label={`Tipo do serviço ${index + 1}`} value={item.kind}
-                  onChange={event => handleItemChange(index, { kind: event.target.value as FlyerItemKind })}>
-                  {FLYER_ITEM_KINDS.map(kind => <option key={kind} value={kind}>{FLYER_ITEM_KIND_LABELS[kind]}</option>)}
-                </select>
-              </label>
-              <label className="form-group">
-                <span className="form-label">Texto</span>
-                <input className="form-input" type="text" aria-label={`Serviço ${index + 1}`} value={item.label}
-                  maxLength={FLYER_ITEM_LABEL_MAX} aria-invalid={problem ? true : undefined}
-                  aria-describedby={problem ? problemId : undefined}
-                  onChange={event => handleItemChange(index, { label: event.target.value })} />
-                <span className="package-flyer-help">{normalizeItemLabel(item.label).length}/{FLYER_ITEM_LABEL_MAX}</span>
-                {problem && <span className="package-flyer-item-problem" id={problemId}>{problem}</span>}
-              </label>
-              <button type="button" className="btn btn-secondary" onClick={() => handleItemRemove(index)} aria-label={`Remover serviço ${index + 1}`}>Remover</button>
+            return <div className="package-flyer-item-block" key={index}>
+              <div className="package-flyer-item-row">
+                <label className="form-group">
+                  <span className="form-label">Tipo</span>
+                  <select className="form-select" aria-label={`Tipo do serviço ${index + 1}`} value={item.kind}
+                    onChange={event => handleItemChange(index, { kind: event.target.value as FlyerItemKind })}>
+                    {FLYER_ITEM_KINDS.map(kind => <option key={kind} value={kind}>{FLYER_ITEM_KIND_LABELS[kind]}</option>)}
+                  </select>
+                </label>
+                <label className="form-group">
+                  <span className="form-label package-flyer-item-label">
+                    <span>Texto</span>
+                    <span className="package-flyer-item-count">{normalizeItemLabel(item.label).length}/{FLYER_ITEM_LABEL_MAX}</span>
+                  </span>
+                  <input className="form-input" type="text" aria-label={`Serviço ${index + 1}`} value={item.label}
+                    maxLength={FLYER_ITEM_LABEL_MAX} aria-invalid={problem ? true : undefined}
+                    aria-describedby={problem ? problemId : undefined}
+                    onChange={event => handleItemChange(index, { label: event.target.value })} />
+                </label>
+                <button type="button" className="btn btn-secondary" onClick={() => handleItemRemove(index)} aria-label={`Remover serviço ${index + 1}`}>Remover</button>
+              </div>
+              {problem && <p className="package-flyer-item-problem" id={problemId}>{problem}</p>}
             </div>;
           })}
           {itemsTooMany && <p className="package-flyer-item-problem" role="alert">{itemsError}</p>}
