@@ -61,3 +61,13 @@ Regras:
 - Todo elemento interativo precisa de default, hover, focus-visible, active e disabled. Listas precisam de loading e empty. Erro sempre com texto.
 - Alvos de toque de 44px; contraste 4.5:1 no corpo; respeite `prefers-reduced-motion`.
 - Se faltar um token, adicione ao kit e registre a decisão; não invente um valor.
+
+## Agent skills
+
+### Issue tracker
+
+As especificações e tarefas das skills de engenharia ficam em arquivos Markdown locais. Veja [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+
+### Domain docs
+
+O repositório usa um único contexto de domínio. Veja [docs/agents/domain.md](docs/agents/domain.md).

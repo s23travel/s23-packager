@@ -1,0 +1,19 @@
+# Geração de IA para lâminas
+
+`generateFlyerAi({ destination })` em `src/services/flyerAiService.ts` está ligado à interface do detalhe do pacote por ação explícita. Retorna uma sugestão de subtítulo e `{ mimeType, data }` em Base64 ou um erro tipado. Não recebe um pacote nem altera `PackageFlyerModel`. A tela informa que tentativas podem ser cobradas, exibe falhas e exige revisão separada da imagem e do subtítulo antes de habilitar downloads; não regenera automaticamente ao baixar. A imagem é convertida em URL de dados para a prévia/exportação; não expor a chave, nem registrar a imagem ou o token em logs.
+
+**A chamada remota real ainda não foi validada e a Edge Function não foi implantada por esta implementação.** Não se afirma que a chave, o modelo ou o faturamento estejam disponíveis na conta.
+
+O handler `generate-flyer-ai` valida o usuário permanente via `requireUser` antes de ler o corpo ou chamar a IA. Só aceita o campo `destination` e envia ao Gemini somente esse dado, sem preço, datas, serviços, fornecedor ou cliente. Rejeita resposta sem imagem, texto claramente comercial, dados inválidos e tamanho excessivo; não devolve detalhes do provedor. A chave `GEMINI_API_KEY` é lida somente no servidor. Requisições são limitadas a 2 KiB, resposta do Gemini a 9 MiB, Base64 a 8 MiB e chamada a 90 segundos; HTTP 429 recebe tratamento específico. Não há novas tentativas automáticas.
+
+O filtro de subtítulo e o prompt **não garantem** ausência de afirmações inventadas: são indispensáveis revisão humana e confirmação dos itens/valores pelo modelo determinístico, nunca pela IA. A imagem pode representar incorretamente o destino, conter texto indesejado ou não corresponder ao aspecto solicitado. A validação atual verifica Base64, MIME e assinatura PNG/JPEG, não decodifica nem confirma dimensões, fidelidade ou proporção. A integração/exportação deve tratar decodificação, dimensões, revisão e overflow.
+
+## Modelo, custo e disponibilidade
+
+Documentação consultada em 2026-11-09: [`gemini-2.5-flash-image`](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-image) é um modelo estável de imagem e texto, mas o [guia de imagem](https://ai.google.dev/gemini-api/docs/generate-content/image-generation#aspect-ratios-and-image-size) o classifica como legado. O endpoint `generateContent` documenta `imageConfig.aspectRatio`; para `9:16`, a tabela do modelo indica 768 × 1344 e 1.290 tokens por imagem. Não se presume suporte a `imageSize: 2K` nem saída em 1080 × 1920. A saída da peça final é responsabilidade da exportação.
+
+Segundo [preços oficiais](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image), na data consultada não havia tier gratuito para esse modelo; preço standard de saída era US$ 0,039 por imagem de até 1024 × 1024 (1.290 tokens a US$ 30/milhão), além de entrada a US$ 0,30/milhão de tokens e eventual saída textual. Valores podem mudar e não são uma cotação da conta. Uma tentativa pode ser cobrada mesmo que o texto ou a imagem sejam rejeitados. Verificar faturamento, região, acesso ao modelo, limites reais e preço antes do uso; não foi consultada a conta nem comprovado que a chave atual dá acesso. [Limites](https://ai.google.dev/gemini-api/docs/rate-limits) dependem do projeto e tier. Antes de qualquer implantação, definir controle de custo/abuso para usuários autenticados e limites compartilhados: esta função não implementa cotas próprias.
+
+## Validação local
+
+`deno test --no-config --unstable-sloppy-imports --node-modules-dir=none tests/test_flyer_ai_local.ts` usa exclusivamente respostas simuladas sem acesso à rede ou a dados de clientes. `deno check --no-config supabase/functions/generate-flyer-ai/index.ts` verifica o entrypoint. Nenhuma geração real, implantação, alteração de configuração ou operação remota foi realizada; autenticação no gateway, integração com o modelo, qualidade e custo efetivo permanecem sem validação real.

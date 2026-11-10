@@ -9,6 +9,8 @@ import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { AIContentGenerator } from '../../components/ai/AIContentGenerator';
 import { ServicesDetailView } from '../../components/common/ServicesDetailView';
 import { isLegacyPackageData, normalizeLegacyToNewStructure, serviceItemToCostComponent } from '../../services/legacyAdapterService';
+import { PackageFlyerCreator } from '../../components/packages/PackageFlyerCreator';
+import '../../components/packages/packageFlyer.css';
 
 export const PackageDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,7 @@ export const PackageDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [cloning, setCloning] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [flyerOpen, setFlyerOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     (location.state as any)?.message
       ? { type: 'success', message: (location.state as any).message }
@@ -152,6 +155,15 @@ export const PackageDetailPage: React.FC = () => {
           >
             {cloning ? 'Criando cotação...' : 'Nova cotação a partir do pacote'}
           </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            aria-expanded={flyerOpen}
+            aria-controls="package-flyer-preview"
+            onClick={() => setFlyerOpen(value => !value)}
+          >
+            {flyerOpen ? 'Fechar prévia da lâmina' : 'Criar lâmina'}
+          </button>
           <Link to={`/pacotes/${pkg.id}/editar`} className="btn btn-secondary">
             Editar
           </Link>
@@ -168,6 +180,8 @@ export const PackageDetailPage: React.FC = () => {
           onDismiss={() => setFeedback(null)}
         />
       )}
+
+      <PackageFlyerCreator package={pkg} open={flyerOpen} showToggle={false} />
 
       {/* Barra de Status Rápida */}
       <div className="card quick-status-bar">

@@ -2,7 +2,7 @@
 // Regra Fundamental: Todos os cálculos são puramente determinísticos em TypeScript,
 // sem nenhuma dependência de IA, APIs externas ou bibliotecas financeiras pesadas.
 
-import { CostCategory, CostComponent, Currency, FinancialSummary, PassengerConfig } from '../types';
+import type { CostCategory, CostComponent, Currency, FinancialSummary, PassengerConfig } from '../types/index.ts';
 
 /**
  * Convenção Unificada de Câmbio do Packager:
