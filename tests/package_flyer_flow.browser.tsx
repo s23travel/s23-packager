@@ -83,10 +83,23 @@ async function run() {
   const originalCreateObjectURL = URL.createObjectURL;
   const originalRevokeObjectURL = URL.revokeObjectURL;
   const originalClick = HTMLAnchorElement.prototype.click;
+  const originalCreateImageBitmap = globalThis.createImageBitmap;
+  const originalGetContext = HTMLCanvasElement.prototype.getContext;
+  const originalToBlob = HTMLCanvasElement.prototype.toBlob;
   let objectUrlNumber = 0;
-  URL.createObjectURL = () => `blob:flyer-test-${++objectUrlNumber}`;
+  let downloadedBlobType = '';
+  let downloadedFileName = '';
+  globalThis.createImageBitmap = async () => ({ width: 1080, height: 1920, close: () => undefined } as ImageBitmap);
+  HTMLCanvasElement.prototype.getContext = (() => ({ drawImage: () => undefined })) as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.toBlob = function(callback, type) {
+    callback(new Blob(['jpeg fixture'], { type }));
+  };
+  URL.createObjectURL = blob => {
+    downloadedBlobType = blob instanceof Blob ? blob.type : '';
+    return `blob:flyer-test-${++objectUrlNumber}`;
+  };
   URL.revokeObjectURL = () => undefined;
-  HTMLAnchorElement.prototype.click = () => undefined;
+  HTMLAnchorElement.prototype.click = function() { downloadedFileName = this.download; };
 
   try {
     await act(async () => { root.render(<PackageFlyerCreator package={pkg} />); });
@@ -144,9 +157,11 @@ async function run() {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.publications.length === 1, 'A confirmação não publicou o anexo staged');
     assert(container.textContent?.includes('Lâmina salva neste pacote · versão 1'), 'A interface não confirmou a versão salva');
-    await click('Baixar PNG');
+    await click('IMAGEM');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.savedDownloads.join(',') === 'fixture:png', 'O PNG salvo não pôde ser baixado novamente');
+    assert(downloadedBlobType === 'image/jpeg', 'O arquivo baixado não foi convertido para JPG');
+    assert(downloadedFileName === 'lamina-acores.jpg', 'O nome do arquivo baixado não indica JPG');
 
     const changedPricePackage = { ...pkg, data: {
       ...pkg.data,
@@ -184,6 +199,9 @@ async function run() {
     URL.createObjectURL = originalCreateObjectURL;
     URL.revokeObjectURL = originalRevokeObjectURL;
     HTMLAnchorElement.prototype.click = originalClick;
+    globalThis.createImageBitmap = originalCreateImageBitmap;
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+    HTMLCanvasElement.prototype.toBlob = originalToBlob;
   }
 }
 

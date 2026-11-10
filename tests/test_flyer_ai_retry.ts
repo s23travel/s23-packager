@@ -2,17 +2,19 @@ import assert from 'node:assert/strict';
 import { createFlyerAiHandler } from '../supabase/functions/generate-flyer-ai/handler.ts';
 
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aR8AAAAASUVORK5CYII=';
+const JPEG = '/9j/4AAQSkZJRgABAQAAAQABAAD/2Q==';
 const cors = { 'Access-Control-Allow-Origin': '*' };
 
 type Reply = { status?: number; body: unknown };
 const modelReply = (parts: unknown[]): Reply => ({ body: { candidates: [{ finishReason: 'STOP', content: { parts } }] } });
 
 function createHarness(replies: Reply[]) {
-  const calls: Array<{ modalities: unknown; promptLength: number; prompt: string }> = [];
-  const fetchMock: typeof fetch = async (_input, init) => {
+  const calls: Array<{ endpoint: string; modalities: unknown; imageConfig: unknown; promptLength: number; prompt: string }> = [];
+  const fetchMock: typeof fetch = async (input, init) => {
     const body = JSON.parse(String(init?.body || '{}'));
     const prompt = String(body?.contents?.[0]?.parts?.[0]?.text || '');
-    calls.push({ modalities: body?.generationConfig?.responseModalities, promptLength: prompt.length, prompt });
+    calls.push({ endpoint: String(input), modalities: body?.generationConfig?.responseModalities,
+      imageConfig: body?.generationConfig?.imageConfig, promptLength: prompt.length, prompt });
     const reply = replies.shift() || { status: 500, body: {} };
     return new Response(JSON.stringify(reply.body), { status: reply.status || 200, headers: { 'Content-Type': 'application/json' } });
   };
@@ -41,6 +43,8 @@ async function run() {
   assert.equal(okBody.data.subtitle, 'Descubra a ilha de encantos.');
   assert.equal(okBody.data.image.mimeType, 'image/png');
   assert.equal(retry.calls.length, 2);
+  assert.equal(retry.calls[0].endpoint, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-nano-banana-2.1:generateContent');
+  assert.deepEqual(retry.calls[0].imageConfig, { aspectRatio: '9:16', imageSize: '1K' });
   assert.deepEqual(retry.calls[0].modalities, ['TEXT', 'IMAGE']);
   assert.deepEqual(retry.calls[1].modalities, ['IMAGE']);
   assert.match(retry.calls[0].prompt, /Maiorca.*Trem Bernina entre paisagens de gelo/s);
@@ -50,6 +54,11 @@ async function run() {
   const firstResponse = await firstTry.handler(request());
   assert.equal(firstResponse.status, 200);
   assert.equal(firstTry.calls.length, 1);
+
+  const jpegResponse = createHarness([modelReply([{ text: 'Conheça um destino de beleza natural.' }, { inlineData: { mimeType: 'image/jpeg', data: JPEG } }])]);
+  const jpeg = await jpegResponse.handler(request());
+  assert.equal(jpeg.status, 200);
+  assert.equal((await jpeg.json() as { data: { image: { mimeType: string } } }).data.image.mimeType, 'image/jpeg');
 
   const noImage = createHarness([modelReply([{ text: 'Texto sem imagem.' }]), modelReply([{ text: 'Continua sem imagem.' }])]);
   assert.equal((await noImage.handler(request())).status, 502);

@@ -40,10 +40,29 @@ const FLYER_ITEM_KIND_LABELS: Record<FlyerItemKind, string> = {
   additional: 'Extra',
 };
 
-function getDownloadName(destination: string, format: FlyerAttachmentFormat): string {
+function getDownloadName(destination: string, format: FlyerAttachmentFormat | 'jpg'): string {
   const slug = destination.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'viagem';
   return `lamina-${slug}.${format}`;
+}
+
+async function convertPngToJpg(png: Blob): Promise<Blob> {
+  const bitmap = await createImageBitmap(png);
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Não foi possível preparar a conversão para JPG.');
+    context.drawImage(bitmap, 0, 0);
+    const jpg = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(image => image ? resolve(image) : reject(new Error('Não foi possível converter a lâmina para JPG.')), 'image/jpeg', 0.92);
+    });
+    if (jpg.type !== 'image/jpeg') throw new Error('A lâmina não foi convertida para JPG.');
+    return jpg;
+  } finally {
+    bitmap.close();
+  }
 }
 
 /** Entrada pública da criação; recebe somente o pacote já carregado. */
@@ -318,12 +337,13 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     setDownloading(format);
     setError(null);
     try {
-      const blob = await downloadSavedPackageFlyer(pkg.id, format);
+      const savedBlob = await downloadSavedPackageFlyer(pkg.id, format);
+      const blob = format === 'png' ? await convertPngToJpg(savedBlob) : savedBlob;
       const url = URL.createObjectURL(blob);
       downloadUrls.current.add(url);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = getDownloadName(flyer?.model?.destination || 'viagem', format);
+      anchor.download = getDownloadName(flyer?.model?.destination || 'viagem', format === 'png' ? 'jpg' : format);
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -443,8 +463,8 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
           </div>}
         </div>}
         {attachment && <div className="package-flyer-downloads" aria-label="Baixar a última lâmina salva">
-          <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('html')}>Baixar HTML</button>
-          <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('png')}>Baixar PNG</button>
+          <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('html')}>HTML</button>
+          <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('png')}>IMAGEM</button>
         </div>}
         <PackageFlyerTemplate model={previewModel || flyer.model} />
         <div aria-label="Dados da lâmina em texto">
