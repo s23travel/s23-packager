@@ -1,6 +1,6 @@
 # Desenho: serviços apresentados na lâmina
 
-Status: aprovado em 2026-11-10 (opção A, limite de 40 caracteres mantido)
+Status: aprovado em 2026-11-10 (opção A, limite de 40 caracteres mantido); implementado e publicado
 
 ## Intenção
 

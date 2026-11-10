@@ -20,6 +20,6 @@ Referência: `../spec.md` e `../itens-apresentados-design.md`.
 ## Comentários
 
 - Implementado localmente em 2026-11-10: lista branca removida, contrato `flyerItemsContract.ts`, editor no painel, campo `items` na prévia, alinhamento/compactação do CSS e testes. Verificado com `tsc --noEmit`, `deno check`, persistência, fluxo público e fixture 1080×1920 (normal e densa).
-- Pendente de autorização: publicar o worker (markup/CSS), a Edge Function `package-flyer` (campo `items`) e a SPA, por esta ordem.
+- Publicado em 2026-11-10: worker `s23-flyer-renderer` (wrangler@3), Edge Function `package-flyer` e SPA (push para `main`, build automático). O bundle público `assets/index-BZx_xSiu.js` já contém o editor e a classe compacta.
 - O rótulo "Bilhetes de trem Tirano + Bernina Express" (41 caracteres) excede o limite mantido de 40 e tem de ser encurtado no editor.
 
