@@ -3,6 +3,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createPackageFlyer } from '../src/services/packageFlyerService';
 import { PackageFlyerTemplate } from '../src/components/packages/PackageFlyerTemplate';
+import { FLYER_ITEM_LABEL_MAX, itemLabelProblem, validFlyerItems } from '../supabase/functions/_shared/flyerItemsContract';
 import type { Package } from '../src/types';
 
 const pkg: Package = {
@@ -27,7 +28,7 @@ const html = renderToStaticMarkup(<PackageFlyerTemplate model={result.model!} />
 assert.match(html, /Porto/);
 assert.match(html, /Açores/);
 assert.match(html, /R\$ 748,00/);
-assert.match(html, /Valor por pessoa/);
+assert.match(html, /<span>Valor<\/span>/);
 assert.match(html, /por pessoa em quarto duplo/);
 assert.match(html, /30% de entrada e saldo antes da viagem/);
 assert.equal(result.model?.paymentConditions, '30% de entrada e saldo antes da viagem');
@@ -101,3 +102,46 @@ assert.equal(badCurrency.model, null);
 const oversized = createPackageFlyer({ ...pkg, data: { ...pkg.data, destination: 'Destino fictício '.repeat(8) } });
 assert.equal(oversized.model, null);
 console.log('Moeda, texto operacional e limites: OK');
+
+const tickets = createPackageFlyer({ ...pkg, data: { ...pkg.data,
+  services: [{ id: 't', type: 'additional', description: 'Bilhetes de trem Tirano + Bernina Express', currency: 'BRL', amount: 10, quantity: 1 }],
+} });
+assert.ok(tickets.model, 'bilhetes não podem bloquear a prévia');
+assert.deepEqual(tickets.model?.items, [{ kind: 'additional', label: 'Bilhetes de trem Tirano + Bernina Express' }], 'serviço adicional não pode ser descartado por nome');
+const ticketsHtml = renderToStaticMarkup(<PackageFlyerTemplate model={tickets.model!} />).replace(/<img[^>]+>/g, '');
+assert.match(ticketsHtml, /Bilhetes de trem Tirano \+ Bernina Express/);
+
+const internalExtra = createPackageFlyer({ ...pkg, data: { ...pkg.data,
+  services: [{ id: 't', type: 'additional', description: 'Bilhetes com fornecedor secreto', currency: 'BRL', amount: 10, quantity: 1 }],
+} });
+assert.equal(internalExtra.model?.items.length, 0, 'termos internos não podem ser publicados');
+assert.ok(internalExtra.warnings.some(warning => /termos internos/i.test(warning)));
+
+// O limite de 40 caracteres é do editor e do servidor; a geração não omite o serviço.
+assert.equal(itemLabelProblem('Bilhetes de trem Tirano + Bernina Express'), `Use até ${FLYER_ITEM_LABEL_MAX} caracteres (tem 41).`);
+assert.equal(itemLabelProblem('Bilhetes de trem'), null);
+assert.ok(!validFlyerItems([{ kind: 'additional', label: 'Bilhetes de trem Tirano + Bernina Express' }]));
+assert.ok(validFlyerItems([{ kind: 'additional', label: 'Bilhetes de trem' }]));
+assert.ok(!validFlyerItems([{ kind: 'ticket', label: 'Bilhetes' }]));
+assert.ok(!validFlyerItems([{ kind: 'additional', label: 'Bilhetes de trem', notes: 'x' }]));
+assert.ok(validFlyerItems([]));
+
+const dense = createPackageFlyer({ ...pkg, data: { ...pkg.data,
+  services: [
+    { id: 'h', type: 'accommodation', description: 'Hotel', mealPlan: 'Café da manhã (BB)', currency: 'BRL', amount: 1, quantity: 1 },
+    ...[1, 2, 3, 4, 5].map(n => ({ id: `s${n}`, type: 'additional' as const, description: `Passeio turístico guiado pela cidade ${n}`, currency: 'BRL' as const, amount: 1, quantity: 1 })),
+  ],
+} });
+assert.ok(dense.model);
+assert.equal(dense.model?.items.length, 6);
+const denseHtml = renderToStaticMarkup(<PackageFlyerTemplate model={dense.model!} />).replace(/<img[^>]+>/g, '');
+assert.match(denseHtml, /package-flyer--compact/, 'lista densa precisa do modo compacto');
+assert.doesNotMatch(html, /package-flyer--compact/, 'lista curta não deve encolher');
+
+const tooMany = createPackageFlyer({ ...pkg, data: { ...pkg.data,
+  services: [1, 2, 3, 4, 5, 6, 7].map(n => ({ id: `s${n}`, type: 'additional' as const, description: `Serviço incluído ${n}`, currency: 'BRL' as const, amount: 1, quantity: 1 })),
+} });
+assert.ok(tooMany.model, 'excesso de itens pede revisão no editor, não bloqueia a prévia');
+assert.equal(tooMany.model?.items.length, 7);
+assert.ok(tooMany.warnings.some(warning => /comporta 6 serviços/i.test(warning)));
+console.log('Serviços adicionais, limite do editor e modo compacto: OK');

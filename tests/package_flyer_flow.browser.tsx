@@ -72,6 +72,13 @@ async function fillHint(value: string) {
   await act(async () => { input.dispatchEvent(new Event('input', { bubbles: true })); });
 }
 
+async function fillItem(index: number, value: string) {
+  const input = container.querySelector(`input[aria-label="Serviço ${index}"]`) as HTMLInputElement | null;
+  assert(input, `Campo do serviço ${index} não encontrado`);
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+  await act(async () => { input.dispatchEvent(new Event('input', { bubbles: true })); });
+}
+
 async function run() {
   const originalCreateObjectURL = URL.createObjectURL;
   const originalRevokeObjectURL = URL.revokeObjectURL;
@@ -105,6 +112,12 @@ async function run() {
     await fillSubtitle('Descubra lagoas e paisagens vulcânicas');
     await check('Revisei o subtítulo comercial');
 
+    await fillItem(1, 'Aéreo com bagagem');
+    assert(container.textContent?.includes('Aéreo com bagagem'), 'A edição dos serviços não chegou à prévia');
+    await fillItem(1, 'Aéreo com fornecedor secreto');
+    assert(previewBeforeReview()?.disabled, 'Serviço com termo interno liberou a prévia final');
+    await fillItem(1, 'Aéreo com bagagem');
+
     const pageText = container.textContent || '';
     assert(pageText.includes('R$ 748,00'), 'O preço comercial sumiu da prévia');
     assert(pageText.includes('12 a 19 de abril de 2027'), 'O período comercial sumiu da prévia');
@@ -116,6 +129,13 @@ async function run() {
     await click('Gerar prévia final no servidor');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.previews.length === 1, 'A prévia final não foi gerada no servidor');
+    assert((window.flyerFlowTest.previews[0] as { items?: Array<{ label: string }> }).items?.[0]?.label === 'Aéreo com bagagem', 'Os serviços editados não chegaram ao servidor');
+    await fillItem(1, 'Aéreo com bagagem e assento');
+    assert(previewBeforeReview() !== undefined && !previewBeforeReview()!.disabled, 'Editar os serviços não devolveu a prévia final ao utilizador');
+    assert(!container.textContent?.includes('Salvar lâmina no pacote'), 'Editar os serviços manteve a prévia final anterior');
+    await click('Gerar prévia final no servidor');
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+    assert(window.flyerFlowTest.previews.length === 2, 'A prévia final não foi regenerada após editar os serviços');
     const publishButton = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Salvar lâmina no pacote')) as HTMLButtonElement | undefined;
     assert(publishButton?.disabled, 'O salvamento foi liberado antes da revisão da prévia final');
     await check('Revisei a prévia final gerada no servidor');

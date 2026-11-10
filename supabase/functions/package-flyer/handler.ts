@@ -1,5 +1,6 @@
 import { createPackageFlyerServerModel } from '../_shared/packageFlyerModel.ts';
 import { validImage } from '../_shared/flyerAiContract.ts';
+import { validFlyerItems } from '../_shared/flyerItemsContract.ts';
 
 const BUCKET = 's23-package-flyers';
 const MAX_INPUT_BYTES = 10 * 1024 * 1024;
@@ -118,7 +119,7 @@ export function createPackageFlyerHandler(deps: PackageFlyerDependencies) {
     const fieldsByAction: Record<string, string[]> = {
       current: ['action', 'packageId'],
       download: ['action', 'packageId', 'format'],
-      preview: ['action', 'packageId', 'expectedRevision', 'requestId', 'image', 'subtitle'],
+      preview: ['action', 'packageId', 'expectedRevision', 'requestId', 'image', 'subtitle', 'items'],
       publish: ['action', 'packageId', 'expectedRevision', 'requestId'],
     };
     if (Object.keys(body).some(key => !fieldsByAction[String(body.action)].includes(key)) || !isUuid(body.packageId)) {
@@ -126,7 +127,8 @@ export function createPackageFlyerHandler(deps: PackageFlyerDependencies) {
     }
     if (((body.action === 'preview' || body.action === 'publish') && (!isUuid(body.requestId) || !Number.isInteger(body.expectedRevision) || Number(body.expectedRevision) < 0)) ||
         (body.action === 'preview' && (
-        !validImage(body.image) || typeof body.subtitle !== 'string')) ||
+        !validImage(body.image) || typeof body.subtitle !== 'string' ||
+        (body.items !== undefined && !validFlyerItems(body.items)))) ||
         (body.action === 'download' && body.format !== 'html' && body.format !== 'png')) {
       return failure('INVALID_INPUT', 'Os dados enviados não são válidos.', 400);
     }
@@ -224,7 +226,7 @@ export function createPackageFlyerHandler(deps: PackageFlyerDependencies) {
         imageDimensions.width > 4096 || imageDimensions.height > 4096 || imageDimensions.width * imageDimensions.height > 12_000_000) {
       return failure('INVALID_IMAGE', 'A imagem revisada não pôde ser validada.', 400);
     }
-    const flyer = createPackageFlyerServerModel(pkg as { base_currency: unknown; data: unknown }, body.subtitle);
+    const flyer = createPackageFlyerServerModel(pkg as { base_currency: unknown; data: unknown }, body.subtitle, body.items);
     if (!flyer.model) return result({ error: 'PACKAGE_DATA_INVALID', message: 'Revise os dados comerciais do pacote.', details: flyer.errors, warnings: flyer.warnings }, 422);
     if (!config.rendererUrl || !config.rendererSecret) return failure('RENDERER_UNAVAILABLE', 'O renderer seguro não está configurado.', 503);
     let rendererUrl: URL;

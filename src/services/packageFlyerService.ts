@@ -1,6 +1,12 @@
 import type { Currency, Package, ServiceItem } from '../types/index.ts';
 import { calculatePricePerPerson, formatMoney } from './financeService.ts';
 import { normalizeLegacyToNewStructure } from './legacyAdapterService.ts';
+import {
+  FLYER_ITEMS_MAX,
+  itemContentProblem,
+  normalizeItemLabel,
+  type FlyerItemKind,
+} from '../../supabase/functions/_shared/flyerItemsContract.ts';
 
 /** Contrato público da lâmina v1: somente dados destinados à divulgação. */
 export interface PackageFlyerModel {
@@ -9,7 +15,7 @@ export interface PackageFlyerModel {
   destination: string;
   period: string;
   price: { amount: number; currency: Currency; formatted: string };
-  items: Array<{ kind: 'air' | 'transport' | 'accommodation' | 'transfer' | 'insurance' | 'additional'; label: string }>;
+  items: Array<{ kind: FlyerItemKind; label: string }>;
   paymentConditions?: string;
   subtitle?: string;
   /** URL local ou recurso aprovado; ausente significa moldura editorial provisória. */
@@ -114,14 +120,16 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
     if (!items.some(item => item.kind === kind && item.label === label)) items.push({ kind, label });
   };
   const addAdditional = (description: string) => {
-    const safeNames: Record<string, string> = {
-      'passeio de barco': 'Passeio de barco',
-      'passeio guiado': 'Passeio guiado',
-      'ingresso': 'Ingresso',
-    };
-    const label = safeNames[description.trim().toLocaleLowerCase('pt-BR')];
-    if (label) add('additional', label);
-    else warnings.push('Serviço adicional omitido: revise sua descrição comercial antes de divulgar.');
+    // O texto vem da descrição comercial do serviço: não há lista branca de nomes.
+    // Descrições com termos internos, valores ou contactos continuam fora da peça.
+    const label = normalizeItemLabel(description);
+    if (!label) return;
+    const problem = itemContentProblem(label);
+    if (problem) {
+      warnings.push(`Serviço adicional omitido: ${problem}`);
+      return;
+    }
+    add('additional', label);
   };
   for (const service of services) {
     if (!service || typeof service.description !== 'string' || !service.description.trim()) continue;
@@ -145,8 +153,10 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
       warnings.push('Taxa omitida da lâmina: confirme se está incluída no pacote.');
     } else if (service.type === 'transfer') add('transfer', 'Transfer');
     else if (service.type === 'insurance') add('insurance', 'Seguro-viagem');
-    else if (service.type === 'additional' || service.type === 'other') {
+    else if (service.type === 'additional') {
       addAdditional(service.description);
+    } else if (service.type === 'other') {
+      warnings.push('Serviço de "outros custos" omitido; adicione-o em "Serviços apresentados" se estiver incluído.');
     }
   }
   if (isLegacy) {
@@ -156,7 +166,9 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
     if (data.transferService?.trim()) add('transfer', 'Transfer');
   }
   if (!items.length) warnings.push('Nenhum serviço confirmado para exibir.');
-  if (items.length > 6) errors.push('Há itens demais para exibir com segurança na lâmina.');
+  if (items.length > FLYER_ITEMS_MAX) {
+    warnings.push(`A lâmina comporta ${FLYER_ITEMS_MAX} serviços; remova ${items.length - FLYER_ITEMS_MAX} em "Serviços apresentados".`);
+  }
 
   let paymentConditions: string | undefined;
   if (typeof data.paymentConditions === 'string' && data.paymentConditions.trim()) {

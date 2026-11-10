@@ -3,6 +3,15 @@ import type { Package } from '../../types';
 import { createPackageFlyer } from '../../services/packageFlyerService';
 import { generateFlyerAi } from '../../services/flyerAiService';
 import { HINT_MAX_LENGTH, sanitizeHint, validSubtitle } from '../../../supabase/functions/_shared/flyerAiContract';
+import {
+  FLYER_ITEM_KINDS,
+  FLYER_ITEM_LABEL_MAX,
+  FLYER_ITEMS_MAX,
+  itemLabelProblem,
+  normalizeItemLabel,
+  type FlyerItem,
+  type FlyerItemKind,
+} from '../../../supabase/functions/_shared/flyerItemsContract';
 import { PackageFlyerTemplate } from './PackageFlyerTemplate';
 import {
   createPackageFlyerServerPreview,
@@ -21,6 +30,15 @@ interface FlyerSuggestionState {
   image: ReviewedFlyerImage;
   subtitle: string;
 }
+
+const FLYER_ITEM_KIND_LABELS: Record<FlyerItemKind, string> = {
+  air: 'Aéreo',
+  transport: 'Transporte',
+  accommodation: 'Hospedagem',
+  transfer: 'Transfer',
+  insurance: 'Seguro',
+  additional: 'Extra',
+};
 
 function getDownloadName(destination: string, format: FlyerAttachmentFormat): string {
   const slug = destination.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -52,7 +70,8 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
   const [attachmentLoaded, setAttachmentLoaded] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [attachmentReload, setAttachmentReload] = useState(0);
-  const [serverPreview, setServerPreview] = useState<{ url: string; requestId: string; expectedRevision: number; sourceImage: ReviewedFlyerImage; subtitle: string; modelKey: string } | null>(null);
+  const [serverPreview, setServerPreview] = useState<{ url: string; requestId: string; expectedRevision: number; sourceImage: ReviewedFlyerImage; subtitle: string; itemsKey: string; modelKey: string } | null>(null);
+  const [itemsDraft, setItemsDraft] = useState<FlyerItem[]>([]);
   const [serverPreviewReviewed, setServerPreviewReviewed] = useState(false);
   const requestId = useRef(0);
   const downloadUrls = useRef(new Set<string>());
@@ -80,6 +99,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     }
     setServerPreview(null);
     setServerPreviewReviewed(false);
+    setItemsDraft(flyer?.model ? flyer.model.items.map(item => ({ kind: item.kind, label: item.label })) : []);
   }, [pkg.id, modelKey]);
 
   // A indicação vale para o pacote aberto; trocar de pacote troca o destino.
@@ -115,15 +135,27 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     setServerPreview(null);
     setServerPreviewReviewed(false);
   };
-  const previewModel = flyer?.model && activeSuggestion
-    ? { ...flyer.model, imageUrl: activeSuggestion.imageUrl, subtitle: subtitleDraft.trim() }
-    : flyer?.model;
+  const displayItems: FlyerItem[] = itemsDraft.map(item => ({
+    kind: item.kind,
+    label: normalizeItemLabel(item.label),
+  }));
+  const itemProblems = displayItems.map(item => itemLabelProblem(item.label));
+  const itemsTooMany = displayItems.length > FLYER_ITEMS_MAX;
+  const itemsError = itemsTooMany
+    ? `A lâmina comporta ${FLYER_ITEMS_MAX} serviços; remova ${displayItems.length - FLYER_ITEMS_MAX}.`
+    : itemProblems.find(problem => problem) || null;
+  const itemsKey = JSON.stringify(displayItems);
+  const editedModel = flyer?.model ? { ...flyer.model, items: displayItems } : undefined;
+  const previewModel = editedModel && activeSuggestion
+    ? { ...editedModel, imageUrl: activeSuggestion.imageUrl, subtitle: subtitleDraft.trim() }
+    : editedModel;
   const subtitleValid = validSubtitle(subtitleDraft.trim());
-  const canDownload = Boolean(previewModel && activeSuggestion && imageReviewed && !imageFailed && subtitleReviewed && subtitleValid && !generating && !previewing && !downloading && !saving);
+  const canDownload = Boolean(previewModel && activeSuggestion && imageReviewed && !imageFailed && subtitleReviewed && subtitleValid &&
+    !itemsError && !generating && !previewing && !downloading && !saving);
   const expectedRevision = attachment?.revision ?? 0;
   const serverPreviewMatches = Boolean(serverPreview && activeSuggestion && serverPreview.modelKey === modelKey &&
     serverPreview.sourceImage === activeSuggestion.image && serverPreview.subtitle === subtitleDraft.trim() &&
-    serverPreview.expectedRevision === expectedRevision);
+    serverPreview.itemsKey === itemsKey && serverPreview.expectedRevision === expectedRevision);
   const canPreviewOnServer = Boolean(canDownload && attachmentLoaded && !previewing && !attachmentError);
   const canSave = Boolean(canDownload && serverPreviewMatches && serverPreviewReviewed && !saving && !previewing);
 
@@ -132,6 +164,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     setSuggestion(null);
     setSubtitleDraft('');
     setHint('');
+    setItemsDraft([]);
     setImageReviewed(false);
     setSubtitleReviewed(false);
     setImageFailed(false);
@@ -207,6 +240,28 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     setSubtitleReviewed(checked);
   };
 
+  // Qualquer edição dos serviços invalida a prévia final aprovada anteriormente.
+  const invalidateServerPreview = () => {
+    if (previewing) { requestId.current += 1; setPreviewing(false); }
+    clearServerPreview();
+  };
+
+  const handleItemChange = (index: number, patch: Partial<FlyerItem>) => {
+    invalidateServerPreview();
+    setItemsDraft(current => current.map((item, position) => position === index ? { ...item, ...patch } : item));
+  };
+
+  const handleItemRemove = (index: number) => {
+    invalidateServerPreview();
+    setItemsDraft(current => current.filter((_, position) => position !== index));
+  };
+
+  const handleItemAdd = () => {
+    if (itemsDraft.length >= FLYER_ITEMS_MAX) return;
+    invalidateServerPreview();
+    setItemsDraft(current => [...current, { kind: 'additional', label: '' }]);
+  };
+
   const handleServerPreview = async () => {
     if (!flyer?.model || !activeSuggestion || !canPreviewOnServer) return;
     const currentRequest = ++requestId.current;
@@ -221,13 +276,14 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
         requestId: currentRequestId,
         image: activeSuggestion.image,
         subtitle: subtitleDraft.trim(),
+        items: displayItems,
       });
       if (requestId.current !== currentRequest) return;
       const url = URL.createObjectURL(response.preview);
       serverPreviewUrl.current = url;
       downloadUrls.current.add(url);
       setServerPreview({ url, requestId: response.requestId, expectedRevision: response.expectedRevision,
-        sourceImage: activeSuggestion.image, subtitle: subtitleDraft.trim(), modelKey });
+        sourceImage: activeSuggestion.image, subtitle: subtitleDraft.trim(), itemsKey, modelKey });
     } catch (previewError) {
       if (requestId.current === currentRequest) setError(previewError instanceof Error ? previewError.message : 'Não foi possível gerar a prévia final no servidor.');
     } finally {
@@ -286,7 +342,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
       <div className="package-flyer-brief">
         <ul>
           <li><strong>Imagem e subtítulo são sugestões de IA.</strong> Confira os dois antes de baixar.</li>
-          <li><strong>Preço, datas, rota e serviços vêm do pacote</strong> e não são alterados pela IA.</li>
+          <li><strong>Preço, datas e rota vêm do pacote.</strong> Ajuste os serviços apresentados abaixo se precisar; a IA não altera esses dados.</li>
           <li><strong>Cada geração pode gerar cobrança</strong>, inclusive quando falha. Veja as tarifas atuais do modelo Gemini.</li>
         </ul>
       </div>
@@ -340,6 +396,37 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
             Revisei o subtítulo comercial
           </label>
         </>}
+        <fieldset className="package-flyer-items-editor">
+          <legend>Serviços apresentados</legend>
+          <span className="package-flyer-help">Até {FLYER_ITEMS_MAX} itens e {FLYER_ITEM_LABEL_MAX} caracteres cada. É esta a lista que sai na lâmina; sem itens, a caixa é omitida.</span>
+          {itemsDraft.map((item, index) => {
+            const problem = itemProblems[index];
+            const problemId = `flyer-item-problem-${index}`;
+            return <div className="package-flyer-item-row" key={index}>
+              <label className="form-group">
+                <span className="form-label">Tipo</span>
+                <select className="form-select" aria-label={`Tipo do serviço ${index + 1}`} value={item.kind}
+                  onChange={event => handleItemChange(index, { kind: event.target.value as FlyerItemKind })}>
+                  {FLYER_ITEM_KINDS.map(kind => <option key={kind} value={kind}>{FLYER_ITEM_KIND_LABELS[kind]}</option>)}
+                </select>
+              </label>
+              <label className="form-group">
+                <span className="form-label">Texto</span>
+                <input className="form-input" type="text" aria-label={`Serviço ${index + 1}`} value={item.label}
+                  maxLength={FLYER_ITEM_LABEL_MAX} aria-invalid={problem ? true : undefined}
+                  aria-describedby={problem ? problemId : undefined}
+                  onChange={event => handleItemChange(index, { label: event.target.value })} />
+                <span className="package-flyer-help">{normalizeItemLabel(item.label).length}/{FLYER_ITEM_LABEL_MAX}</span>
+                {problem && <span className="package-flyer-item-problem" id={problemId}>{problem}</span>}
+              </label>
+              <button type="button" className="btn btn-secondary" onClick={() => handleItemRemove(index)} aria-label={`Remover serviço ${index + 1}`}>Remover</button>
+            </div>;
+          })}
+          {itemsTooMany && <p className="package-flyer-item-problem" role="alert">{itemsError}</p>}
+          <button type="button" className="btn btn-secondary" onClick={handleItemAdd} disabled={itemsDraft.length >= FLYER_ITEMS_MAX}>
+            + Adicionar serviço
+          </button>
+        </fieldset>
         {activeSuggestion && <div className="package-flyer-downloads" aria-label="Salvar lâmina no pacote">
           <button type="button" className="btn btn-primary" disabled={!canPreviewOnServer} aria-busy={previewing} onClick={() => void handleServerPreview()}>
             {previewing ? 'Gerando prévia final no servidor…' : serverPreviewMatches ? 'Atualizar prévia final do servidor' : 'Gerar prévia final no servidor'}
@@ -365,7 +452,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
           <p><strong>Período:</strong> {flyer.model.period}</p>
           <p><strong>Valor por pessoa:</strong> {flyer.model.price.formatted} por pessoa em quarto duplo</p>
           {flyer.model.paymentConditions && <p><strong>Pagamento:</strong> {flyer.model.paymentConditions}</p>}
-          {flyer.model.items.length > 0 ? <><p><strong>Serviços apresentados:</strong></p><ul>{flyer.model.items.map((item, i) => <li key={i}>{item.label}</li>)}</ul></> : <p>Nenhum serviço apresentado.</p>}
+          {previewModel && (previewModel.items.length > 0 ? <><p><strong>Serviços apresentados:</strong></p><ul>{previewModel.items.map((item, i) => <li key={i}>{item.label}</li>)}</ul></> : <p>Nenhum serviço apresentado.</p>)}
         </div>
       </div>}
     </section>}

@@ -142,6 +142,27 @@ async function run() {
   assert.deepEqual((rendererCall.body as { model: unknown }).model, modelResult.model);
   assert.equal(previewHarness.calls.filter(call => call.url.includes('/storage/v1/object/s23-package-flyers/')).length, 2);
 
+  const reviewedItems = [
+    { kind: 'air' as const, label: 'Aéreo' },
+    { kind: 'additional' as const, label: 'Bilhetes de trem' },
+  ];
+  const reviewedModel = createPackageFlyerServerModel(packageRecord, 'Uma viagem entre mar e montanha', reviewedItems);
+  assert.equal(reviewedModel.errors.length, 0);
+  assert.deepEqual(reviewedModel.model?.items, reviewedItems, 'serviços revistos substituem a lista derivada');
+  assert.equal(createPackageFlyerServerModel(packageRecord, 'Uma viagem entre mar e montanha', [{ kind: 'additional', label: 'Bilhetes com fornecedor' }]).model, null);
+  assert.equal(createPackageFlyerServerModel(packageRecord, 'Uma viagem entre mar e montanha', [{ kind: 'additional', label: 'Bilhetes', price: 10 }]).model, null);
+  assert.equal(createPackageFlyerServerModel(packageRecord, 'Uma viagem entre mar e montanha', Array.from({ length: 7 }, (_, index) => ({ kind: 'additional', label: `Serviço ${index}` }))).model, null);
+
+  const itemsHarness = createHarness();
+  assert.equal((await post(itemsHarness.handler, { ...basePreview, requestId: requestId2, items: reviewedItems })).status, 200);
+  const itemsRender = itemsHarness.calls.find(call => call.url.includes('/render'))!;
+  assert.deepEqual((itemsRender.body as { model: { items: unknown } }).model.items, reviewedItems, 'os serviços editados chegam ao renderer');
+
+  const forgedItems = createHarness();
+  assert.equal((await post(forgedItems.handler, { ...basePreview, items: [{ kind: 'air', label: 'Aéreo', price: 10 }] })).status, 400);
+  assert.equal((await post(forgedItems.handler, { ...basePreview, items: Array.from({ length: 7 }, (_, index) => ({ kind: 'additional', label: `Serviço ${index}` })) })).status, 400);
+  assert.equal(forgedItems.calls.some(call => call.url.includes('/render')), false);
+
   const { handler: injection, calls: injectionCalls } = createHarness({ renderHtml: '<!doctype html><script>alert(1)</script>' });
   assert.equal((await post(injection, basePreview)).status, 502);
   assert.equal(injectionCalls.some(call => call.url.includes('/rpc/fail_package_flyer_upload')), true);

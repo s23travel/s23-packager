@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import type { FlyerItem } from '../../supabase/functions/_shared/flyerItemsContract.ts';
 
 export type FlyerAttachmentFormat = 'html' | 'png';
 export interface PackageFlyerAttachmentMetadata { revision: number; savedAt: string }
@@ -22,6 +23,7 @@ export async function createPackageFlyerServerPreview(input: {
   requestId: string;
   image: ReviewedFlyerImage;
   subtitle: string;
+  items: FlyerItem[];
 }): Promise<{ requestId: string; expectedRevision: number; preview: Blob }> {
   const { data, error } = await supabase.functions.invoke('package-flyer', {
     body: { action: 'preview', ...input },

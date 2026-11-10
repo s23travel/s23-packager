@@ -66,10 +66,15 @@
   font-weight: var(--weight-semibold);
   color: var(--color-text-inverse);
 }
-.package-flyer__items ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--flyer-gap); }
-.package-flyer__items li { display: flex; align-items: center; justify-content: center; gap: var(--flyer-gap); overflow-wrap: anywhere; }
-.package-flyer__items svg { width: 5%; flex: none; }
+.package-flyer__items ul { margin: 0 auto; padding: 0; list-style: none; display: grid; gap: var(--flyer-gap); width: fit-content; max-width: 100%; text-align: left; }
+.package-flyer__items li { display: flex; align-items: flex-start; gap: calc(var(--flyer-gap) * 0.55); overflow-wrap: anywhere; }
+.package-flyer__items svg { width: 4cqw; margin-top: 0.3cqw; flex: none; }
 .package-flyer__items p { margin: 0; font-size: var(--flyer-text-body); }
+/* Listas densas: fonte e espaçamento menores mantêm o rodapé na área segura. */
+.package-flyer--compact .package-flyer__items { font-size: 3.2cqw; }
+.package-flyer--compact .package-flyer__items ul { gap: 1.7cqw; }
+.package-flyer--compact .package-flyer__items li { gap: 1.1cqw; }
+.package-flyer--compact .package-flyer__items svg { width: 3.3cqw; margin-top: 0.25cqw; }
 .package-flyer__footer { text-align: left; font-weight: var(--weight-regular); margin-top: auto; }
 .package-flyer__footer span { width: 48%; }
 .package-flyer__footer span:last-child { text-align: right; }
@@ -156,3 +161,28 @@
   flex-wrap: wrap;
   gap: .5rem;
 }
+.package-flyer-items-editor {
+  display: grid;
+  gap: .65rem;
+  width: min(100%, 32rem);
+  margin: 0;
+  padding: .85rem 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-elevated);
+}
+.package-flyer-items-editor legend {
+  padding: 0 .35rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.package-flyer-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .5rem;
+}
+.package-flyer-item-row .form-group { flex: 1 1 12rem; }
+.package-flyer-item-row .form-group:first-child { flex: 0 1 9rem; }
+.package-flyer-item-row .btn { min-height: 44px; }
+.package-flyer-item-problem { margin: 0; color: var(--danger); font-size: var(--text-xs); }
