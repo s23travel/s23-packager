@@ -76,22 +76,18 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
   const [suggestion, setSuggestion] = useState<FlyerSuggestionState | null>(null);
   const [subtitleDraft, setSubtitleDraft] = useState('');
   const [hint, setHint] = useState('');
-  const [imageReviewed, setImageReviewed] = useState(false);
-  const [subtitleReviewed, setSubtitleReviewed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState<FlyerAttachmentFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [subtitleError, setSubtitleError] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<PackageFlyerAttachmentMetadata | null>(null);
   const [attachmentLoaded, setAttachmentLoaded] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [attachmentReload, setAttachmentReload] = useState(0);
   const [serverPreview, setServerPreview] = useState<{ url: string; requestId: string; expectedRevision: number; sourceImage: ReviewedFlyerImage; subtitle: string; itemsKey: string; modelKey: string } | null>(null);
   const [itemsDraft, setItemsDraft] = useState<FlyerItem[]>([]);
-  const [serverPreviewReviewed, setServerPreviewReviewed] = useState(false);
   const requestId = useRef(0);
   const downloadUrls = useRef(new Set<string>());
   const serverPreviewUrl = useRef<string | null>(null);
@@ -102,22 +98,18 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     requestId.current += 1;
     setSuggestion(null);
     setSubtitleDraft('');
-    setImageReviewed(false);
-    setSubtitleReviewed(false);
     setImageFailed(false);
     setGenerating(false);
     setPreviewing(false);
     setSaving(false);
     setDownloading(null);
     setError(null);
-    setSubtitleError(null);
     if (serverPreviewUrl.current) {
       URL.revokeObjectURL(serverPreviewUrl.current);
       downloadUrls.current.delete(serverPreviewUrl.current);
       serverPreviewUrl.current = null;
     }
     setServerPreview(null);
-    setServerPreviewReviewed(false);
     setItemsDraft(flyer?.model ? flyer.model.items.map(item => ({ kind: item.kind, label: item.label })) : []);
   }, [pkg.id, modelKey]);
 
@@ -152,7 +144,6 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
       serverPreviewUrl.current = null;
     }
     setServerPreview(null);
-    setServerPreviewReviewed(false);
   };
   const displayItems: FlyerItem[] = itemsDraft.map(item => ({
     kind: item.kind,
@@ -169,14 +160,17 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     ? { ...editedModel, imageUrl: activeSuggestion.imageUrl, subtitle: subtitleDraft.trim() }
     : editedModel;
   const subtitleValid = validSubtitle(subtitleDraft.trim());
-  const canDownload = Boolean(previewModel && activeSuggestion && imageReviewed && !imageFailed && subtitleReviewed && subtitleValid &&
+  const subtitleError = subtitleDraft.trim().length > 0 && !subtitleValid
+    ? 'Use de 3 a 100 caracteres, sem afirmações de preço ou serviços.'
+    : null;
+  const canDownload = Boolean(previewModel && activeSuggestion && !imageFailed && subtitleValid &&
     !itemsError && !generating && !previewing && !downloading && !saving);
   const expectedRevision = attachment?.revision ?? 0;
   const serverPreviewMatches = Boolean(serverPreview && activeSuggestion && serverPreview.modelKey === modelKey &&
     serverPreview.sourceImage === activeSuggestion.image && serverPreview.subtitle === subtitleDraft.trim() &&
     serverPreview.itemsKey === itemsKey && serverPreview.expectedRevision === expectedRevision);
   const canPreviewOnServer = Boolean(canDownload && attachmentLoaded && !previewing && !attachmentError);
-  const canSave = Boolean(canDownload && serverPreviewMatches && serverPreviewReviewed && !saving && !previewing);
+  const canSave = Boolean(canDownload && serverPreviewMatches && !saving && !previewing);
 
   const resetFlyer = () => {
     requestId.current += 1;
@@ -184,15 +178,12 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     setSubtitleDraft('');
     setHint('');
     setItemsDraft([]);
-    setImageReviewed(false);
-    setSubtitleReviewed(false);
     setImageFailed(false);
     setGenerating(false);
     setPreviewing(false);
     setSaving(false);
     setDownloading(null);
     setError(null);
-    setSubtitleError(null);
     clearServerPreview();
   };
 
@@ -212,12 +203,9 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     const currentModelKey = modelKey;
     setGenerating(true);
     setError(null);
-    setSubtitleError(null);
     clearServerPreview();
     setSuggestion(null);
     setSubtitleDraft('');
-    setImageReviewed(false);
-    setSubtitleReviewed(false);
     setImageFailed(false);
     try {
       const result = await generateFlyerAi({ destination: flyer.model.destination, hint: hint.trim() || undefined });
@@ -243,23 +231,9 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     if (previewing) { requestId.current += 1; setPreviewing(false); }
     clearServerPreview();
     setSubtitleDraft(value);
-    setSubtitleReviewed(false);
-    setSubtitleError(null);
   };
 
-  const handleSubtitleReview = (checked: boolean) => {
-    if (previewing) { requestId.current += 1; setPreviewing(false); }
-    clearServerPreview();
-    if (checked && !validSubtitle(subtitleDraft.trim())) {
-      setSubtitleReviewed(false);
-      setSubtitleError('Revise o subtítulo: use de 3 a 100 caracteres, sem afirmações de preço ou serviços.');
-      return;
-    }
-    setSubtitleError(null);
-    setSubtitleReviewed(checked);
-  };
-
-  // Qualquer edição dos serviços invalida a prévia final aprovada anteriormente.
+  // Qualquer edição dos serviços invalida a prévia final gerada anteriormente.
   const invalidateServerPreview = () => {
     if (previewing) { requestId.current += 1; setPreviewing(false); }
     clearServerPreview();
@@ -389,26 +363,18 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
           <span className="package-flyer-help">Orienta só o assunto da imagem; o subtítulo continua sobre o destino. Até {HINT_MAX_LENGTH} caracteres.</span>
         </label>
         <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating || previewing || saving || downloading !== null} aria-busy={generating}>
-          {generating ? 'Gerando imagem e subtítulo…' : activeSuggestion ? 'Gerar outra sugestão de IA' : 'Gerar imagem e subtítulo com IA'}
+          {generating ? 'Gerando imagem e subtítulo…' : activeSuggestion ? 'Gerar nova sugestão' : 'Gerar imagem e subtítulo com IA'}
         </button>
         <span className="package-flyer-help">Cada geração pode gerar cobrança, inclusive quando falha.</span>
         {activeSuggestion && <>
           <img className="package-flyer-review-image" src={activeSuggestion.imageUrl} alt={`Imagem gerada para ${flyer.model.destination}`} onError={() => setImageFailed(true)} />
           {imageFailed && <p role="alert">Não foi possível carregar a imagem sugerida. Gere outra imagem antes de baixar.</p>}
-          <label className="package-flyer-review">
-            <input type="checkbox" checked={imageReviewed} disabled={imageFailed} onChange={event => setImageReviewed(event.target.checked)} />
-            Revisei a imagem gerada
-          </label>
           <label className="form-group">
             <span className="form-label">Subtítulo comercial sugerido</span>
             <textarea className="form-textarea" aria-label="Subtítulo comercial sugerido" value={subtitleDraft} maxLength={100}
               onChange={event => handleSubtitleChange(event.target.value)} />
           </label>
           {subtitleError && <p role="alert">{subtitleError}</p>}
-          <label className="package-flyer-review">
-            <input type="checkbox" checked={subtitleReviewed} onChange={event => handleSubtitleReview(event.target.checked)} />
-            Revisei o subtítulo comercial
-          </label>
         </>}
         <fieldset className="package-flyer-items-editor">
           <legend>Serviços apresentados</legend>
@@ -447,15 +413,11 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
         </fieldset>
         {activeSuggestion && <div className="package-flyer-downloads" aria-label="Salvar lâmina no pacote">
           {!serverPreviewMatches && <button type="button" className="btn btn-primary" disabled={!canPreviewOnServer} aria-busy={previewing} onClick={() => void handleServerPreview()}>
-            {previewing ? 'Gerando prévia final no servidor…' : 'Gerar prévia final no servidor'}
+            {previewing ? 'Gerando a lâmina…' : 'Gerar lâmina'}
           </button>}
           {serverPreviewMatches && <div className="package-flyer-preview-review">
             <img className="package-flyer-review-image" src={serverPreview?.url} alt="Prévia final da lâmina gerada no servidor" />
             <div className="package-flyer-review-row">
-              <label className="package-flyer-review">
-                <input type="checkbox" checked={serverPreviewReviewed} onChange={event => setServerPreviewReviewed(event.target.checked)} />
-                Revisei a prévia final gerada no servidor
-              </label>
               <button type="button" className="btn btn-secondary" disabled={!canSave} aria-busy={saving} onClick={() => void handleSave()}>
                 {saving ? 'Salvando no pacote…' : attachment ? 'Substituir a lâmina salva' : 'Salvar lâmina no pacote'}
               </button>

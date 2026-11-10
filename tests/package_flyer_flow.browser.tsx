@@ -49,13 +49,6 @@ async function click(label: string) {
   return button;
 }
 
-async function check(label: string) {
-  const item = Array.from(container.querySelectorAll('label')).find(element => element.textContent?.includes(label));
-  const input = item?.querySelector('input[type="checkbox"]');
-  assert(input, `Confirmação "${label}" não encontrada`);
-  await act(async () => { (input as HTMLInputElement).click(); });
-}
-
 async function fillSubtitle(value: string) {
   const input = container.querySelector('textarea[aria-label="Subtítulo comercial sugerido"]') as HTMLTextAreaElement | null;
   assert(input, 'Campo de revisão do subtítulo não encontrado');
@@ -110,20 +103,17 @@ async function run() {
     assert(container.textContent?.includes('Ainda não há uma lâmina salva neste pacote'), 'A tela não apresenta o estado vazio do anexo');
     assert(container.textContent?.includes('pode gerar cobrança'), 'A tela não informa que a IA pode ter custo');
 
-    const previewBeforeReview = () => Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Gerar prévia final no servidor')) as HTMLButtonElement | undefined;
+    const previewBeforeReview = () => Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Gerar lâmina')) as HTMLButtonElement | undefined;
     assert(previewBeforeReview() === undefined, 'Prévia final não deveria existir antes de gerar a sugestão');
 
     await fillHint('Trem Bernina-Express entre paisagens de gelo');
     await click('Gerar imagem e subtítulo com IA');
     assert(window.flyerFlowTest.generations.length === 1 && window.flyerFlowTest.generations[0].destination === 'Açores', 'A IA recebeu destino incorreto');
     assert(window.flyerFlowTest.generations[0].hint === 'Trem Bernina-Express entre paisagens de gelo', 'A indicação da imagem não chegou à IA');
-    assert(container.querySelector('img[alt="Imagem gerada para Açores"]'), 'A imagem sugerida não foi apresentada para revisão');
-    assert(previewBeforeReview()?.disabled, 'Prévia final foi liberada sem revisão');
+    assert(container.querySelector('img[alt="Imagem gerada para Açores"]'), 'A imagem sugerida não foi apresentada');
+    assert(!previewBeforeReview()?.disabled, 'A prévia final não ficou disponível após gerar a sugestão');
 
-    await check('Revisei a imagem gerada');
-    assert(previewBeforeReview()?.disabled, 'Um único aceite liberou a prévia final');
     await fillSubtitle('Descubra lagoas e paisagens vulcânicas');
-    await check('Revisei o subtítulo comercial');
 
     await fillItem(1, 'Aéreo com bagagem');
     assert(container.textContent?.includes('Aéreo com bagagem'), 'A edição dos serviços não chegou à prévia');
@@ -135,27 +125,25 @@ async function run() {
     assert(pageText.includes('R$ 748,00'), 'O preço comercial sumiu da prévia');
     assert(pageText.includes('12 a 19 de abril de 2027'), 'O período comercial sumiu da prévia');
     assert(pageText.includes('30% de entrada e saldo antes da viagem'), 'Condições comerciais cadastradas foram omitidas');
-    assert(pageText.includes('Descubra lagoas e paisagens vulcânicas'), 'O subtítulo revisado não aparece na prévia');
+    assert(pageText.includes('Descubra lagoas e paisagens vulcânicas'), 'O subtítulo editado não aparece na prévia');
 
     const saveButton = previewBeforeReview();
-    assert(saveButton && !saveButton.disabled, 'Prévia final do servidor não ficou disponível após a revisão');
-    await click('Gerar prévia final no servidor');
+    assert(saveButton && !saveButton.disabled, 'A prévia final do servidor não ficou disponível');
+    await click('Gerar lâmina');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.previews.length === 1, 'A prévia final não foi gerada no servidor');
     assert((window.flyerFlowTest.previews[0] as { items?: Array<{ label: string }> }).items?.[0]?.label === 'Aéreo com bagagem', 'Os serviços editados não chegaram ao servidor');
     await fillItem(1, 'Aéreo com bagagem e assento');
     assert(previewBeforeReview() !== undefined && !previewBeforeReview()!.disabled, 'Editar os serviços não devolveu a prévia final ao utilizador');
     assert(!container.textContent?.includes('Salvar lâmina no pacote'), 'Editar os serviços manteve a prévia final anterior');
-    await click('Gerar prévia final no servidor');
+    await click('Gerar lâmina');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.previews.length === 2, 'A prévia final não foi regenerada após editar os serviços');
     const publishButton = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Salvar lâmina no pacote')) as HTMLButtonElement | undefined;
-    assert(publishButton?.disabled, 'O salvamento foi liberado antes da revisão da prévia final');
-    await check('Revisei a prévia final gerada no servidor');
-    assert(!publishButton.disabled, 'A confirmação da prévia final não liberou o salvamento');
+    assert(publishButton && !publishButton.disabled, 'O salvamento não ficou disponível após gerar a prévia final');
     await click('Salvar lâmina no pacote');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
-    assert(window.flyerFlowTest.publications.length === 1, 'A confirmação não publicou o anexo staged');
+    assert(window.flyerFlowTest.publications.length === 1, 'O salvamento não publicou o anexo staged');
     assert(container.textContent?.includes('Lâmina salva neste pacote · versão 1'), 'A interface não confirmou a versão salva');
     await click('IMAGEM');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
@@ -169,7 +157,7 @@ async function run() {
     } };
     await act(async () => { root.render(<PackageFlyerCreator package={changedPricePackage} />); });
     assert(!container.querySelector('img[alt="Imagem gerada para Açores"]'), 'Alterar dados comerciais manteve a revisão de uma lâmina antiga');
-    assert(!container.textContent?.includes('Gerar prévia final'), 'Alterar preço manteve uma prévia aprovada anteriormente');
+    assert(!container.textContent?.includes('Gerar lâmina'), 'Alterar preço manteve uma prévia aprovada anteriormente');
     assert(hintField()?.value === 'Trem Bernina-Express entre paisagens de gelo', 'Alterar dados comerciais apagou a indicação da imagem');
 
     await act(async () => { root.render(<PackageFlyerCreator package={{ ...pkg, id: 'other', data: { ...pkg.data, destination: 'Madeira' } }} />); });
@@ -192,7 +180,7 @@ async function run() {
       await Promise.resolve();
     });
     assert(!container.querySelector('img[alt="Imagem gerada para Lisboa"]'), 'Resposta atrasada de outro pacote contaminou a nova prévia');
-    assert(!container.textContent?.includes('Gerar prévia final'), 'Resposta atrasada liberou a prévia final de outro pacote');
+    assert(!container.textContent?.includes('Gerar lâmina'), 'Resposta atrasada liberou a prévia final de outro pacote');
     return 'Fluxo público: geração e revisão, prévia final do servidor, publicação do anexo e download do salvo';
   } finally {
     await act(async () => { root.unmount(); });

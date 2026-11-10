@@ -1,6 +1,6 @@
 # Geração de IA para lâminas
 
-`generateFlyerAi({ destination })` em `src/services/flyerAiService.ts` está ligado à interface do detalhe do pacote por ação explícita. Retorna uma sugestão de subtítulo e `{ mimeType, data }` em Base64 ou um erro tipado. Não recebe um pacote nem altera `PackageFlyerModel`. A tela informa que tentativas podem ser cobradas, exibe falhas e exige revisão separada da imagem e do subtítulo antes de habilitar downloads; não regenera automaticamente ao baixar. A imagem é convertida em URL de dados para a prévia/exportação; não expor a chave, nem registrar a imagem ou o token em logs.
+`generateFlyerAi({ destination })` em `src/services/flyerAiService.ts` está ligado à interface do detalhe do pacote por ação explícita. Retorna uma sugestão de subtítulo e `{ mimeType, data }` em Base64 ou um erro tipado. Não recebe um pacote nem altera `PackageFlyerModel`. A tela informa que tentativas podem ser cobradas, exibe falhas e apresenta imagem e subtítulo para revisão sem exigir caixas de confirmação antes de habilitar os downloads; não regenera automaticamente ao baixar. A imagem é convertida em URL de dados para a prévia/exportação; não expor a chave, nem registrar a imagem ou o token em logs.
 
 **A chamada remota real ainda não foi validada e a Edge Function não foi implantada por esta implementação.** Não se afirma que a chave, o modelo ou o faturamento estejam disponíveis na conta.
 

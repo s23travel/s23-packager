@@ -127,18 +127,6 @@
   border-radius: var(--radius-md);
   background: var(--bg-surface-elevated);
 }
-.package-flyer-review {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  min-height: 44px;
-  color: var(--text-primary);
-}
-.package-flyer-review input {
-  width: 1rem;
-  height: 1rem;
-  accent-color: var(--accent-primary);
-}
 .package-flyer-downloads {
   display: flex;
   flex-wrap: wrap;
