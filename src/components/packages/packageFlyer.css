@@ -79,23 +79,6 @@
 .package-flyer__footer span { width: 48%; }
 .package-flyer__footer span:last-child { text-align: right; }
 
-.package-flyer-brief {
-  margin-bottom: 0.85rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface-elevated);
-}
-.package-flyer-brief ul {
-  display: grid;
-  gap: 0.4rem;
-  margin: 0;
-  padding-left: 1.1rem;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-}
-.package-flyer-brief strong { color: var(--text-primary); font-weight: 600; }
 .package-flyer-status {
   margin: 0 0 0.75rem;
   display: flex;

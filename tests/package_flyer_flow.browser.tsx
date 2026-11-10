@@ -93,7 +93,7 @@ async function run() {
     const generate = await click('Criar lâmina');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.generations.length === 0, 'A IA foi chamada sem ação explícita');
-    assert(container.textContent?.includes('sugestões de IA'), 'A tela não identifica conteúdo gerado como sugestão');
+    assert(container.textContent?.includes('Gerar imagem e subtítulo com IA'), 'A ação de IA não está identificada');
     assert(container.textContent?.includes('Ainda não há uma lâmina salva neste pacote'), 'A tela não apresenta o estado vazio do anexo');
     assert(container.textContent?.includes('pode gerar cobrança'), 'A tela não informa que a IA pode ter custo');
 

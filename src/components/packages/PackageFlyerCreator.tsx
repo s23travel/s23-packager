@@ -339,13 +339,6 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
     </button>}
     {flyer && <section id="package-flyer-preview" className="card" aria-labelledby="package-flyer-title" style={{ marginTop: '1.25rem' }}>
       <h2 id="package-flyer-title" className="card-title">Prévia da lâmina</h2>
-      <div className="package-flyer-brief">
-        <ul>
-          <li><strong>Imagem e subtítulo são sugestões de IA.</strong> Confira os dois antes de baixar.</li>
-          <li><strong>Preço, datas e rota vêm do pacote.</strong> Ajuste os serviços apresentados abaixo se precisar; a IA não altera esses dados.</li>
-          <li><strong>Cada geração pode gerar cobrança</strong>, inclusive quando falha. Veja as tarifas atuais do modelo Gemini.</li>
-        </ul>
-      </div>
       <p className={`package-flyer-status${attachment ? ' is-saved' : ''}`} role="status" aria-live="polite">
         {attachmentLoaded
           ? attachment ? `Lâmina salva neste pacote · versão ${attachment.revision}.` : 'Ainda não há uma lâmina salva neste pacote.'
@@ -378,6 +371,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
         <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating || previewing || saving || downloading !== null} aria-busy={generating}>
           {generating ? 'Gerando imagem e subtítulo…' : activeSuggestion ? 'Gerar outra sugestão de IA' : 'Gerar imagem e subtítulo com IA'}
         </button>
+        <span className="package-flyer-help">Cada geração pode gerar cobrança, inclusive quando falha.</span>
         {activeSuggestion && <>
           <img className="package-flyer-review-image" src={activeSuggestion.imageUrl} alt={`Imagem gerada para ${flyer.model.destination}`} onError={() => setImageFailed(true)} />
           {imageFailed && <p role="alert">Não foi possível carregar a imagem sugerida. Gere outra imagem antes de baixar.</p>}
