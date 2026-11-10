@@ -144,7 +144,7 @@ async function run() {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.publications.length === 1, 'A confirmação não publicou o anexo staged');
     assert(container.textContent?.includes('Lâmina salva neste pacote · versão 1'), 'A interface não confirmou a versão salva');
-    await click('Baixar PNG salvo');
+    await click('Baixar PNG');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.savedDownloads.join(',') === 'fixture:png', 'O PNG salvo não pôde ser baixado novamente');
 

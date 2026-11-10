@@ -443,8 +443,8 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
           </div>}
         </div>}
         {attachment && <div className="package-flyer-downloads" aria-label="Baixar a última lâmina salva">
-          <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('html')}>Baixar HTML salvo</button>
-          <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('png')}>Baixar PNG salvo</button>
+          <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('html')}>Baixar HTML</button>
+          <button type="button" className="btn btn-secondary" disabled={downloading !== null} onClick={() => void handleDownloadSaved('png')}>Baixar PNG</button>
         </div>}
         <PackageFlyerTemplate model={previewModel || flyer.model} />
         <div aria-label="Dados da lâmina em texto">
