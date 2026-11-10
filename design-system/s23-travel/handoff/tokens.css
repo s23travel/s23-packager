@@ -245,7 +245,7 @@
   /* Lâmina 9:16: alias isolado do --font-sans da interface Packager. */
   --travel-flyer-font: "Poppins", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --flyer-panel: rgba(255, 255, 255, 0.22);
+  --flyer-panel: rgba(255, 255, 255, 0.12);
   --flyer-placeholder: linear-gradient(160deg, var(--s23-sky-300), var(--s23-navy-700), var(--s23-navy-950));
   --flyer-gap: 2.5cqw;
   --flyer-padding: 3cqw;
