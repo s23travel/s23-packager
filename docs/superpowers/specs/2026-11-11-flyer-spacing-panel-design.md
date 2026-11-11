@@ -13,6 +13,7 @@ Dar mais respiro visual entre o período e os serviços apresentados, e entre os
 
 - Manter a estrutura/markup atual e adicionar um incremento de espaço acima da lista e do subtítulo, inclusive no modo compacto.
 - Após revisão da lâmina Creta, ampliar cada um desses dois intervalos por mais uma linha completa dos serviços (`--flyer-text-items` × `--flyer-line-height`), preservando o incremento anterior.
-- Aumentar a opacidade do token `--flyer-panel` de `0.70` para `0.75`, sincronizando `colors_and_type.css` e `handoff/tokens.css`.
+- Ajustar o token `--flyer-panel` para alpha `0.70`, sincronizando `colors_and_type.css` e `handoff/tokens.css`.
+- Após revisão da lâmina publicada, reduzir o alpha de `0.75` para `0.70` para clarear sutilmente a caixa central.
 - Não alterar preço, data, dimensões, outros intervalos, itens ou imagem.
 - Validar o build e os testes determinísticos da lâmina; não publicar Worker nem fazer commit/push sem pedido.

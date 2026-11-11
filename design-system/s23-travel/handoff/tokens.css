@@ -246,7 +246,7 @@
   --travel-flyer-font: "Poppins", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   /* Lâmina 9:16: caixa de valor e serviços em cinza translúcido para o texto branco ler sobre a foto. */
-  --flyer-panel: rgba(52, 52, 56, 0.75);
+  --flyer-panel: rgba(52, 52, 56, 0.70);
   --flyer-placeholder: linear-gradient(160deg, var(--s23-sky-300), var(--s23-navy-700), var(--s23-navy-950));
   --flyer-gap: 2.5cqw;
   --flyer-padding: 3cqw;
