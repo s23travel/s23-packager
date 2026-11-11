@@ -8,6 +8,9 @@ import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { WhatsAppMessagePreview } from '../../components/whatsapp/WhatsAppMessagePreview';
 import { ServicesDetailView } from '../../components/common/ServicesDetailView';
+import { QuotationFlyerCreator } from '../../components/quotes/QuotationFlyerCreator';
+import '../../components/packages/packageFlyer.css';
+import '../../components/quotes/quotationFlyer.css';
 import { isLegacyPackageData, normalizeLegacyToNewStructure, serviceItemToCostComponent } from '../../services/legacyAdapterService';
 import { formatMoney } from '../../services/financeService';
 import {
@@ -27,6 +30,7 @@ export const QuoteDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [flyerOpen, setFlyerOpen] = useState(false);
   const [hasFinancialOperation, setHasFinancialOperation] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(
     (location.state as any)?.message
@@ -295,6 +299,15 @@ export const QuoteDetailPage: React.FC = () => {
           <button
             type="button"
             className="btn btn-secondary"
+            aria-expanded={flyerOpen}
+            aria-controls="quotation-flyer-preview"
+            onClick={() => setFlyerOpen(value => !value)}
+          >
+            {flyerOpen ? 'Fechar prévia da lâmina' : 'Criar lâmina'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
             onClick={handleDuplicate}
             disabled={duplicating}
             title="Duplicar esta cotação gerando um novo número com todos os itens"
@@ -371,6 +384,8 @@ export const QuoteDetailPage: React.FC = () => {
           onDismiss={() => setFeedback(null)}
         />
       )}
+
+      <QuotationFlyerCreator quotation={quote} open={flyerOpen} showToggle={false} />
 
       {/* Banner de Cotação Arquivada */}
       {quote.archived_at && (
