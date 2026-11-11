@@ -116,6 +116,10 @@ function run() {
     'quotation_flyer_attachments deve guardar a revisão ativa para o CAS'
   );
   assert(
+    attachments.includes('saved_at timestamptz not null default now()'),
+    'quotation_flyer_attachments deve guardar saved_at para o contrato `current`'
+  );
+  assert(
     attachments.includes('created_at timestamptz not null default now()') &&
       attachments.includes('updated_at timestamptz not null default now()'),
     'quotation_flyer_attachments deve ter created_at/updated_at'
