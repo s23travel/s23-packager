@@ -5,25 +5,19 @@ import type {
   PackageFlyerAttachmentMetadata,
   ReviewedFlyerImage,
 } from './packageFlyerAttachmentService';
+import { flyerFunctionMessage, type FlyerFunctionResult } from './flyerFunctionError';
 
 /** Metadados da última versão salva da lâmina de uma cotação. */
 export type QuotationFlyerAttachmentMetadata = PackageFlyerAttachmentMetadata;
 
-interface FunctionResult<T> { data: T | null; error: { message?: string } | null }
-
-const messageFrom = (data: unknown, fallback: string): string => {
-  if (data && typeof data === 'object' && typeof (data as { message?: unknown }).message === 'string') {
-    return (data as { message: string }).message;
-  }
-  return fallback;
-};
+interface FunctionResult<T> extends FlyerFunctionResult<T> {}
 
 /** Consulta a última lâmina salva desta cotação (funciona também arquivada). */
 export async function getCurrentQuotationFlyer(quotationId: string): Promise<QuotationFlyerAttachmentMetadata | null> {
   const { data, error } = await supabase.functions.invoke('quotation-flyer', {
     body: { action: 'current', quotationId },
   }) as FunctionResult<{ attachment?: QuotationFlyerAttachmentMetadata | null; message?: string }>;
-  if (error || !data) throw new Error(messageFrom(data, error?.message || 'Não foi possível consultar a lâmina salva.'));
+  if (error || !data) throw new Error(await flyerFunctionMessage(data, error, 'Não foi possível consultar a lâmina salva.'));
   return data.attachment || null;
 }
 
@@ -40,7 +34,7 @@ export async function createQuotationFlyerServerPreview(input: {
     body: { action: 'preview', ...input },
   }) as FunctionResult<{ preview?: string; requestId?: string; expectedRevision?: number; message?: string }>;
   if (error || !data || typeof data.preview !== 'string' || data.requestId !== input.requestId) {
-    throw new Error(messageFrom(data, error?.message || 'Não foi possível gerar a prévia final no servidor.'));
+    throw new Error(await flyerFunctionMessage(data, error, 'Não foi possível gerar a prévia final no servidor.'));
   }
   try {
     const binary = atob(data.preview);
@@ -59,7 +53,7 @@ export async function publishQuotationFlyer(input: {
     body: { action: 'publish', ...input },
   }) as FunctionResult<{ saved?: boolean; revision?: number; savedAt?: string; message?: string }>;
   if (error || !data || data.saved !== true || !Number.isInteger(data.revision)) {
-    throw new Error(messageFrom(data, error?.message || 'Não foi possível salvar a lâmina. A versão anterior continua disponível.'));
+    throw new Error(await flyerFunctionMessage(data, error, 'Não foi possível salvar a lâmina. A versão anterior continua disponível.'));
   }
   return { revision: data.revision!, savedAt: data.savedAt || new Date().toISOString() };
 }
@@ -70,7 +64,7 @@ export async function downloadSavedQuotationFlyer(quotationId: string, format: F
     body: { action: 'download', quotationId, format },
   }) as FunctionResult<{ data?: string; message?: string }>;
   if (error || !data || typeof data.data !== 'string') {
-    throw new Error(messageFrom(data, error?.message || 'Não foi possível baixar a lâmina salva.'));
+    throw new Error(await flyerFunctionMessage(data, error, 'Não foi possível baixar a lâmina salva.'));
   }
   try {
     const binary = atob(data.data);

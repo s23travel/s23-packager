@@ -10,6 +10,8 @@ import {
   type FlyerAssets,
 } from '../workers/flyer-renderer/src/flyerDocument';
 import { renderPackageFlyerMarkup } from '../src/services/packageFlyerMarkup';
+import { createQuotationFlyer } from '../src/services/quotationFlyerService';
+import type { Quotation } from '../src/types';
 
 // Teste offline do contrato do renderer: validação dos dois templates e
 // composição do documento, sem rede, browser ou credenciais.
@@ -51,6 +53,7 @@ const packageModel = {
 
 const quotationModel = {
   version: 1 as const,
+  template: 'quotation' as const,
   clientName: 'Sandra Colognesi',
   proposalDate: '11/11/2026',
   subtitle: 'Paris à medida para dois',
@@ -137,7 +140,8 @@ console.log('Validação do modelo de pacote: OK');
 // --- Validação do modelo de cotação ----------------------------------------
 
 assert.ok(validQuotationModel(quotationModel));
-assert.ok(!validQuotationModel({ ...quotationModel, template: 'quotation' }), 'template não pertence ao modelo');
+assert.ok(!validQuotationModel({ ...quotationModel, template: undefined }), 'modelo de cotação exige o discriminador');
+assert.ok(!validQuotationModel({ ...quotationModel, template: 'package' }), 'discriminador divergente é rejeitado');
 assert.ok(!validQuotationModel({ ...quotationModel, imageUrl: 'data:image/png;base64,AAAA' }), 'imagem chega pelo envelope, não pelo modelo');
 assert.ok(!validQuotationModel({ ...quotationModel, clientName: 'x'.repeat(61) }), 'cliente longo é rejeitado');
 assert.ok(!validQuotationModel({ ...quotationModel, clientName: 'Sandra\nColognesi' }), 'caracteres de controlo são rejeitados');
@@ -161,6 +165,38 @@ assert.ok(!validQuotationModel({ ...quotationModel, balanceDueDate: 'x'.repeat(1
 assert.ok(!validQuotationModel({ ...quotationModel, subtitle: 'oi' }), 'subtítulo curto é rejeitado');
 assert.ok(validQuotationModel({ ...quotationModel, transport: null, lodging: null, deposit: undefined, balanceDueDate: undefined }), 'cartões opcionais vazios são aceitos');
 console.log('Validação do modelo de cotação: OK');
+
+// --- Paridade real: o modelo produzido pela app passa no renderer ------------
+
+const parityQuote = {
+  id: 'parity', package_id: null, reference: 'COT-TESTE', client_name: 'Cliente Teste', status: 'draft',
+  currency: 'EUR', exchange_rate: null, exchange_rate_date: null,
+  created_at: '2026-11-11T10:00:00Z', updated_at: '2026-11-11T10:00:00Z', archived_at: null,
+  data: {
+    origin: 'Porto', destination: 'Paris', proposalDate: '2026-11-11',
+    dates: { startDate: '2027-04-02', endDate: '2027-04-05', durationNights: 3 },
+    passengers: { adults: 2, children: 0, infants: 0 },
+    depositAmount: 250, balanceDueDate: '2027-03-20', notIncluded: ['Taxa local de 34€ paga no hotel'],
+    financials: { currency: 'EUR', components: [], totalCost: 400, salePrice: 700, pricePerPerson: 350,
+      profit: 300, profitPercent: 42.86, taxesAndFeesTotal: 0 },
+    services: [
+      { id: 'out', type: 'outbound_transport', description: 'Voo de ida Porto (OPO) para Paris (ORY)',
+        carrier: 'easyJet', currency: 'EUR', amount: 0, quantity: 1, departureTime: '12:15',
+        arrivalTime: '15:25', notes: 'Bagagem de mão incluída' },
+      { id: 'in', type: 'inbound_transport', description: 'Voo de volta Paris (ORY) para Porto (OPO)',
+        carrier: 'easyJet', currency: 'EUR', amount: 0, quantity: 1, departureTime: '21:40', arrivalTime: '23:05' },
+      { id: 'hotel', type: 'accommodation', description: 'Ibis Paris Alésia Montparnasse',
+        currency: 'EUR', amount: 0, quantity: 1, mealPlan: 'Café da manhã (BB)' },
+    ],
+  },
+} as Quotation;
+const parityResult = createQuotationFlyer(parityQuote);
+assert.ok(parityResult.model, 'modelo real da cotação tem de ser gerado');
+assert.ok(
+  parseRenderRequest({ template: 'quotation', model: parityResult.model, image }),
+  'modelo real da cotação tem de passar na validação do renderer',
+);
+console.log('Paridade modelo real → renderer: OK');
 
 // --- HTML do pacote: exatamente a composição atual -------------------------
 

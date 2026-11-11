@@ -109,10 +109,10 @@ export function validPackageModel(value: unknown): value is PackageRenderModel {
 export function validQuotationModel(value: unknown): value is QuotationRenderModel {
   if (!isRecord(value)) return false;
   const allowed = [
-    'version', 'clientName', 'proposalDate', 'subtitle', 'origin', 'destination', 'dates',
+    'version', 'template', 'clientName', 'proposalDate', 'subtitle', 'origin', 'destination', 'dates',
     'passengers', 'transport', 'lodging', 'included', 'notIncluded', 'price', 'deposit', 'balanceDueDate',
   ];
-  if (!hasOnlyKeys(value, allowed) || value.version !== 1) return false;
+  if (!hasOnlyKeys(value, allowed) || value.version !== 1 || value.template !== 'quotation') return false;
   if (typeof value.clientName !== 'string' || value.clientName.length < 1 || value.clientName.length > 60 ||
       CONTROL_CHARS.test(value.clientName)) return false;
   if (!text(value.proposalDate, 1, 10) || !text(value.origin, 2, 45) || !text(value.destination, 2, 45) ||
