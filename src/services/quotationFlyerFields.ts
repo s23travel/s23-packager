@@ -1,4 +1,4 @@
-import { roundMoney } from './financeService';
+import { roundMoney } from './financeService.ts';
 
 /**
  * Campos da proposta de viagem usados pela lâmina de cotação.
