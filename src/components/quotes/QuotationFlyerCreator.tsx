@@ -147,11 +147,13 @@ export function QuotationFlyerCreator({ quotation, open: openProp, showToggle = 
         />}
       </div>}
       {/* Fora do bloco do modelo local: a versão salva continua acessível com dados em falta. */}
-      {creator.attachment && <FlyerSavedDownloads
-        downloading={creator.downloading}
-        onDownload={format => void creator.handleDownloadSaved(format)}
-        label="Baixar a última lâmina salva desta cotação"
-      />}
+      {creator.attachment && <div className="package-flyer-controls" style={{ marginTop: '1rem' }}>
+        <FlyerSavedDownloads
+          downloading={creator.downloading}
+          onDownload={format => void creator.handleDownloadSaved(format)}
+          label="Baixar a última lâmina salva desta cotação"
+        />
+      </div>}
       {templateModel && <div className="package-flyer-controls">
         <QuotationFlyerTemplate model={templateModel} />
         <div aria-label="Dados da lâmina em texto">
