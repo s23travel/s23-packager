@@ -1,4 +1,5 @@
 import { QuoteDraft } from '../types';
+import { normalizeNotIncluded, parseDepositAmount } from './quotationFlyerFields';
 
 const DRAFT_STORAGE_KEY = 'packager_nova_cotacao_draft_v1';
 
@@ -10,6 +11,8 @@ export function saveQuoteDraft(draft: Omit<QuoteDraft, 'savedAt'>): void {
   try {
     const payload: QuoteDraft = {
       ...draft,
+      depositAmount: parseDepositAmount(draft.depositAmount),
+      notIncluded: normalizeNotIncluded(draft.notIncluded),
       savedAt: Date.now(),
     };
     sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));

@@ -282,6 +282,14 @@ export interface QuotationData extends PackageData {
   originPackageName?: string;
   originPackageReference?: string;
   customNotes?: string;
+  /** Data da cotação exibida na proposta, ISO `YYYY-MM-DD`. */
+  proposalDate?: string;
+  /** Sinal na moeda da cotação. */
+  depositAmount?: number;
+  /** Data-limite do restante, ISO `YYYY-MM-DD`. */
+  balanceDueDate?: string;
+  /** Até 3 linhas de 1 a 100 caracteres para o bloco "Não incluído". */
+  notIncluded?: string[];
 }
 
 /**
@@ -630,6 +638,10 @@ export interface QuoteDraft {
   hotelDestination?: string;
   hotelMealPlan?: string;
   costComponents?: CostComponent[];
+  proposalDate?: string;
+  depositAmount?: number;
+  balanceDueDate?: string;
+  notIncluded?: string[];
   savedAt: number;
 }
 
