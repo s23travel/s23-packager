@@ -30,9 +30,9 @@ export function sanitizeHint(value: string): string {
 
 export function validSubtitle(value: unknown): value is string {
   if (typeof value !== 'string' || value !== value.trim() || value.length < 3 || value.length > 100) return false;
-  if (!/^[\p{L}\p{M} ,.!?\-’']+$/u.test(value)) return false;
-  // Reduz afirmações comerciais óbvias; não substitui a revisão humana.
-  return !/\b(pre[çc]o|valor|parcela|juros|inclus[oa]s?|inclu[ií]d[oa]s?|gr[aá]tis|hospedagem|hotel|voos?|a[eé]reo|transfer|seguro|passagens?|di[aá]rias?|caf[eé] da manh[aã]|all inclusive|sem custo)\b/iu.test(value);
+  if (!/^[\p{L}\p{M} ,.!?\-'’]+$/u.test(value)) return false;
+  // Bloqueia alegações comerciais, não palavras turísticas descritivas isoladas.
+  return !/(?:^|[^\p{L}\p{M}])(?:pre[çc]os?|valor|parcelas?|juros|descontos?|promo(?:ç|c)[ãa]o|ofertas?|inclus[oa]s?|inclu[ií]d[oa]s?|inclusive|all inclusive|tudo incluso|gr[aá]tis|gratuit[oa]s?|sem custo|garant(?:ia|ido|ida|idos|idas)?|promet(?:e|ido|ida|idos|idas))(?=$|[^\p{L}\p{M}])/iu.test(value);
 }
 
 export function validImage(value: unknown): value is FlyerAiSuggestion['image'] {

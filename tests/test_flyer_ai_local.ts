@@ -3,10 +3,28 @@
 import { createFlyerAiHandler } from '../supabase/functions/generate-flyer-ai/handler.ts';
 import { createFlyerAiGenerator } from '../src/services/flyerAiClient.ts';
 import { authorizeUser } from '../supabase/functions/_shared/auth.ts';
+import { validSubtitle } from '../supabase/functions/_shared/flyerAiContract.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
+
+Deno.test('contrato aceita descrição turística e rejeita afirmações comerciais', () => {
+  for (const subtitle of [
+    'Descubra hotéis históricos e paisagens inesquecíveis.',
+    'Entre voos tranquilos e praias de águas cristalinas.',
+    'Explore a cultura e os sabores de Lisboa.',
+  ]) assert(validSubtitle(subtitle), `descrição turística legítima rejeitada: ${subtitle}`);
+
+  for (const subtitle of [
+    'Hotel e voo incluídos.',
+    'Hospedagem garantida para todos.',
+    'Viagem grátis com tudo incluído.',
+    'Fique em resort all inclusive.',
+    'Pague em parcelas sem juros.',
+    'Preços baixos para sua viagem.',
+  ]) assert(!validSubtitle(subtitle), `afirmação comercial aceita: ${subtitle}`);
+});
 
 Deno.test('handler recusa usuário não autorizado antes de chamar IA', async () => {
   let calls = 0;
@@ -61,12 +79,10 @@ Deno.test('destinos inválidos e campos comerciais não chegam ao Gemini', async
   assert(calls === 0, 'nenhuma chamada para entrada inválida');
 });
 
-Deno.test('não apresenta texto comercial inventado nem imagem ausente', async () => {
+Deno.test('não devolve imagem ausente nem usa partes de pensamento', async () => {
   const image = { inlineData: { mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aXcAAAAASUVORK5CYII=' } };
   const outputs = [
     { parts: [{ text: 'Descubra novos horizontes' }], error: 'AI_IMAGE_MISSING' },
-    { parts: [{ text: 'Hotel e voo incluídos' }, image], error: 'AI_SUBTITLE_INVALID' },
-    { parts: [{ text: 'Apenas R$ 999' }, image], error: 'AI_SUBTITLE_INVALID' },
     { parts: [{ text: 'Descubra novos horizontes' }, { ...image, thought: true }], error: 'AI_IMAGE_MISSING' },
   ];
   for (const output of outputs) {
@@ -76,6 +92,38 @@ Deno.test('não apresenta texto comercial inventado nem imagem ausente', async (
     const body = await response.json();
     assert(response.status === 502 && body.error === output.error, 'deve rejeitar a saída inadequada');
   }
+});
+
+Deno.test('subtítulo comercial inválido usa fallback neutro sem descartar imagem', async () => {
+  const image = { inlineData: { mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aXcAAAAASUVORK5CYII=' } };
+  const handler = createFlyerAiHandler({ requireUser: async () => null, getApiKey: () => 'teste',
+    fetch: async () => Response.json({ candidates: [{ finishReason: 'STOP', content: { parts: [
+      { text: 'Oferta com hospedagem inclusa.' }, image,
+    ] } }] }) });
+  const response = await handler(new Request('https://example.test', { method: 'POST', body: '{"destination":"Lisboa"}' }));
+  const body = await response.json();
+  assert(response.status === 200 && body.success === true, 'texto inválido não deve interromper a geração');
+  assert(body.data.subtitle === 'Descubra novas paisagens e culturas.', 'usa fallback neutro previsível');
+  assert(validSubtitle(body.data.subtitle), 'fallback também passa no contrato');
+  assert(body.data.image.mimeType === 'image/png', 'preserva imagem válida');
+});
+
+Deno.test('falha de rede na recuperação usa fallback sem descartar imagem', async () => {
+  let calls = 0;
+  const handler = createFlyerAiHandler({ requireUser: async () => null, getApiKey: () => 'teste',
+    fetch: async () => {
+      calls += 1;
+      if (calls > 1) throw new Error('erro de rede com detalhe não registrado');
+      return Response.json({ candidates: [{ finishReason: 'STOP', content: { parts: [
+        { text: 'Oferta com hospedagem inclusa.' },
+        { inlineData: { mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aXcAAAAASUVORK5CYII=' } },
+      ] } }] });
+    } });
+  const response = await handler(new Request('https://example.test', { method: 'POST', body: '{"destination":"Lisboa"}' }));
+  const body = await response.json();
+  assert(response.status === 200 && body.data.subtitle === 'Descubra novas paisagens e culturas.',
+    'recuperação indisponível usa frase neutra');
+  assert(body.data.image.mimeType === 'image/png', 'preserva imagem válida');
 });
 
 Deno.test('cliente tipado envia somente o destino e exige resposta válida', async () => {

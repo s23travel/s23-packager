@@ -55,6 +55,14 @@ async function run() {
   assert.equal(firstResponse.status, 200);
   assert.equal(firstTry.calls.length, 1);
 
+  const travelWords = createHarness([modelReply([{ text: 'Conheça hotéis históricos entre paisagens deslumbrantes.' },
+    { inlineData: { mimeType: 'image/png', data: PNG } }])]);
+  const travelWordsResponse = await travelWords.handler(request());
+  assert.equal(travelWordsResponse.status, 200);
+  assert.equal((await travelWordsResponse.json() as { data: { subtitle: string } }).data.subtitle,
+    'Conheça hotéis históricos entre paisagens deslumbrantes.');
+  assert.equal(travelWords.calls.length, 1, 'descrição turística não provoca nova chamada');
+
   const jpegResponse = createHarness([modelReply([{ text: 'Conheça um destino de beleza natural.' }, { inlineData: { mimeType: 'image/jpeg', data: JPEG } }])]);
   const jpeg = await jpegResponse.handler(request());
   assert.equal(jpeg.status, 200);
@@ -75,8 +83,9 @@ async function run() {
     modelReply([{ text: 'Oferta com voos inclusos.' }]),
   ]);
   const invalid = await invalidSubtitle.handler(request());
-  assert.equal(invalid.status, 502);
-  assert.equal((await invalid.json() as { error: string }).error, 'AI_SUBTITLE_INVALID');
+  assert.equal(invalid.status, 200);
+  assert.equal((await invalid.json() as { data: { subtitle: string } }).data.subtitle,
+    'Descubra novas paisagens e culturas.');
 
   const recoveredSubtitle = createHarness([
     modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
@@ -111,21 +120,20 @@ async function run() {
     { status: 502, body: { error: 'invalid' } },
   ]);
   const unreadable = await subtitleUnreadable.handler(request());
-  assert.equal(unreadable.status, 502);
-  assert.equal((await unreadable.json() as { error: string }).error, 'AI_INVALID_RESPONSE');
+  assert.equal(unreadable.status, 200);
+  assert.equal((await unreadable.json() as { data: { subtitle: string } }).data.subtitle,
+    'Descubra novas paisagens e culturas.');
 
-  // Se a chave não servir o modelo de texto, a frase é pedida ao modelo de imagem.
+  // Se o modelo de texto estiver indisponível, usa a frase neutra sem nova chamada visual.
   const textModelDown = createHarness([
     modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
     { status: 404, body: { error: 'model not found' } },
-    modelReply([{ text: 'Entre montanhas, o destino revela paisagens inesquecíveis.' }]),
   ]);
   const fallback = await textModelDown.handler(request());
   assert.equal(fallback.status, 200);
   assert.equal((await fallback.json() as { data: { subtitle: string } }).data.subtitle,
-    'Entre montanhas, o destino revela paisagens inesquecíveis.');
-  assert.equal(textModelDown.calls.length, 3);
-  assert.match(textModelDown.calls[2].endpoint, /gemini-nano-banana-2\.1/);
+    'Descubra novas paisagens e culturas.');
+  assert.equal(textModelDown.calls.length, 2, 'não pede imagem extra ao modelo visual como fallback de texto');
 
   console.log('generate-flyer-ai retry tests passed');
 }
