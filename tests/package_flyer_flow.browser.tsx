@@ -144,7 +144,7 @@ async function run() {
     await click('Salvar lâmina no pacote');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.publications.length === 1, 'O salvamento não publicou o anexo staged');
-    assert(container.textContent?.includes('Lâmina salva neste pacote · versão 1'), 'A interface não confirmou a versão salva');
+    assert(container.textContent?.includes('Lâmina salva neste pacote.'), 'A interface não confirmou que a lâmina foi salva');
     await click('IMAGEM');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.savedDownloads.join(',') === 'fixture:png', 'O PNG salvo não pôde ser baixado novamente');

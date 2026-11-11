@@ -335,7 +335,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
       <h2 id="package-flyer-title" className="card-title">Prévia da lâmina</h2>
       <p className={`package-flyer-status${attachment ? ' is-saved' : ''}`} role="status" aria-live="polite">
         {attachmentLoaded
-          ? attachment ? `Lâmina salva neste pacote · versão ${attachment.revision}.` : 'Ainda não há uma lâmina salva neste pacote.'
+          ? attachment ? 'Lâmina salva neste pacote.' : 'Ainda não há uma lâmina salva neste pacote.'
           : 'Consultando a lâmina salva…'}
       </p>
       {attachmentError && <div className="package-flyer-notice package-flyer-notice--error" role="alert">
