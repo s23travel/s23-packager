@@ -4,7 +4,7 @@ SET session_replication_role = replica;
 -- PostgreSQL database dump
 --
 
--- \restrict 7wtKcyIzf2nL6sF6IHc7QxQxVifPN8jaNTrK5Ej9Vx8yWBrGZr9cy2SJG6Xemls
+-- \restrict HJ4rxxzUADVhxjLIMiKLM3juqSo9dItaTbZuFdLThOfDlV2Z0Mnh7cTgaucZFix
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.11
@@ -50,7 +50,7 @@ COPY "auth"."flow_state" ("id", "user_id", "auth_code", "code_challenge_method",
 --
 
 COPY "auth"."users" ("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous") FROM stdin;
-00000000-0000-0000-0000-000000000000	133b281a-718b-4498-bcb2-fe62aea1691d	authenticated	authenticated	contato@s23.travel	$2a$10$CDguLbkpMfGSodVdhbwoBeyhz46WppoGSg0H9II6vD4VTJOIeAY9e	2026-11-01 13:32:58.529857+00	\N		\N		\N			\N	2026-11-09 23:32:15.475322+00	{"provider": "email", "providers": ["email"]}	{"email_verified": true}	\N	2026-11-01 13:32:58.488588+00	2026-11-11 17:56:28.863077+00	\N	\N			\N		0	\N		\N	f	\N	f
+00000000-0000-0000-0000-000000000000	133b281a-718b-4498-bcb2-fe62aea1691d	authenticated	authenticated	contato@s23.travel	$2a$10$CDguLbkpMfGSodVdhbwoBeyhz46WppoGSg0H9II6vD4VTJOIeAY9e	2026-11-01 13:32:58.529857+00	\N		\N		\N			\N	2026-11-09 23:32:15.475322+00	{"provider": "email", "providers": ["email"]}	{"email_verified": true}	\N	2026-11-01 13:32:58.488588+00	2026-11-11 19:11:07.753376+00	\N	\N			\N		0	\N		\N	f	\N	f
 \.
 
 
@@ -89,7 +89,7 @@ b44da359-57e5-4ee6-93af-46058a70993b	133b281a-718b-4498-bcb2-fe62aea1691d	2026-1
 fa4fd105-89af-4130-a7e9-fc675fb72223	133b281a-718b-4498-bcb2-fe62aea1691d	2026-11-03 15:04:56.168377+00	2026-11-03 15:04:56.168377+00	\N	aal1	\N	\N	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36	2.80.193.114	\N	\N	\N	\N	\N
 f684ed5b-0635-420a-a508-11039655b61c	133b281a-718b-4498-bcb2-fe62aea1691d	2026-11-09 23:32:15.477788+00	2026-11-10 00:30:27.772023+00	\N	aal1	\N	2026-11-10 00:30:27.77186	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0	2.80.193.114	\N	\N	\N	\N	\N
 e39bc94e-05ba-42cc-bf5f-19080e78766c	133b281a-718b-4498-bcb2-fe62aea1691d	2026-11-03 09:42:56.952424+00	2026-11-11 15:45:53.604623+00	\N	aal1	\N	2026-11-11 15:45:53.604529	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0	2.80.193.114	\N	\N	\N	\N	\N
-402410d5-36df-4127-824f-848c0d932286	133b281a-718b-4498-bcb2-fe62aea1691d	2026-11-03 16:17:24.147087+00	2026-11-11 17:56:28.880987+00	\N	aal1	\N	2026-11-11 17:56:28.880886	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0	2.80.193.114	\N	\N	\N	\N	\N
+402410d5-36df-4127-824f-848c0d932286	133b281a-718b-4498-bcb2-fe62aea1691d	2026-11-03 16:17:24.147087+00	2026-11-11 19:11:07.774717+00	\N	aal1	\N	2026-11-11 19:11:07.774594	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0	2.80.193.114	\N	\N	\N	\N	\N
 \.
 
 
@@ -244,7 +244,8 @@ COPY "auth"."refresh_tokens" ("instance_id", "id", "token", "user_id", "revoked"
 00000000-0000-0000-0000-000000000000	95	cvpfh6cdwkwc	133b281a-718b-4498-bcb2-fe62aea1691d	f	2026-11-11 15:45:53.573505+00	2026-11-11 15:45:53.573505+00	qpmayauvkvsi	e39bc94e-05ba-42cc-bf5f-19080e78766c
 00000000-0000-0000-0000-000000000000	94	kknpxnl3nxlq	133b281a-718b-4498-bcb2-fe62aea1691d	t	2026-11-11 13:42:36.427591+00	2026-11-11 16:17:40.391175+00	erzxllsohpjl	402410d5-36df-4127-824f-848c0d932286
 00000000-0000-0000-0000-000000000000	96	hhizi5rhxr33	133b281a-718b-4498-bcb2-fe62aea1691d	t	2026-11-11 16:17:40.399558+00	2026-11-11 17:56:28.846247+00	kknpxnl3nxlq	402410d5-36df-4127-824f-848c0d932286
-00000000-0000-0000-0000-000000000000	97	7vt4zgubyopr	133b281a-718b-4498-bcb2-fe62aea1691d	f	2026-11-11 17:56:28.85556+00	2026-11-11 17:56:28.85556+00	hhizi5rhxr33	402410d5-36df-4127-824f-848c0d932286
+00000000-0000-0000-0000-000000000000	97	7vt4zgubyopr	133b281a-718b-4498-bcb2-fe62aea1691d	t	2026-11-11 17:56:28.85556+00	2026-11-11 19:11:07.719524+00	hhizi5rhxr33	402410d5-36df-4127-824f-848c0d932286
+00000000-0000-0000-0000-000000000000	98	y2p2jree76uc	133b281a-718b-4498-bcb2-fe62aea1691d	f	2026-11-11 19:11:07.741651+00	2026-11-11 19:11:07.741651+00	7vt4zgubyopr	402410d5-36df-4127-824f-848c0d932286
 \.
 
 
@@ -557,6 +558,8 @@ COPY "public"."package_flyer_cleanup_queue" ("object_path", "operation_id", "att
 1570d097-11fc-4a1a-90d4-7188ed69705a/dae87b99-7727-4f76-b494-5e188519bc47.png	ccdd45ee-e6f8-4f6a-9356-3be63f042e43	0	2026-11-11 17:58:21.870238+00	\N	\N	2026-11-11 17:58:21.870238+00	quotation
 1570d097-11fc-4a1a-90d4-7188ed69705a/47660bcf-6991-4ea8-821b-4d8c67d5afae.html	e7a08a24-4dc3-4cd7-8b1d-f66e9cea13d5	0	2026-11-11 17:58:53.730002+00	\N	\N	2026-11-11 17:58:53.730002+00	quotation
 1570d097-11fc-4a1a-90d4-7188ed69705a/47660bcf-6991-4ea8-821b-4d8c67d5afae.png	e7a08a24-4dc3-4cd7-8b1d-f66e9cea13d5	0	2026-11-11 17:58:53.730002+00	\N	\N	2026-11-11 17:58:53.730002+00	quotation
+1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.html	2e03a7a6-a7b2-4ac2-b2bb-261055a99a47	0	2026-11-11 19:16:19.082626+00	\N	\N	2026-11-11 19:16:19.082626+00	quotation
+1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.png	2e03a7a6-a7b2-4ac2-b2bb-261055a99a47	0	2026-11-11 19:16:19.082626+00	\N	\N	2026-11-11 19:16:19.082626+00	quotation
 \.
 
 
@@ -582,6 +585,7 @@ COPY "public"."quotation_flyer_operations" ("id", "quotation_id", "request_id", 
 ccdd45ee-e6f8-4f6a-9356-3be63f042e43	1570d097-11fc-4a1a-90d4-7188ed69705a	dae87b99-7727-4f76-b494-5e188519bc47	2026-11-09 17:15:50.546716+00	0	1570d097-11fc-4a1a-90d4-7188ed69705a/dae87b99-7727-4f76-b494-5e188519bc47.html	1570d097-11fc-4a1a-90d4-7188ed69705a/dae87b99-7727-4f76-b494-5e188519bc47.png	failed	\N	\N	\N	\N	2026-11-11 17:58:21.614709+00	2026-11-11 17:58:21.870238+00
 e7a08a24-4dc3-4cd7-8b1d-f66e9cea13d5	1570d097-11fc-4a1a-90d4-7188ed69705a	47660bcf-6991-4ea8-821b-4d8c67d5afae	2026-11-09 17:15:50.546716+00	0	1570d097-11fc-4a1a-90d4-7188ed69705a/47660bcf-6991-4ea8-821b-4d8c67d5afae.html	1570d097-11fc-4a1a-90d4-7188ed69705a/47660bcf-6991-4ea8-821b-4d8c67d5afae.png	failed	\N	\N	\N	\N	2026-11-11 17:58:53.547355+00	2026-11-11 17:58:53.730002+00
 2e03a7a6-a7b2-4ac2-b2bb-261055a99a47	1570d097-11fc-4a1a-90d4-7188ed69705a	d823da68-702f-4218-a587-debb2c9ea5cd	2026-11-09 17:15:50.546716+00	0	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.html	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.png	published	813f9389130f532698801b8cbc99744909e0aefbaf6c5afb79c0e81970c16d10	fe1d3f88f10810af403d7bf2d565081fd81b193ff85d778b4cb43ebdd1f0ff9c	1772169	848991	2026-11-11 18:10:05.041468+00	2026-11-11 18:10:35.601239+00
+3d1a0fed-023d-4e98-a04d-2c25ce323c70	1570d097-11fc-4a1a-90d4-7188ed69705a	15b3e7cf-5b9a-4d55-9aa7-f2490edb526d	2026-11-09 17:15:50.546716+00	1	1570d097-11fc-4a1a-90d4-7188ed69705a/15b3e7cf-5b9a-4d55-9aa7-f2490edb526d.html	1570d097-11fc-4a1a-90d4-7188ed69705a/15b3e7cf-5b9a-4d55-9aa7-f2490edb526d.png	published	1443e9ab2a8c7b3bcc1a5a7b8037c25776de6f219b95c07abb150015a5a38360	a9313cf40e103cfdb22cec9cadf428f454858906ed98fe38dce53ba6202efde7	1838826	942689	2026-11-11 19:16:08.358617+00	2026-11-11 19:16:19.082626+00
 \.
 
 
@@ -590,7 +594,7 @@ e7a08a24-4dc3-4cd7-8b1d-f66e9cea13d5	1570d097-11fc-4a1a-90d4-7188ed69705a	47660b
 --
 
 COPY "public"."quotation_flyer_attachments" ("quotation_id", "operation_id", "request_id", "html_path", "png_path", "revision", "saved_at", "created_at", "updated_at") FROM stdin;
-1570d097-11fc-4a1a-90d4-7188ed69705a	2e03a7a6-a7b2-4ac2-b2bb-261055a99a47	d823da68-702f-4218-a587-debb2c9ea5cd	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.html	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.png	1	2026-11-11 18:10:35.601239+00	2026-11-11 18:10:35.601239+00	2026-11-11 18:10:35.601239+00
+1570d097-11fc-4a1a-90d4-7188ed69705a	3d1a0fed-023d-4e98-a04d-2c25ce323c70	15b3e7cf-5b9a-4d55-9aa7-f2490edb526d	1570d097-11fc-4a1a-90d4-7188ed69705a/15b3e7cf-5b9a-4d55-9aa7-f2490edb526d.html	1570d097-11fc-4a1a-90d4-7188ed69705a/15b3e7cf-5b9a-4d55-9aa7-f2490edb526d.png	2	2026-11-11 19:16:19.082626+00	2026-11-11 18:10:35.601239+00	2026-11-11 19:16:19.082626+00
 \.
 
 
@@ -653,6 +657,8 @@ a91a1436-44f8-4ffa-8976-b33eff4423b4	s23-package-flyers	77e49abc-3672-4d30-b2ea-
 89097272-f5d3-492a-ab51-5e212b348bc9	s23-package-flyers	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.html	\N	2026-11-11 18:10:08.373368+00	2026-11-11 18:10:08.373368+00	2026-11-11 18:10:08.373368+00	{"eTag": "\\"d61916cd47b71b8227adc063912b5e15\\"", "size": 1772169, "mimetype": "text/html", "cacheControl": "no-cache", "lastModified": "2026-11-11T18:10:09.000Z", "contentLength": 1772169, "httpStatusCode": 200}	c981226f-fbc3-43b7-8217-3b7d4018b266	\N	{}	\N	f	f
 9d5d7a35-4be1-412a-bd82-bb879a8adcbc	s23-package-flyers	77e49abc-3672-4d30-b2ea-b2b4328c604a/4b15855b-4d6f-4339-a7ad-21ed24ae4c27.png	\N	2026-11-11 00:27:47.968098+00	2026-11-11 00:27:47.968098+00	2026-11-11 00:27:47.968098+00	{"eTag": "\\"a319a9c951ae66dd6c84127b6c0b356d\\"", "size": 2701331, "mimetype": "image/png", "cacheControl": "no-cache", "lastModified": "2026-11-11T00:27:48.000Z", "contentLength": 2701331, "httpStatusCode": 200}	fb684787-e828-48bc-8cc1-f1d7a0a77acd	\N	{}	\N	f	f
 6ef3551b-c218-42f3-b815-c871c0665fd4	s23-package-flyers	7a4175e3-ed9b-4aee-8783-009b8d712558/1b90887e-2e34-4878-8ab9-15951ec42ce6.png	\N	2026-11-10 16:37:21.149462+00	2026-11-10 16:37:21.149462+00	2026-11-10 16:37:21.149462+00	{"eTag": "\\"247741ace8c92906b59b34dc3cf12df0\\"", "size": 2637617, "mimetype": "image/png", "cacheControl": "no-cache", "lastModified": "2026-11-10T16:37:22.000Z", "contentLength": 2637617, "httpStatusCode": 200}	d167780c-3af3-425f-a77e-c0f6ca68bd62	\N	{}	\N	f	f
+9f3110f8-73cd-47d4-91bb-fe0d6bbe41df	s23-package-flyers	1570d097-11fc-4a1a-90d4-7188ed69705a/15b3e7cf-5b9a-4d55-9aa7-f2490edb526d.html	\N	2026-11-11 19:16:12.009435+00	2026-11-11 19:16:12.009435+00	2026-11-11 19:16:12.009435+00	{"eTag": "\\"dd9f376b7cf1637c5e8e33d12df93dbd\\"", "size": 1838826, "mimetype": "text/html", "cacheControl": "no-cache", "lastModified": "2026-11-11T19:16:12.000Z", "contentLength": 1838826, "httpStatusCode": 200}	dfaac77e-32f7-45b9-8a47-753aea08ffc3	\N	{}	\N	f	f
+e059f09d-7b1e-458e-ad70-17937d04f739	s23-package-flyers	1570d097-11fc-4a1a-90d4-7188ed69705a/15b3e7cf-5b9a-4d55-9aa7-f2490edb526d.png	\N	2026-11-11 19:16:12.081397+00	2026-11-11 19:16:12.081397+00	2026-11-11 19:16:12.081397+00	{"eTag": "\\"47c8ca2d336cfabeb6a6d617ced0d19e\\"", "size": 942689, "mimetype": "image/png", "cacheControl": "no-cache", "lastModified": "2026-11-11T19:16:13.000Z", "contentLength": 942689, "httpStatusCode": 200}	35c23c5d-832d-4a4c-91b0-4ae99efae400	\N	{}	\N	f	f
 85080db5-501f-4535-b142-f216489a2c19	s23-package-flyers	229ffde0-fe23-4a1e-8acd-f80201f13188/11e5039f-e72d-4735-b9a9-dcdae04a4fa8.html	\N	2026-11-10 16:45:58.810516+00	2026-11-10 16:45:58.810516+00	2026-11-10 16:45:58.810516+00	{"eTag": "\\"7d1ea8c22b8579cfaad1abf1d590877a\\"", "size": 3500921, "mimetype": "text/html", "cacheControl": "no-cache", "lastModified": "2026-11-10T16:45:59.000Z", "contentLength": 3500921, "httpStatusCode": 200}	8a58a5d5-d342-40b6-9e90-b1adf2a6e9e6	\N	{}	\N	f	f
 4d1fbb2b-4c24-46fd-9ebe-d47fcf80974c	s23-package-flyers	77e49abc-3672-4d30-b2ea-b2b4328c604a/4b15855b-4d6f-4339-a7ad-21ed24ae4c27.html	\N	2026-11-11 00:27:47.975867+00	2026-11-11 00:27:47.975867+00	2026-11-11 00:27:47.975867+00	{"eTag": "\\"8aa1628655a781028c2ffda038b3857f\\"", "size": 2125755, "mimetype": "text/html", "cacheControl": "no-cache", "lastModified": "2026-11-11T00:27:48.000Z", "contentLength": 2125755, "httpStatusCode": 200}	2b412eb2-c340-414c-8b26-624a95edbb5b	\N	{}	\N	f	f
 a301d967-e6ee-4e5b-b50b-725b54941157	s23-package-flyers	23ad99e1-6a95-4b2e-9671-1f674ce8deae/2c192e76-538c-4d11-bef6-15873252ce3e.html	\N	2026-11-10 17:25:26.870132+00	2026-11-10 17:25:26.870132+00	2026-11-10 17:25:26.870132+00	{"eTag": "\\"58fc66618b4d9693c7b9d426e89757e5\\"", "size": 3341678, "mimetype": "text/html", "cacheControl": "no-cache", "lastModified": "2026-11-10T17:25:27.000Z", "contentLength": 3341678, "httpStatusCode": 200}	ce67e083-7387-41ed-9e25-0039f63aa18d	\N	{}	\N	f	f
@@ -691,13 +697,13 @@ COPY "storage"."vector_indexes" ("id", "name", "bucket_id", "data_type", "dimens
 -- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: auth; Owner: supabase_auth_admin
 --
 
-SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 97, true);
+SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 98, true);
 
 
 --
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict 7wtKcyIzf2nL6sF6IHc7QxQxVifPN8jaNTrK5Ej9Vx8yWBrGZr9cy2SJG6Xemls
+-- \unrestrict HJ4rxxzUADVhxjLIMiKLM3juqSo9dItaTbZuFdLThOfDlV2Z0Mnh7cTgaucZFix
 
 RESET ALL;
