@@ -89,6 +89,27 @@ async function run() {
   assert.equal(recoveredSubtitle.calls.length, 2);
   assert.deepEqual(recoveredSubtitle.calls[1].modalities, ['TEXT']);
 
+  // O pensamento do modelo infla a resposta de texto; acima de 16 KiB ela ainda é aceita.
+  const paddedSubtitle = createHarness([
+    modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
+    { body: { candidates: [{ finishReason: 'STOP', content: { parts: [
+      { thought: true, text: 'x'.repeat(40000) },
+      { text: 'Entre montanhas, o destino revela paisagens inesquecíveis.' },
+    ] } }] } },
+  ]);
+  const padded = await paddedSubtitle.handler(request());
+  assert.equal(padded.status, 200);
+  assert.equal((await padded.json() as { data: { subtitle: string } }).data.subtitle,
+    'Entre montanhas, o destino revela paisagens inesquecíveis.');
+
+  const subtitleUnreadable = createHarness([
+    modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
+    { status: 502, body: { error: 'invalid' } },
+  ]);
+  const unreadable = await subtitleUnreadable.handler(request());
+  assert.equal(unreadable.status, 502);
+  assert.equal((await unreadable.json() as { error: string }).error, 'AI_INVALID_RESPONSE');
+
   console.log('generate-flyer-ai retry tests passed');
 }
 

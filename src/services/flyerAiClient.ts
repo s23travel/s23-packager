@@ -14,7 +14,7 @@ const messages: Record<string, string> = {
   AUTH_UNAVAILABLE: 'Não foi possível validar sua sessão.',
   AI_NOT_CONFIGURED: 'A geração de IA não está configurada no servidor.',
   AI_RATE_LIMIT: 'Limite da IA atingido. Tente novamente mais tarde.',
-  AI_UNAVAILABLE: 'Não foi possível gerar a imagem. Verifique o acesso ao modelo.',
+  AI_UNAVAILABLE: 'Não foi possível concluir a geração com a IA. Tente novamente.',
   AI_INVALID_RESPONSE: 'A IA retornou uma resposta inválida.',
   AI_IMAGE_MISSING: 'A IA não retornou uma imagem válida.',
   AI_SUBTITLE_INVALID: 'A IA não retornou um subtítulo adequado para revisão.',
