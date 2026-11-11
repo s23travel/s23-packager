@@ -30,6 +30,7 @@ create table if not exists public.quotation_flyer_attachments (
   html_path text not null,
   png_path text not null,
   revision integer not null check (revision > 0),
+  saved_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -261,10 +262,10 @@ begin
   end if;
 
   insert into public.quotation_flyer_attachments (
-    quotation_id, operation_id, request_id, html_path, png_path, revision, created_at, updated_at
+    quotation_id, operation_id, request_id, html_path, png_path, revision, saved_at, created_at, updated_at
   ) values (
     v_operation.quotation_id, v_operation.id, v_operation.request_id,
-    v_operation.html_path, v_operation.png_path, v_revision + 1, now(), now()
+    v_operation.html_path, v_operation.png_path, v_revision + 1, now(), now(), now()
   )
   on conflict (quotation_id) do update set
     operation_id = excluded.operation_id,
@@ -272,6 +273,7 @@ begin
     html_path = excluded.html_path,
     png_path = excluded.png_path,
     revision = excluded.revision,
+    saved_at = excluded.saved_at,
     updated_at = excluded.updated_at;
   update public.quotation_flyer_operations set status = 'published', updated_at = now() where id = v_operation.id;
   return jsonb_build_object('status', 'published', 'revision', v_revision + 1);
