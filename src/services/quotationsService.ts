@@ -319,6 +319,15 @@ export const quotationsService = {
 
     clonedData.snapshotCreatedAt = new Date().toISOString();
 
+    // Campos da proposta (data, sinal, restante e não incluídos) são copiados
+    // para que a nova cotação nasça com a mesma base comercial, editável.
+    clonedData.proposalDate = original.data?.proposalDate;
+    clonedData.depositAmount = original.data?.depositAmount;
+    clonedData.balanceDueDate = original.data?.balanceDueDate;
+    clonedData.notIncluded = Array.isArray(original.data?.notIncluded)
+      ? [...original.data.notIncluded]
+      : undefined;
+
     const reference = await this.getNextReference();
 
     const payload = {

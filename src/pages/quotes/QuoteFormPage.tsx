@@ -21,6 +21,14 @@ import {
   clearQuoteDraft,
 } from '../../services/quoteDraftService';
 import {
+  NOT_INCLUDED_MAX_ITEMS,
+  NOT_INCLUDED_MAX_LENGTH,
+  depositOverSalePriceWarning,
+  normalizeNotIncluded,
+  parseDepositAmount,
+  resolveProposalDate,
+} from '../../services/quotationFlyerFields';
+import {
   calculateFinancialSummaryFromServices,
   createDefaultServiceItem,
   generateServiceId,
@@ -44,6 +52,8 @@ export const QuoteFormPage: React.FC = () => {
   const [exchangeRateDate, setExchangeRateDate] = useState<string>('');
   const [originPackageId, setOriginPackageId] = useState<string | null>(null);
   const [originPackageName, setOriginPackageName] = useState<string>('');
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [proposalDate, setProposalDate] = useState<string>(() => resolveProposalDate());
 
   // SEÇÃO 2: Datas, Passageiros e Destino
   const [origin, setOrigin] = useState('');
@@ -59,6 +69,9 @@ export const QuoteFormPage: React.FC = () => {
   // SEÇÃO 3: Serviços e Financeiro (Lista Única de Serviços e Preço de Venda)
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [salePrice, setSalePrice] = useState<number>(0);
+  const [depositAmount, setDepositAmount] = useState<number | ''>('');
+  const [balanceDueDate, setBalanceDueDate] = useState('');
+  const [notIncluded, setNotIncluded] = useState<string[]>(['']);
   const [paymentConditions, setPaymentConditions] = useState('');
   const [localTaxNotes, setLocalTaxNotes] = useState('');
   const [extraServicesNotes, setExtraServicesNotes] = useState('');
@@ -124,6 +137,14 @@ export const QuoteFormPage: React.FC = () => {
         setExtraServicesNotes(draft.extraServicesNotes || '');
         setCustomNotes(draft.customNotes || '');
         setTransferService(draft.transferService || '');
+        setProposalDate(resolveProposalDate(draft.proposalDate));
+        setDepositAmount(typeof draft.depositAmount === 'number' ? draft.depositAmount : '');
+        setBalanceDueDate(draft.balanceDueDate || '');
+        setNotIncluded(
+          Array.isArray(draft.notIncluded) && draft.notIncluded.length > 0
+            ? draft.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
+            : ['']
+        );
 
         setOrigin(draft.origin || '');
         if (Array.isArray(draft.services)) {
@@ -244,6 +265,15 @@ export const QuoteFormPage: React.FC = () => {
         setLocalTaxNotes(rawData.localTaxNotes || '');
         setExtraServicesNotes(rawData.extraServicesNotes || '');
         setTransferService(rawData.transferService || '');
+        setCreatedAt(quote.created_at);
+        setProposalDate(resolveProposalDate(rawData.proposalDate, quote.created_at));
+        setDepositAmount(typeof rawData.depositAmount === 'number' ? rawData.depositAmount : '');
+        setBalanceDueDate(rawData.balanceDueDate || '');
+        setNotIncluded(
+          Array.isArray(rawData.notIncluded) && rawData.notIncluded.length > 0
+            ? rawData.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
+            : ['']
+        );
 
         if (rawData.dates) {
           setStartDate(rawData.dates.startDate || '');
@@ -340,6 +370,10 @@ export const QuoteFormPage: React.FC = () => {
         localTaxNotes,
         extraServicesNotes,
         transferService,
+        proposalDate,
+        depositAmount: parseDepositAmount(depositAmount),
+        balanceDueDate,
+        notIncluded: normalizeNotIncluded(notIncluded),
       });
 
       navigate('/servicos/novo', {
@@ -375,6 +409,10 @@ export const QuoteFormPage: React.FC = () => {
       localTaxNotes,
       extraServicesNotes,
       transferService,
+      proposalDate,
+      depositAmount,
+      balanceDueDate,
+      notIncluded,
       isEditing,
       id,
       navigate,
@@ -494,6 +532,23 @@ export const QuoteFormPage: React.FC = () => {
     });
   };
 
+  const handleNotIncludedLineChange = (index: number, value: string) => {
+    setNotIncluded((prev) => prev.map((line, i) => (i === index ? value : line)));
+  };
+
+  const handleAddNotIncludedLine = () => {
+    setNotIncluded((prev) =>
+      prev.length >= NOT_INCLUDED_MAX_ITEMS ? prev : [...prev, '']
+    );
+  };
+
+  const handleRemoveNotIncludedLine = (index: number) => {
+    setNotIncluded((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [''];
+    });
+  };
+
   const handleCancel = () => {
     clearQuoteDraft();
     navigate(isEditing && id ? `/cotacoes/${id}` : '/cotacoes');
@@ -536,6 +591,7 @@ export const QuoteFormPage: React.FC = () => {
 
       // Estrutura final de QuotationData (Fase 3: Nova Estrutura Unificada de Serviços)
       // Não cria estruturas operacionais legadas (outboundTransport, inboundTransport, lodging)
+      const normalizedNotIncluded = normalizeNotIncluded(notIncluded);
       const quotationData: QuotationData = {
         origin: origin.trim() || undefined,
         destination: destination.trim(),
@@ -558,6 +614,10 @@ export const QuoteFormPage: React.FC = () => {
         paymentConditions: paymentConditions.trim() || undefined,
         localTaxNotes: localTaxNotes.trim() || undefined,
         extraServicesNotes: extraServicesNotes.trim() || undefined,
+        proposalDate: resolveProposalDate(proposalDate, createdAt),
+        depositAmount: parseDepositAmount(depositAmount),
+        balanceDueDate: balanceDueDate || undefined,
+        notIncluded: normalizedNotIncluded.length > 0 ? normalizedNotIncluded : undefined,
         supplier: legacyExtraData.supplier as string | undefined,
       };
 
@@ -673,6 +733,11 @@ export const QuoteFormPage: React.FC = () => {
     }
   };
 
+  const depositWarning = depositOverSalePriceWarning(
+    typeof depositAmount === 'number' ? depositAmount : undefined,
+    salePrice
+  );
+
   if (loading) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -749,7 +814,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label" htmlFor="clientName">
-                Nome do Cliente / Solicitante
+                Cliente (1.ª linha do título)
               </label>
               <input
                 id="clientName"
@@ -790,7 +855,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="currency">
-                Moeda da Cotação
+                Moeda
               </label>
               <select
                 id="currency"
@@ -805,7 +870,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="exchangeRate">
-                Taxa de Câmbio (Manual)
+                Câmbio (1 EUR = X BRL)
               </label>
               <input
                 id="exchangeRate"
@@ -831,6 +896,24 @@ export const QuoteFormPage: React.FC = () => {
               />
             </div>
           </div>
+
+          <div className="form-grid-3" style={{ marginTop: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="proposalDate">
+                Data da cotação
+              </label>
+              <input
+                id="proposalDate"
+                type="date"
+                className="form-input"
+                value={proposalDate}
+                onChange={(e) => setProposalDate(e.target.value)}
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Exibida na proposta de viagem. Pré-preenchida com a data de criação da cotação.
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* SEÇÃO 2: Datas, Passageiros e Destino */}
@@ -840,7 +923,7 @@ export const QuoteFormPage: React.FC = () => {
           <div className="form-grid-2" style={{ marginBottom: '1rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="origin">
-                Origem da Cotação
+                Origem
               </label>
               <input
                 id="origin"
@@ -857,7 +940,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="destination">
-                Destino Principal da Cotação *
+                Destino *
               </label>
               <input
                 id="destination"
@@ -877,7 +960,7 @@ export const QuoteFormPage: React.FC = () => {
           <div className="form-grid-5">
             <div className="form-group">
               <label className="form-label" htmlFor="startDate">
-                Data de Partida
+                Ida
               </label>
               <input
                 id="startDate"
@@ -896,7 +979,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="endDate">
-                Data de Retorno
+                Regresso
               </label>
               <input
                 id="endDate"
@@ -910,7 +993,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="durationDays">
-                Duração (Dias)
+                Dias
               </label>
               <input
                 id="durationDays"
@@ -942,7 +1025,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="durationNights">
-                Duração (Noites)
+                Noites
               </label>
               <input
                 id="durationNights"
@@ -1080,8 +1163,51 @@ export const QuoteFormPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ marginTop: '1.25rem' }}>
             <div className="form-group">
+              <label className="form-label" htmlFor="depositAmount">
+                Sinal ({currency})
+              </label>
+              <input
+                id="depositAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                className="form-input"
+                value={depositAmount}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setDepositAmount('');
+                    return;
+                  }
+                  const val = parseFloat(raw);
+                  setDepositAmount(isNaN(val) ? '' : val);
+                }}
+                placeholder="Ex: 250.00"
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Valor do sinal na moeda da cotação. Compõe o bloco de pagamento da proposta.
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="balanceDueDate">
+                Restante até
+              </label>
+              <input
+                id="balanceDueDate"
+                type="date"
+                className="form-input"
+                value={balanceDueDate}
+                onChange={(e) => setBalanceDueDate(e.target.value)}
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Data-limite para pagamento do restante.
+              </span>
+            </div>
+
+            <div className="form-group">
               <label className="form-label" htmlFor="paymentConditions">
-                Condição de Pagamento (Entrada / Saldo)
+                Condição de pagamento (texto livre, legado)
               </label>
               <input
                 id="paymentConditions"
@@ -1092,39 +1218,105 @@ export const QuoteFormPage: React.FC = () => {
                 placeholder="Ex: 30% sinal + saldo até 20 dias antes"
               />
             </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="localTaxNotes">
-                Taxa Local na Hospedagem (se aplicável)
-              </label>
-              <input
-                id="localTaxNotes"
-                type="text"
-                className="form-input"
-                value={localTaxNotes}
-                onChange={(e) => setLocalTaxNotes(e.target.value)}
-                placeholder="Ex: 3,30€ p/ pessoa/noite no hotel"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="extraServicesNotes">
-                Serviços Extras / Opcionais (se aplicável)
-              </label>
-              <input
-                id="extraServicesNotes"
-                type="text"
-                className="form-input"
-                value={extraServicesNotes}
-                onChange={(e) => setExtraServicesNotes(e.target.value)}
-                placeholder="Ex: Seguro viagem cancelamento + bagagem"
-              />
-            </div>
           </div>
+
+          {depositWarning && (
+            <p
+              role="status"
+              style={{
+                marginTop: '0.5rem',
+                fontSize: '12px',
+                color: 'var(--warning)',
+              }}
+            >
+              ⚠️ {depositWarning}
+            </p>
+          )}
+
+          <div className="form-group" style={{ marginTop: '1rem' }}>
+            <span className="form-label">Não incluído (lista)</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>
+              Até {NOT_INCLUDED_MAX_ITEMS} linhas, {NOT_INCLUDED_MAX_LENGTH} caracteres cada. Linhas vazias são descartadas.
+            </span>
+            {notIncluded.map((line, index) => (
+              <div
+                key={`not-included-${index}`}
+                style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.35rem' }}
+              >
+                <input
+                  type="text"
+                  className="form-input"
+                  maxLength={NOT_INCLUDED_MAX_LENGTH}
+                  value={line}
+                  onChange={(e) => handleNotIncludedLineChange(index, e.target.value)}
+                  placeholder={
+                    index === 0
+                      ? 'Ex: Taxa turística local paga no hotel'
+                      : 'Ex: Bagagem despachada / seguro-viagem'
+                  }
+                  aria-label={`Não incluído, linha ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger-outline"
+                  onClick={() => handleRemoveNotIncludedLine(index)}
+                  title="Remover linha"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {notIncluded.length < NOT_INCLUDED_MAX_ITEMS && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={handleAddNotIncludedLine}
+                >
+                  + Adicionar linha
+                </button>
+              </div>
+            )}
+          </div>
+
+          <details style={{ marginTop: '1rem' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Notas legadas da cotação
+            </summary>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginTop: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="localTaxNotes">
+                  Taxa local na hospedagem (legado)
+                </label>
+                <input
+                  id="localTaxNotes"
+                  type="text"
+                  className="form-input"
+                  value={localTaxNotes}
+                  onChange={(e) => setLocalTaxNotes(e.target.value)}
+                  placeholder="Ex: 3,30€ p/ pessoa/noite no hotel"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="extraServicesNotes">
+                  Serviços extras / opcionais (legado)
+                </label>
+                <input
+                  id="extraServicesNotes"
+                  type="text"
+                  className="form-input"
+                  value={extraServicesNotes}
+                  onChange={(e) => setExtraServicesNotes(e.target.value)}
+                  placeholder="Ex: Seguro viagem cancelamento + bagagem"
+                />
+              </div>
+            </div>
+          </details>
 
           <div className="form-group" style={{ marginTop: '1rem' }}>
             <label className="form-label" htmlFor="customNotes">
-              Observações Comerciais para o Cliente / Condições da Cotação
+              Observações / rodapé da proposta
             </label>
             <textarea
               id="customNotes"
