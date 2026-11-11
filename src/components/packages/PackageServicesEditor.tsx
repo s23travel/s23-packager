@@ -337,9 +337,9 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
                       {item.type === 'accommodation'
                         ? 'Nome do Hotel / Acomodação *'
                         : item.type === 'outbound_transport'
-                        ? 'Rota / Cia Aérea de Ida *'
+                        ? 'Serviço de ida (rota e companhia) *'
                         : item.type === 'inbound_transport'
-                        ? 'Rota / Cia Aérea de Volta *'
+                        ? 'Serviço de volta (rota e companhia) *'
                         : item.type === 'transfer'
                         ? 'Descrição do Transfer *'
                         : item.type === 'insurance'
@@ -426,7 +426,7 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
                     <>
                       <div className="form-group" style={{ margin: 0 }}>
                         <label className="form-label" style={{ fontSize: '12px', marginBottom: '3px' }}>
-                          Destino Específico do Hotel
+                          Cidade do hotel
                         </label>
                         <input
                           type="text"
@@ -439,7 +439,7 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
                       </div>
                       <div className="form-group" style={{ margin: 0 }}>
                         <label className="form-label" style={{ fontSize: '12px', marginBottom: '3px' }}>
-                          Regime de Acomodação
+                          Regime / pensão
                         </label>
                         <select
                           className="form-select"
@@ -522,7 +522,9 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
 
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" style={{ fontSize: '11px', marginBottom: '2px' }}>
-                      Observação opcional...
+                      {item.type === 'outbound_transport' || item.type === 'inbound_transport'
+                        ? 'Bagagem / tarifa'
+                        : 'Observações do serviço'}
                     </label>
                     <input
                       type="text"

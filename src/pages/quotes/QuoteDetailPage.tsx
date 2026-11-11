@@ -8,7 +8,17 @@ import { FeedbackBanner } from '../../components/common/FeedbackBanner';
 import { FinancialEditor } from '../../components/finance/FinancialEditor';
 import { WhatsAppMessagePreview } from '../../components/whatsapp/WhatsAppMessagePreview';
 import { ServicesDetailView } from '../../components/common/ServicesDetailView';
+import { QuotationFlyerCreator } from '../../components/quotes/QuotationFlyerCreator';
+import '../../components/packages/packageFlyer.css';
+import '../../components/quotes/quotationFlyer.css';
 import { isLegacyPackageData, normalizeLegacyToNewStructure, serviceItemToCostComponent } from '../../services/legacyAdapterService';
+import { formatMoney } from '../../services/financeService';
+import {
+  formatBalanceDueDate,
+  formatProposalDate,
+  normalizeNotIncluded,
+  resolveProposalDate,
+} from '../../services/quotationFlyerFields';
 
 export const QuoteDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +30,7 @@ export const QuoteDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [flyerOpen, setFlyerOpen] = useState(false);
   const [hasFinancialOperation, setHasFinancialOperation] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(
     (location.state as any)?.message
@@ -243,6 +254,11 @@ export const QuoteDetailPage: React.FC = () => {
     ? rawData.financials.components
     : services.map(serviceItemToCostComponent);
 
+  const proposalDate = resolveProposalDate(rawData.proposalDate, quote.created_at);
+  const depositAmount = typeof rawData.depositAmount === 'number' ? rawData.depositAmount : undefined;
+  const balanceDueDate = rawData.balanceDueDate || '';
+  const notIncluded = normalizeNotIncluded(rawData.notIncluded);
+
   return (
     <div>
       <div className="page-header">
@@ -280,6 +296,15 @@ export const QuoteDetailPage: React.FC = () => {
           <Link to={`/cotacoes/${quote.id}/editar`} className="btn btn-primary">
             Editar Cotação
           </Link>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            aria-expanded={flyerOpen}
+            aria-controls="quotation-flyer-preview"
+            onClick={() => setFlyerOpen(value => !value)}
+          >
+            {flyerOpen ? 'Fechar prévia da lâmina' : 'Criar lâmina'}
+          </button>
           <button
             type="button"
             className="btn btn-secondary"
@@ -359,6 +384,8 @@ export const QuoteDetailPage: React.FC = () => {
           onDismiss={() => setFeedback(null)}
         />
       )}
+
+      <QuotationFlyerCreator quotation={quote} open={flyerOpen} showToggle={false} />
 
       {/* Banner de Cotação Arquivada */}
       {quote.archived_at && (
@@ -493,10 +520,34 @@ export const QuoteDetailPage: React.FC = () => {
       </div>
 
       {/* Condições Comerciais e Observações */}
-      {(paymentConditions || localTaxNotes || extraServicesNotes || customNotes) && (
+      {(proposalDate || depositAmount !== undefined || balanceDueDate || notIncluded.length > 0 || paymentConditions || localTaxNotes || extraServicesNotes || customNotes) && (
         <div className="card" style={{ marginTop: '1.25rem' }}>
           <h3 className="card-title">Condições Comerciais e Observações</h3>
           <div className="detail-rows">
+            <div className="detail-row">
+              <span className="detail-label">Data da cotação:</span>
+              <span className="detail-value">{formatProposalDate(proposalDate)}</span>
+            </div>
+            {depositAmount !== undefined && (
+              <div className="detail-row">
+                <span className="detail-label">Sinal:</span>
+                <span className="detail-value">{formatMoney(depositAmount, quote.currency)}</span>
+              </div>
+            )}
+            {balanceDueDate && (
+              <div className="detail-row">
+                <span className="detail-label">Restante até:</span>
+                <span className="detail-value">{formatBalanceDueDate(balanceDueDate)}</span>
+              </div>
+            )}
+            {notIncluded.length > 0 && (
+              <div className="detail-row">
+                <span className="detail-label">Não incluído:</span>
+                <span className="detail-value" style={{ whiteSpace: 'pre-wrap' }}>
+                  {notIncluded.map((line) => `• ${line}`).join('\n')}
+                </span>
+              </div>
+            )}
             {paymentConditions && (
               <div className="detail-row">
                 <span className="detail-label">Condição de Pagamento:</span>

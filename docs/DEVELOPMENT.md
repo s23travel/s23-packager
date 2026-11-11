@@ -44,6 +44,7 @@ Também foi consultado somente o catálogo de schema/policies/grants (sem ler li
 
 - Configuração: `supabase/config.toml`; migrations versionadas em `supabase/migrations/`; Edge Functions em `supabase/functions/`.
 - CLI incluída como devDependency; invocar com `npx supabase ...`. Stack local requer Docker.
+- **Lâmina de cotação (2026-11-11):** migrations `20261111120000_quotation_flyer_attachments.sql` (tabelas `quotation_flyer_operations`/`quotation_flyer_attachments`, RPCs `*_quotation_flyer_*`, `owner_kind` na fila de limpeza e trigger em `quotations`), Edge Function `quotation-flyer` e atualização da `cleanup-package-flyer` para as duas filas. A migration foi aplicada por `db query --file` + `migration repair 20261111120000 --status applied --linked`, sem `db push`. As duas migrations de 2026-11-09 do pacote continuam com versões locais e remotas diferentes (efeitos verificados); não as reaplicar.
 - **Não usar `npx supabase db push` para reconciliar este histórico.** O snapshot inicial de 2026-10-25 mostrou 23 versões locais sem par remoto, 6 remotas sem ficheiro local e nenhuma coincidente. Após as migrations forward e o repair de 2026-10-26, `migration list --linked` confirma 25 versões coincidentes e nenhuma pendente. Os candidatos iniciais às versões remotas estão na tabela abaixo.
 
   | Versão remota | Nome guardado no remoto | Candidato local | Observação |
