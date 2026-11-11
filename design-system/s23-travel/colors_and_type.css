@@ -259,6 +259,12 @@
   --flyer-line-height: 1.2;
   --flyer-safe-top: 13.03%;
   --flyer-safe-horizontal: 6%;
+  /* Lâmina de cotação 9:16: âncoras aprovadas em 1080 × 1920 (1 cqw = 10,8 px).
+     O restante da composição deriva das medidas da lâmina de pacote. */
+  --flyer-quotation-top: 4.63cqw; /* logo e data a 50 px do topo */
+  --flyer-quotation-bottom: 13.889cqw; /* investimento/CTA/rodapé a 150 px do fundo */
+  --flyer-quotation-gutter: 4.8cqw; /* 52 px de margem lateral */
+  --flyer-quotation-hero: 56cqw; /* 605 px até à folha branca */
   --font-editorial: "Instrument Serif", ui-serif, Georgia, "Times New Roman",
     serif;
 

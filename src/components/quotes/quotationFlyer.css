@@ -1,0 +1,451 @@
+/*
+ * Proposta de viagem S23 Travel — 9:16 (1080 × 1920).
+ * Só tokens do kit `design-system/s23-travel/colors_and_type.css`; as medidas
+ * derivam das âncoras `--flyer-quotation-*` e da escala da lâmina de pacote.
+ * A peça é estática: não há interação, mas o movimento é anulado por contrato.
+ */
+.quotation-flyer {
+  position: relative;
+  container-type: inline-size;
+  width: min(100%, 540px);
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--travel-flyer-font);
+  line-height: var(--flyer-line-height);
+}
+
+/* ---- Hero ---------------------------------------------------------------- */
+.quotation-flyer__hero {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--flyer-quotation-hero);
+  overflow: hidden;
+  background: var(--flyer-placeholder) center / cover;
+  color: var(--color-text-inverse);
+}
+.quotation-flyer__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Véu editorial sobre a foto: o texto branco mantém-se legível em qualquer imagem. */
+.quotation-flyer__hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--scrim-hero);
+}
+.quotation-flyer__hero-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--flyer-quotation-top) var(--flyer-quotation-gutter) calc(var(--flyer-gap) * 1.05);
+  text-shadow: 0 var(--border-width) var(--space-2xs) var(--color-inverse-bg);
+}
+.quotation-flyer__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--flyer-gap);
+}
+.quotation-flyer__logo {
+  width: calc(var(--flyer-gap) * 5.9);
+  height: auto;
+  border: var(--border-inverse);
+  border-radius: var(--radius-pill);
+}
+.quotation-flyer__date {
+  padding: calc(var(--flyer-gap) * 0.3) calc(var(--flyer-gap) * 0.95);
+  border-radius: var(--radius-pill);
+  background: var(--color-inverse-bg);
+  color: var(--color-text-inverse);
+  font-size: calc(var(--flyer-text-small) * 0.95);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--text-caption-tracking);
+}
+.quotation-flyer__intro {
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--flyer-gap) * 0.7);
+  margin-top: auto;
+}
+.quotation-flyer__tag {
+  padding: calc(var(--flyer-gap) * 0.28) calc(var(--flyer-gap) * 0.85);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: calc(var(--flyer-text-small) * 0.95);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-label-tracking);
+  line-height: var(--text-label-leading);
+  text-transform: uppercase;
+}
+.quotation-flyer__title {
+  display: grid;
+  margin: 0;
+  font-size: calc(var(--flyer-text-route) * 0.93);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-display-tracking);
+  line-height: var(--text-display-leading);
+}
+.quotation-flyer__client {
+  color: var(--color-text-inverse);
+}
+.quotation-flyer__destination {
+  color: var(--color-accent);
+}
+.quotation-flyer__subtitle {
+  max-width: var(--measure-narrow);
+  margin: 0;
+  font-size: calc(var(--flyer-text-small) * 1.1);
+  font-weight: var(--weight-medium);
+  line-height: var(--text-title-leading);
+}
+
+/* ---- Folha branca: barra de dados + cartões ------------------------------ */
+.quotation-flyer__sheet {
+  position: relative;
+  z-index: 2;
+  margin: var(--flyer-quotation-hero) calc(var(--flyer-quotation-gutter) * 0.82) 0;
+  padding: calc(var(--flyer-padding) * 0.9) var(--flyer-padding) calc(var(--flyer-padding) * 0.7);
+  border-radius: calc(var(--flyer-radius) * 1.7);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+}
+.quotation-flyer__facts {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1.05fr;
+  gap: calc(var(--flyer-gap) * 0.8);
+  padding-bottom: calc(var(--flyer-padding) * 0.7);
+  border-bottom: var(--border-hairline);
+}
+.quotation-flyer__fact {
+  display: grid;
+  gap: calc(var(--flyer-gap) * 0.25);
+  min-width: 0;
+}
+.quotation-flyer__fact span,
+.quotation-flyer__label {
+  color: var(--color-primary-strong);
+  font-size: calc(var(--flyer-text-small) * 0.92);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-label-tracking);
+  line-height: var(--text-label-leading);
+  text-transform: uppercase;
+}
+.quotation-flyer__fact strong {
+  color: var(--color-text);
+  font-size: calc(var(--flyer-text-body) * 0.94);
+  font-weight: var(--weight-bold);
+  line-height: var(--text-title-leading);
+  overflow-wrap: anywhere;
+}
+
+.quotation-flyer__cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--flyer-gap) * 0.6);
+  padding-top: calc(var(--flyer-padding) * 0.75);
+}
+.quotation-flyer__cards--single {
+  grid-template-columns: 1fr;
+}
+.quotation-flyer__card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--flyer-gap) * 0.5);
+  min-width: 0;
+}
+/* A régua central fica afastada da caixa de bagagem e perto do cartão de hotel. */
+.quotation-flyer__card--flights {
+  padding-right: calc(var(--flyer-gap) * 1.8);
+  border-right: var(--border-hairline);
+}
+.quotation-flyer__cards--single .quotation-flyer__card--flights {
+  padding-right: 0;
+  border-right: 0;
+}
+.quotation-flyer__card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--flyer-gap) * 0.6);
+  margin: 0;
+  color: var(--color-text);
+  font-size: calc(var(--flyer-text-body) * 1.02);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-caption-tracking);
+  line-height: var(--text-title-leading);
+  text-transform: uppercase;
+}
+.quotation-flyer__card--flights .quotation-flyer__card-title {
+  margin-bottom: calc(var(--flyer-gap) * 0.3);
+  padding-bottom: calc(var(--flyer-gap) * 0.7);
+  border-bottom: var(--border-hairline);
+}
+.quotation-flyer__carrier {
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-caption-tracking);
+}
+
+/* ---- Voos ---------------------------------------------------------------- */
+.quotation-flyer__leg {
+  display: grid;
+  gap: calc(var(--flyer-gap) * 0.12);
+}
+.quotation-flyer__leg + .quotation-flyer__leg {
+  margin-top: calc(var(--flyer-gap) * 0.55);
+}
+.quotation-flyer__leg-label {
+  margin: 0;
+  color: var(--color-primary-strong);
+  font-size: calc(var(--flyer-text-small) * 0.86);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+}
+.quotation-flyer__leg-route {
+  margin: 0;
+  color: var(--color-text);
+  font-size: calc(var(--flyer-text-body) * 0.98);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-caption-tracking);
+}
+.quotation-flyer__leg-time {
+  margin: 0;
+  color: var(--color-text);
+  font-size: calc(var(--flyer-text-body) * 1.12);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-caption-tracking);
+}
+.quotation-flyer__fare {
+  display: grid;
+  gap: calc(var(--flyer-gap) * 0.2);
+  margin-top: auto;
+  padding: calc(var(--flyer-padding) * 0.65);
+  border-radius: calc(var(--flyer-radius) * 0.75);
+  background: var(--color-surface-tint);
+  color: var(--color-text);
+}
+.quotation-flyer__fare span {
+  color: var(--color-text-muted);
+  font-size: calc(var(--flyer-text-small) * 0.86);
+}
+.quotation-flyer__fare strong {
+  font-size: calc(var(--flyer-text-small) * 1.08);
+  font-weight: var(--weight-semibold);
+  line-height: var(--text-title-leading);
+}
+
+/* ---- Hospedagem ---------------------------------------------------------- */
+.quotation-flyer__nights {
+  flex: none;
+  padding: calc(var(--flyer-gap) * 0.18) calc(var(--flyer-gap) * 0.55);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-tint);
+  color: var(--color-text);
+  font-size: calc(var(--flyer-text-small) * 0.82);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--text-caption-tracking);
+  text-transform: none;
+}
+.quotation-flyer__lodging-meta {
+  display: grid;
+  gap: calc(var(--flyer-gap) * 0.2);
+  padding-bottom: calc(var(--flyer-gap) * 0.85);
+  border-bottom: var(--border-hairline);
+}
+.quotation-flyer__lodging-name {
+  margin: 0;
+  font-size: calc(var(--flyer-text-body) * 0.98);
+  font-weight: var(--weight-bold);
+  line-height: var(--text-title-leading);
+  overflow-wrap: anywhere;
+}
+.quotation-flyer__lodging-dates {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: calc(var(--flyer-text-small) * 0.9);
+}
+.quotation-flyer__lodging-meal {
+  margin: 0;
+  font-size: calc(var(--flyer-text-small) * 0.98);
+  font-weight: var(--weight-semibold);
+}
+
+/* ---- Incluído / Não incluído -------------------------------------------- */
+.quotation-flyer__included {
+  display: grid;
+  gap: calc(var(--flyer-gap) * 0.4);
+  margin-top: calc(var(--flyer-gap) * 0.35);
+}
+.quotation-flyer__included ul,
+.quotation-flyer__not-included ul {
+  display: grid;
+  gap: calc(var(--flyer-gap) * 0.32);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.quotation-flyer__included-item,
+.quotation-flyer__not-included-item {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--flyer-gap) * 0.32);
+  font-size: calc(var(--flyer-text-small) * 0.9);
+  line-height: var(--text-title-leading);
+  overflow-wrap: anywhere;
+}
+.quotation-flyer__included-item svg {
+  flex: none;
+  width: calc(var(--flyer-text-small) * 0.95);
+  margin-top: calc(var(--flyer-gap) * 0.06);
+  color: var(--color-accent);
+}
+.quotation-flyer__not-included {
+  display: grid;
+  gap: calc(var(--flyer-gap) * 0.4);
+  margin-top: auto;
+  padding: calc(var(--flyer-padding) * 0.65);
+  border-radius: calc(var(--flyer-radius) * 0.75);
+  background: var(--color-surface-tint);
+}
+.quotation-flyer__label--navy {
+  color: var(--color-text);
+}
+
+/* ---- Grupo inferior: investimento, CTA e rodapé -------------------------- */
+.quotation-flyer__bottom {
+  position: absolute;
+  z-index: 3;
+  right: var(--flyer-quotation-gutter);
+  bottom: var(--flyer-quotation-bottom);
+  left: var(--flyer-quotation-gutter);
+  display: grid;
+  gap: calc(var(--flyer-gap) * 0.85);
+}
+.quotation-flyer__investment {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: calc(var(--flyer-padding) * 0.9);
+  align-items: center;
+  padding: calc(var(--flyer-padding) * 1.15) var(--flyer-padding);
+  border-radius: calc(var(--flyer-radius) * 1.5);
+  background: var(--color-inverse-bg);
+  color: var(--color-text-inverse);
+}
+.quotation-flyer__price {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--flyer-gap) * 0.7);
+  min-width: 0;
+}
+.quotation-flyer__card-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(var(--flyer-gap) * 2.9);
+  aspect-ratio: 1;
+  border-radius: var(--radius-pill);
+  background: var(--color-inverse-bg-raised);
+  color: var(--color-text-inverse);
+}
+.quotation-flyer__card-icon svg {
+  width: 55%;
+}
+.quotation-flyer__investment .quotation-flyer__label {
+  color: var(--color-accent-glow);
+}
+.quotation-flyer__amount {
+  display: block;
+  margin-top: calc(var(--flyer-gap) * 0.2);
+  font-size: calc(var(--flyer-text-route) * 0.95);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--text-display-tracking);
+  line-height: var(--text-label-leading);
+  white-space: nowrap;
+}
+.quotation-flyer__payment {
+  display: grid;
+  align-content: center;
+  gap: calc(var(--flyer-gap) * 0.16);
+  min-width: 0;
+  padding-left: calc(var(--flyer-padding) * 0.8);
+  border-left: var(--border-inverse);
+}
+.quotation-flyer__deposit {
+  font-size: calc(var(--flyer-text-small) * 1.18);
+  font-weight: var(--weight-bold);
+  line-height: var(--text-title-leading);
+}
+.quotation-flyer__balance {
+  font-size: calc(var(--flyer-text-small) * 0.95);
+  line-height: var(--text-title-leading);
+}
+.quotation-flyer__note {
+  color: var(--color-text-inverse-muted);
+  font-size: calc(var(--flyer-text-small) * 0.78);
+  line-height: var(--text-title-leading);
+}
+.quotation-flyer__cta {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--flyer-gap) * 0.6);
+  min-height: calc(var(--flyer-gap) * 3.1);
+  padding: calc(var(--flyer-gap) * 0.42) calc(var(--flyer-padding) * 1.15);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.quotation-flyer__cta strong {
+  flex: 1;
+  font-size: calc(var(--flyer-text-body) * 0.98);
+  font-weight: var(--weight-semibold);
+  line-height: var(--text-button-leading);
+}
+.quotation-flyer__cta svg {
+  flex: none;
+  width: calc(var(--flyer-gap) * 0.95);
+}
+.quotation-flyer__legal {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--flyer-gap) * 0.35);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: calc(var(--flyer-text-small) * 0.74);
+  line-height: var(--text-caption-leading);
+}
+.quotation-flyer__legal svg {
+  flex: none;
+  width: calc(var(--flyer-gap) * 0.9);
+  color: var(--color-secondary);
+}
+
+/* ---- Listas densas ------------------------------------------------------- */
+.quotation-flyer--dense .quotation-flyer__card {
+  gap: calc(var(--flyer-gap) * 0.32);
+}
+.quotation-flyer--dense .quotation-flyer__included ul,
+.quotation-flyer--dense .quotation-flyer__not-included ul {
+  gap: calc(var(--flyer-gap) * 0.18);
+}
+.quotation-flyer--dense .quotation-flyer__included-item,
+.quotation-flyer--dense .quotation-flyer__not-included-item {
+  font-size: calc(var(--flyer-text-small) * 0.82);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quotation-flyer *,
+  .quotation-flyer *::before,
+  .quotation-flyer *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
