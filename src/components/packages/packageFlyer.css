@@ -70,6 +70,8 @@
 .package-flyer__items li { display: flex; align-items: flex-start; gap: calc(var(--flyer-gap) * 0.55); overflow-wrap: anywhere; }
 .package-flyer__items svg { width: 4cqw; margin-top: 0.3cqw; flex: none; }
 .package-flyer__items p { margin: 0; font-size: var(--flyer-text-body); }
+.package-flyer__items > ul,
+.package-flyer__items > p { margin-top: calc(var(--flyer-gap) * 0.4); }
 /* Listas densas: fonte e espaçamento menores mantêm o rodapé na área segura. */
 .package-flyer--compact .package-flyer__items { font-size: 3.2cqw; }
 .package-flyer--compact .package-flyer__items ul { gap: 1.7cqw; }
