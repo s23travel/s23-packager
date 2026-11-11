@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
+import { register } from 'node:module';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createPackageFlyer } from '../src/services/packageFlyerService';
-import { PackageFlyerTemplate } from '../src/components/packages/PackageFlyerTemplate';
 import { FLYER_ITEM_LABEL_MAX, itemLabelProblem, validFlyerItems } from '../supabase/functions/_shared/flyerItemsContract';
 import type { Package } from '../src/types';
+
+// O template importa o logo .png (o Vite resolve como URL); em Node é preciso o loader.
+register('./pngAssetLoader.mjs', import.meta.url);
+const { PackageFlyerTemplate } = await import('../src/components/packages/PackageFlyerTemplate');
 
 const pkg: Package = {
   id: 'fixture', reference: 'TESTE', name: 'Viagem fictícia', status: 'draft',
