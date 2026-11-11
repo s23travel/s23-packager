@@ -88,8 +88,11 @@ async function run() {
     'Entre montanhas, o destino revela paisagens inesquecíveis.');
   assert.equal(recoveredSubtitle.calls.length, 2);
   assert.deepEqual(recoveredSubtitle.calls[1].modalities, ['TEXT']);
+  assert.match(recoveredSubtitle.calls[1].endpoint, /gemini-3\.6-flash/);
+  assert.equal(recoveredSubtitle.calls[1].imageConfig, undefined);
+  assert.match(recoveredSubtitle.calls[0].endpoint, /gemini-nano-banana-2\.1/);
 
-  // O pensamento do modelo infla a resposta de texto; acima de 16 KiB ela ainda é aceita.
+  // Mesmo que a resposta de texto venha grande, ela ainda é lida e aproveitada.
   const paddedSubtitle = createHarness([
     modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
     { body: { candidates: [{ finishReason: 'STOP', content: { parts: [
@@ -105,10 +108,24 @@ async function run() {
   const subtitleUnreadable = createHarness([
     modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
     { status: 502, body: { error: 'invalid' } },
+    { status: 502, body: { error: 'invalid' } },
   ]);
   const unreadable = await subtitleUnreadable.handler(request());
   assert.equal(unreadable.status, 502);
   assert.equal((await unreadable.json() as { error: string }).error, 'AI_INVALID_RESPONSE');
+
+  // Se a chave não servir o modelo de texto, a frase é pedida ao modelo de imagem.
+  const textModelDown = createHarness([
+    modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
+    { status: 404, body: { error: 'model not found' } },
+    modelReply([{ text: 'Entre montanhas, o destino revela paisagens inesquecíveis.' }]),
+  ]);
+  const fallback = await textModelDown.handler(request());
+  assert.equal(fallback.status, 200);
+  assert.equal((await fallback.json() as { data: { subtitle: string } }).data.subtitle,
+    'Entre montanhas, o destino revela paisagens inesquecíveis.');
+  assert.equal(textModelDown.calls.length, 3);
+  assert.match(textModelDown.calls[2].endpoint, /gemini-nano-banana-2\.1/);
 
   console.log('generate-flyer-ai retry tests passed');
 }
