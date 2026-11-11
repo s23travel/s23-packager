@@ -219,7 +219,7 @@ async function run() {
     assert(window.flyerFlowTest.publications[0].quotationId === 'cot-fixture', 'O salvamento não usou a cotação atual');
     assert(container.textContent?.includes('Lâmina salva nesta cotação.'), 'A interface não confirmou a lâmina salva');
 
-    // 7. Download HTML e IMAGEM (JPG real convertido do PNG).
+    // 7. Download HTML e IMAGEM (PNG do servidor, sem recompressão).
     downloadedBlobType = '';
     downloadedFileName = '';
     await click('HTML');
@@ -233,8 +233,8 @@ async function run() {
     await click('IMAGEM');
     await tick();
     assert(window.flyerFlowTest.savedDownloads.join(',') === 'cot-fixture:html,cot-fixture:png', 'O PNG salvo não foi pedido');
-    assert(downloadedBlobType === 'image/jpeg', 'O botão IMAGEM não entregou JPG');
-    assert(downloadedFileName === 'lamina-cotacao-cot-2026-059-paris.jpg', `Nome do JPG inesperado: ${downloadedFileName}`);
+    assert(downloadedBlobType === 'image/png', 'O botão IMAGEM não entregou PNG');
+    assert(downloadedFileName === 'lamina-cotacao-cot-2026-059-paris.png', `Nome do PNG inesperado: ${downloadedFileName}`);
 
     // 8. Cotação arquivada mantém a lâmina salva acessível, sem desarquivar.
     const archivedQuote: Quotation = { ...quote, archived_at: '2026-11-11T12:00:00Z' };
@@ -263,9 +263,9 @@ async function run() {
     await click('IMAGEM');
     await tick();
     assert(window.flyerFlowTest.savedDownloads.at(-1) === 'cot-incompleta:png', 'A lâmina salva não ficou baixável com dados em falta');
-    assert(downloadedBlobType === 'image/jpeg', 'A lâmina salva com dados em falta não entregou JPG');
+    assert(downloadedBlobType === 'image/png', 'A lâmina salva com dados em falta não entregou PNG');
     assert(
-      downloadedFileName === 'lamina-cotacao-cot-2026-060-lisboa.jpg',
+      downloadedFileName === 'lamina-cotacao-cot-2026-060-lisboa.png',
       `O nome do ficheiro deve vir da cotação, mesmo sem modelo local: ${downloadedFileName}`
     );
 
@@ -273,7 +273,7 @@ async function run() {
     assert(window.flyerFlowTest.confirmations.length === 0, `Houve confirmação: ${window.flyerFlowTest.confirmations.join(' | ')}`);
     assert(!container.textContent?.includes('Revisei'), 'A tela voltou a exigir aceites');
 
-    return 'Fluxo da cotação: lâmina salva independente do modelo, IA, revisão, prévia, publicação e downloads HTML/JPG';
+    return 'Fluxo da cotação: lâmina salva independente do modelo, IA, revisão, prévia, publicação e downloads HTML/PNG';
   } finally {
     await act(async () => { root.unmount(); });
     URL.createObjectURL = originalCreateObjectURL;

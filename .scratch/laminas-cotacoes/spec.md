@@ -26,6 +26,9 @@ Onde o texto anterior divergir, valem estas decisões:
 6. **Moeda:** usar o formato da app (`formatMoney`, ex.: `€ 700,00`), não o formato `700,00 €` do mockup.
 7. **Título:** nome do cliente + destino, sem duração.
 8. **Referência visual aprovada:** `.scratch/laminas-cotacoes/preview-cotacao-9x16.png` (1080 × 1920), com os ajustes visuais registados.
+9. **Formato da imagem (2026-11-11):** o download «IMAGEM» entrega o PNG do servidor, sem conversão para JPG, no pacote e na cotação — o mesmo padrão para ambas as lâminas.
+10. **Laranja (2026-11-11):** blocos, formas e letras usam `--color-accent` (terracotta-600), o laranja mais claro do kit; deixa de haver `--color-primary`/`--color-primary-strong` na peça.
+11. **Regime da hospedagem:** quando o serviço não traz `mealPlan`, a peça usa «Café da manhã (BB)», o mesmo default que o editor apresenta, e o formulário passa a gravar esse valor.
 
 ## Problema
 

@@ -100,6 +100,9 @@ const PRICE_MAX = 20;
 
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'] as const;
 
+/** O editor mostra «Café da manhã (BB)» quando o serviço não traz regime; a peça segue o mesmo default. */
+const DEFAULT_MEAL_PLAN = 'Café da manhã (BB)';
+
 interface DateParts {
   day: string;
   month: string;
@@ -367,6 +370,13 @@ export function createQuotationFlyer(quote: Quotation): QuotationFlyerResult {
   }
 
   const { isLegacy, services } = resolveFlyerServices(data, normalized);
+  // Serviços antigos podem não ter regime gravado; o editor sempre apresentou
+  // café da manhã como default, por isso a peça usa o mesmo valor.
+  const flyerServices = services.map(service =>
+    service?.type === 'accommodation' && !service.mealPlan
+      ? { ...service, mealPlan: DEFAULT_MEAL_PLAN }
+      : service
+  );
 
   const depositAmount = parseDepositAmount(data.depositAmount);
   const deposit = typeof depositAmount === 'number' && depositAmount > 0
@@ -383,7 +393,7 @@ export function createQuotationFlyer(quote: Quotation): QuotationFlyerResult {
   const period = validDate(start) && validDate(end) ? formatShortPeriod(start, end) : '';
   if (period.length > PERIOD_MAX) warnings.push('Período longo demais para a lâmina.');
 
-  const included = deriveIncluded(data, services, isLegacy, warnings);
+  const included = deriveIncluded(data, flyerServices, isLegacy, warnings);
   const notIncluded = deriveNotIncluded(data.notIncluded, warnings);
 
   if (errors.length || !validDate(start) || !validDate(end) || !validTotal) {
@@ -408,8 +418,8 @@ export function createQuotationFlyer(quote: Quotation): QuotationFlyerResult {
       destination,
       dates: { period, start: formatIsoDate(start), end: formatIsoDate(end) },
       passengers: { adults, children, infants, label },
-      transport: deriveTransport(services, start, end, origin, destination, adults, children, warnings),
-      lodging: deriveLodging(services, start, end, data.dates?.durationNights, warnings),
+      transport: deriveTransport(flyerServices, start, end, origin, destination, adults, children, warnings),
+      lodging: deriveLodging(flyerServices, start, end, data.dates?.durationNights, warnings),
       included,
       notIncluded,
       price: {

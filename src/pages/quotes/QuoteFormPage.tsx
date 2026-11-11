@@ -36,6 +36,15 @@ import {
   normalizeLegacyToNewStructure,
 } from '../../services/legacyAdapterService';
 
+/** O editor apresenta café da manhã quando o serviço não traz regime; gravar o default torna-o explícito. */
+function withDefaultMealPlan(items: ServiceItem[]): ServiceItem[] {
+  return items.map(item =>
+    item.type === 'accommodation' && !item.mealPlan
+      ? { ...item, mealPlan: 'Café da manhã (BB)' }
+      : item
+  );
+}
+
 export const QuoteFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -364,7 +373,7 @@ export const QuoteFormPage: React.FC = () => {
         infants,
         origin,
         destination,
-        services,
+        services: withDefaultMealPlan(services),
         salePrice,
         paymentConditions,
         localTaxNotes,
@@ -595,7 +604,7 @@ export const QuoteFormPage: React.FC = () => {
       const quotationData: QuotationData = {
         origin: origin.trim() || undefined,
         destination: destination.trim(),
-        services,
+        services: withDefaultMealPlan(services),
         dates: {
           startDate,
           endDate,

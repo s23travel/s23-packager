@@ -78,7 +78,7 @@
 .quotation-flyer__tag {
   padding: calc(var(--flyer-gap) * 0.28) calc(var(--flyer-gap) * 0.85);
   border-radius: var(--radius-pill);
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: var(--color-on-primary);
   font-size: calc(var(--flyer-text-small) * 0.95);
   font-weight: var(--weight-bold);
@@ -132,7 +132,7 @@
 }
 .quotation-flyer__fact span,
 .quotation-flyer__label {
-  color: var(--color-primary-strong);
+  color: var(--color-accent);
   font-size: calc(var(--flyer-text-small) * 0.92);
   font-weight: var(--weight-bold);
   letter-spacing: var(--text-label-tracking);
@@ -204,7 +204,7 @@
 }
 .quotation-flyer__leg-label {
   margin: 0;
-  color: var(--color-primary-strong);
+  color: var(--color-accent);
   font-size: calc(var(--flyer-text-small) * 0.86);
   font-weight: var(--weight-bold);
   letter-spacing: var(--text-label-tracking);
@@ -360,7 +360,7 @@
   width: 55%;
 }
 .quotation-flyer__investment .quotation-flyer__label {
-  color: var(--color-accent-glow);
+  color: var(--color-accent);
 }
 .quotation-flyer__amount {
   display: block;
@@ -400,7 +400,7 @@
   min-height: calc(var(--flyer-gap) * 3.1);
   padding: calc(var(--flyer-gap) * 0.42) calc(var(--flyer-padding) * 1.15);
   border-radius: var(--radius-pill);
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: var(--color-on-primary);
 }
 .quotation-flyer__cta strong {

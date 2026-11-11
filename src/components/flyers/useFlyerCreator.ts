@@ -7,7 +7,7 @@ import {
   normalizeItemLabel,
   type FlyerItem,
 } from '../../../supabase/functions/_shared/flyerItemsContract';
-import { convertPngToJpg, triggerFlyerDownload, type FlyerDownloadFormat } from '../../services/flyerDownload';
+import { triggerFlyerDownload, type FlyerDownloadFormat } from '../../services/flyerDownload';
 import type { FlyerAttachmentFormat, ReviewedFlyerImage } from '../../services/packageFlyerAttachmentService';
 
 /** Metadados da última versão salva, comuns ao pacote e à cotação. */
@@ -323,8 +323,7 @@ export function useFlyerCreator<TModel extends FlyerCreatorModel>(adapter: Flyer
     setError(null);
     try {
       const savedBlob = await adapterRef.current.downloadSavedFlyer(ownerId, format);
-      const blob = format === 'png' ? await convertPngToJpg(savedBlob) : savedBlob;
-      triggerFlyerDownload(blob, adapterRef.current.savedFileName(format === 'png' ? 'jpg' : format, flyer?.model?.destination), downloadUrls.current);
+      triggerFlyerDownload(savedBlob, adapterRef.current.savedFileName(format, flyer?.model?.destination), downloadUrls.current);
     } catch (downloadError) {
       setError(downloadError instanceof Error ? downloadError.message : 'Não foi possível baixar a lâmina salva.');
     } finally { setDownloading(null); }

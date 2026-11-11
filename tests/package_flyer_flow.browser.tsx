@@ -148,8 +148,8 @@ async function run() {
     await click('IMAGEM');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     assert(window.flyerFlowTest.savedDownloads.join(',') === 'fixture:png', 'O PNG salvo não pôde ser baixado novamente');
-    assert(downloadedBlobType === 'image/jpeg', 'O arquivo baixado não foi convertido para JPG');
-    assert(downloadedFileName === 'lamina-acores.jpg', 'O nome do arquivo baixado não indica JPG');
+    assert(downloadedBlobType === 'image/png', 'O arquivo baixado não manteve o PNG do servidor');
+    assert(downloadedFileName === 'lamina-acores.png', 'O nome do arquivo baixado não indica PNG');
 
     const changedPricePackage = { ...pkg, data: {
       ...pkg.data,

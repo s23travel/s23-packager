@@ -384,4 +384,21 @@ assert.deepEqual(pkgLegacy.model?.items, [
 assert.equal(pkgLegacy.model?.price.formatted, '€ 1.000,00');
 console.log('✅ Paridade do modelo de pacote');
 
+// Regime em falta: o editor mostra café da manhã, a peça segue o mesmo default.
+const withoutMealPlan = createQuotationFlyer({
+  ...quote,
+  data: {
+    ...quote.data,
+    services: quote.data.services!.map(service =>
+      service.type === 'accommodation' ? { ...service, mealPlan: undefined } : service
+    ),
+  },
+});
+assert.equal(withoutMealPlan.model?.lodging?.mealPlan, 'café da manhã', 'regime em falta usa o default do editor');
+assert.ok(
+  withoutMealPlan.model?.included.some(item => item.label === 'Hospedagem com café da manhã'),
+  'a lista de incluídos acompanha o default do regime'
+);
+console.log('✅ Regime da hospedagem em falta');
+
 console.log('\n🎉 TODOS OS TESTES DO MODELO DA COTAÇÃO PASSARAM!\n');

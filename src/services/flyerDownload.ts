@@ -1,5 +1,5 @@
-/** Formatos de download da lâmina salva: o servidor guarda PNG/HTML; o JPG é convertido no cliente. */
-export type FlyerDownloadFormat = 'html' | 'png' | 'jpg';
+/** Formatos de download da lâmina salva: o servidor guarda PNG/HTML e a imagem é entregue sem recompressão. */
+export type FlyerDownloadFormat = 'html' | 'png';
 
 /** Reduz um trecho a slug seguro para nome de ficheiro (sem acentos nem pontuação). */
 export function sanitizeFlyerFilePart(value: string): string {
@@ -14,26 +14,6 @@ export function sanitizeFlyerFilePart(value: string): string {
 export function flyerDownloadName(prefix: string, parts: string[], format: FlyerDownloadFormat): string {
   const subject = parts.map(sanitizeFlyerFilePart).filter(Boolean).join('-') || 'viagem';
   return `${sanitizeFlyerFilePart(prefix) || 'lamina'}-${subject}.${format}`;
-}
-
-/** Converte o PNG devolvido pelo servidor em JPG; falha em vez de rotular mal o ficheiro. */
-export async function convertPngToJpg(png: Blob): Promise<Blob> {
-  const bitmap = await createImageBitmap(png);
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Não foi possível preparar a conversão para JPG.');
-    context.drawImage(bitmap, 0, 0);
-    const jpg = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(image => image ? resolve(image) : reject(new Error('Não foi possível converter a lâmina para JPG.')), 'image/jpeg', 0.92);
-    });
-    if (jpg.type !== 'image/jpeg') throw new Error('A lâmina não foi convertida para JPG.');
-    return jpg;
-  } finally {
-    bitmap.close();
-  }
 }
 
 /** Entrega o Blob ao browser e mantém o registo dos URLs temporários para revogação. */
