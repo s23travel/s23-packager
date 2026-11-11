@@ -4,7 +4,7 @@ SET session_replication_role = replica;
 -- PostgreSQL database dump
 --
 
--- \restrict 21oXxBD13LdWPaSYeC9nUVPjxWD8VZYKNxLomOTabu9pkGq4dF7rnUpeQ2B4YDr
+-- \restrict 7wtKcyIzf2nL6sF6IHc7QxQxVifPN8jaNTrK5Ej9Vx8yWBrGZr9cy2SJG6Xemls
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.11
@@ -581,6 +581,7 @@ f556e94a-e417-484e-b9b6-13a7bd4a8a81	031ba080-fdf0-41e8-a875-c2355c384e0a	{"slug
 COPY "public"."quotation_flyer_operations" ("id", "quotation_id", "request_id", "expected_quotation_updated_at", "expected_revision", "html_path", "png_path", "status", "html_sha256", "png_sha256", "html_bytes", "png_bytes", "created_at", "updated_at") FROM stdin;
 ccdd45ee-e6f8-4f6a-9356-3be63f042e43	1570d097-11fc-4a1a-90d4-7188ed69705a	dae87b99-7727-4f76-b494-5e188519bc47	2026-11-09 17:15:50.546716+00	0	1570d097-11fc-4a1a-90d4-7188ed69705a/dae87b99-7727-4f76-b494-5e188519bc47.html	1570d097-11fc-4a1a-90d4-7188ed69705a/dae87b99-7727-4f76-b494-5e188519bc47.png	failed	\N	\N	\N	\N	2026-11-11 17:58:21.614709+00	2026-11-11 17:58:21.870238+00
 e7a08a24-4dc3-4cd7-8b1d-f66e9cea13d5	1570d097-11fc-4a1a-90d4-7188ed69705a	47660bcf-6991-4ea8-821b-4d8c67d5afae	2026-11-09 17:15:50.546716+00	0	1570d097-11fc-4a1a-90d4-7188ed69705a/47660bcf-6991-4ea8-821b-4d8c67d5afae.html	1570d097-11fc-4a1a-90d4-7188ed69705a/47660bcf-6991-4ea8-821b-4d8c67d5afae.png	failed	\N	\N	\N	\N	2026-11-11 17:58:53.547355+00	2026-11-11 17:58:53.730002+00
+2e03a7a6-a7b2-4ac2-b2bb-261055a99a47	1570d097-11fc-4a1a-90d4-7188ed69705a	d823da68-702f-4218-a587-debb2c9ea5cd	2026-11-09 17:15:50.546716+00	0	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.html	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.png	published	813f9389130f532698801b8cbc99744909e0aefbaf6c5afb79c0e81970c16d10	fe1d3f88f10810af403d7bf2d565081fd81b193ff85d778b4cb43ebdd1f0ff9c	1772169	848991	2026-11-11 18:10:05.041468+00	2026-11-11 18:10:35.601239+00
 \.
 
 
@@ -589,6 +590,7 @@ e7a08a24-4dc3-4cd7-8b1d-f66e9cea13d5	1570d097-11fc-4a1a-90d4-7188ed69705a	47660b
 --
 
 COPY "public"."quotation_flyer_attachments" ("quotation_id", "operation_id", "request_id", "html_path", "png_path", "revision", "saved_at", "created_at", "updated_at") FROM stdin;
+1570d097-11fc-4a1a-90d4-7188ed69705a	2e03a7a6-a7b2-4ac2-b2bb-261055a99a47	d823da68-702f-4218-a587-debb2c9ea5cd	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.html	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.png	1	2026-11-11 18:10:35.601239+00	2026-11-11 18:10:35.601239+00	2026-11-11 18:10:35.601239+00
 \.
 
 
@@ -647,6 +649,8 @@ a91a1436-44f8-4ffa-8976-b33eff4423b4	s23-package-flyers	77e49abc-3672-4d30-b2ea-
 3d9cc1cb-1258-4788-82ce-fff6f9cfd3af	s23-package-flyers	77e49abc-3672-4d30-b2ea-b2b4328c604a/cf497464-e2e4-4495-b894-64f88b9c4508.png	\N	2026-11-11 11:45:53.630658+00	2026-11-11 11:45:53.630658+00	2026-11-11 11:45:53.630658+00	{"eTag": "\\"00bd3721c98d976373234f0098ed99ad\\"", "size": 2092841, "mimetype": "image/png", "cacheControl": "no-cache", "lastModified": "2026-11-11T11:45:54.000Z", "contentLength": 2092841, "httpStatusCode": 200}	b3e22885-b7cf-4c52-857c-efb88a5c9a3f	\N	{}	\N	f	f
 4b9613eb-ed91-4577-aa99-c0ee42e215c5	s23-package-flyers	7a4175e3-ed9b-4aee-8783-009b8d712558/1b90887e-2e34-4878-8ab9-15951ec42ce6.html	\N	2026-11-10 16:37:21.174565+00	2026-11-10 16:37:21.174565+00	2026-11-10 16:37:21.174565+00	{"eTag": "\\"597e6c7cf11881370c4fa1f8c18e2104\\"", "size": 3376797, "mimetype": "text/html", "cacheControl": "no-cache", "lastModified": "2026-11-10T16:37:22.000Z", "contentLength": 3376797, "httpStatusCode": 200}	1c7533db-b37e-4864-a857-9c914b4a470e	\N	{}	\N	f	f
 9c99cc7d-ce02-46d4-a095-7498c157adfb	s23-package-flyers	229ffde0-fe23-4a1e-8acd-f80201f13188/11e5039f-e72d-4735-b9a9-dcdae04a4fa8.png	\N	2026-11-10 16:45:58.814511+00	2026-11-10 16:45:58.814511+00	2026-11-10 16:45:58.814511+00	{"eTag": "\\"ddbdb7feac8ee46b64b592d2c4fe97db\\"", "size": 2861328, "mimetype": "image/png", "cacheControl": "no-cache", "lastModified": "2026-11-10T16:45:59.000Z", "contentLength": 2861328, "httpStatusCode": 200}	e8a7abad-2be8-40fc-b88d-899db3f9b52f	\N	{}	\N	f	f
+3002357e-02e3-4971-8bfd-be714870829b	s23-package-flyers	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.png	\N	2026-11-11 18:10:08.278449+00	2026-11-11 18:10:08.278449+00	2026-11-11 18:10:08.278449+00	{"eTag": "\\"cbb194c5e030f110e805f972daf537b1\\"", "size": 848991, "mimetype": "image/png", "cacheControl": "no-cache", "lastModified": "2026-11-11T18:10:09.000Z", "contentLength": 848991, "httpStatusCode": 200}	335e254b-23f0-4328-8425-c059d88a7c8e	\N	{}	\N	f	f
+89097272-f5d3-492a-ab51-5e212b348bc9	s23-package-flyers	1570d097-11fc-4a1a-90d4-7188ed69705a/d823da68-702f-4218-a587-debb2c9ea5cd.html	\N	2026-11-11 18:10:08.373368+00	2026-11-11 18:10:08.373368+00	2026-11-11 18:10:08.373368+00	{"eTag": "\\"d61916cd47b71b8227adc063912b5e15\\"", "size": 1772169, "mimetype": "text/html", "cacheControl": "no-cache", "lastModified": "2026-11-11T18:10:09.000Z", "contentLength": 1772169, "httpStatusCode": 200}	c981226f-fbc3-43b7-8217-3b7d4018b266	\N	{}	\N	f	f
 9d5d7a35-4be1-412a-bd82-bb879a8adcbc	s23-package-flyers	77e49abc-3672-4d30-b2ea-b2b4328c604a/4b15855b-4d6f-4339-a7ad-21ed24ae4c27.png	\N	2026-11-11 00:27:47.968098+00	2026-11-11 00:27:47.968098+00	2026-11-11 00:27:47.968098+00	{"eTag": "\\"a319a9c951ae66dd6c84127b6c0b356d\\"", "size": 2701331, "mimetype": "image/png", "cacheControl": "no-cache", "lastModified": "2026-11-11T00:27:48.000Z", "contentLength": 2701331, "httpStatusCode": 200}	fb684787-e828-48bc-8cc1-f1d7a0a77acd	\N	{}	\N	f	f
 6ef3551b-c218-42f3-b815-c871c0665fd4	s23-package-flyers	7a4175e3-ed9b-4aee-8783-009b8d712558/1b90887e-2e34-4878-8ab9-15951ec42ce6.png	\N	2026-11-10 16:37:21.149462+00	2026-11-10 16:37:21.149462+00	2026-11-10 16:37:21.149462+00	{"eTag": "\\"247741ace8c92906b59b34dc3cf12df0\\"", "size": 2637617, "mimetype": "image/png", "cacheControl": "no-cache", "lastModified": "2026-11-10T16:37:22.000Z", "contentLength": 2637617, "httpStatusCode": 200}	d167780c-3af3-425f-a77e-c0f6ca68bd62	\N	{}	\N	f	f
 85080db5-501f-4535-b142-f216489a2c19	s23-package-flyers	229ffde0-fe23-4a1e-8acd-f80201f13188/11e5039f-e72d-4735-b9a9-dcdae04a4fa8.html	\N	2026-11-10 16:45:58.810516+00	2026-11-10 16:45:58.810516+00	2026-11-10 16:45:58.810516+00	{"eTag": "\\"7d1ea8c22b8579cfaad1abf1d590877a\\"", "size": 3500921, "mimetype": "text/html", "cacheControl": "no-cache", "lastModified": "2026-11-10T16:45:59.000Z", "contentLength": 3500921, "httpStatusCode": 200}	8a58a5d5-d342-40b6-9e90-b1adf2a6e9e6	\N	{}	\N	f	f
@@ -694,6 +698,6 @@ SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 97, true);
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict 21oXxBD13LdWPaSYeC9nUVPjxWD8VZYKNxLomOTabu9pkGq4dF7rnUpeQ2B4YDr
+-- \unrestrict 7wtKcyIzf2nL6sF6IHc7QxQxVifPN8jaNTrK5Ej9Vx8yWBrGZr9cy2SJG6Xemls
 
 RESET ALL;
