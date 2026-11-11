@@ -1,7 +1,8 @@
 # 02 — Casca do flyer partilhada e download JPG
 
-Status: ready-for-agent
+Status: done
 Blocked by: —
+Commit: d5897d4
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («Mapa de implementação → Serviços e componentes», «Decisões de produto e template → Download/Rótulos»).
 

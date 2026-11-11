@@ -1,7 +1,8 @@
 # 09 — Documentação e fecho da entrega
 
-Status: ready-for-agent
+Status: done
 Blocked by: 05, 06, 07, 08
+Commit: 55259bd
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («Mapa de implementação → Documentação», «Sequência sugerida»).
 

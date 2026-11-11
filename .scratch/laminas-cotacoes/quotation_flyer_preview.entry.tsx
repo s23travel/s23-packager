@@ -7,6 +7,7 @@ import regular from '../../design-system/s23-travel/fonts/Poppins/Poppins-Regula
 import medium from '../../design-system/s23-travel/fonts/Poppins/Poppins-Medium.ttf';
 import semibold from '../../design-system/s23-travel/fonts/Poppins/Poppins-SemiBold.ttf';
 import bold from '../../design-system/s23-travel/fonts/Poppins/Poppins-Bold.ttf';
+import travelPhoto from '../../design-system/s23-travel/assets/travel.jpg';
 import { createQuotationFlyer } from '../../src/services/quotationFlyerService';
 import { renderQuotationFlyerMarkup } from '../../src/services/quotationFlyerMarkup';
 import type { Quotation } from '../../src/types';
@@ -68,6 +69,7 @@ if (!result.model) throw new Error(`fixture inválida: ${result.errors.join(' | 
 const model = {
   ...result.model,
   subtitle: 'Paris na primavera, entre cafés e boulevards',
+  imageUrl: travelPhoto as string,
 };
 
 const fontFaces = [

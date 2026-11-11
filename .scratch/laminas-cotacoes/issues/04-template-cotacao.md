@@ -1,7 +1,8 @@
 # 04 — Template 9:16 da cotação (markup, React e CSS)
 
-Status: ready-for-agent
+Status: done
 Blocked by: 03
+Commit: 8bf093f
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («Template anexo e mapeamento», «Decisões de produto e template»). Referência visual: `.scratch/laminas-cotacoes/preview-cotacao-9x16.png` (1080 × 1920).
 

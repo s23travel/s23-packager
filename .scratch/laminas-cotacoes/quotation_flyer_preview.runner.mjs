@@ -14,7 +14,7 @@ const browser = process.env.CHROME_PATH || [
 ].find(existsSync);
 if (!browser) throw new Error('Defina CHROME_PATH para um executável Chrome/Chromium.');
 
-const output = resolve('.scratch/laminas-cotacoes/preview-ticket04.png');
+const output = resolve(process.env.PREVIEW_OUT || '.scratch/laminas-cotacoes/preview-ticket04.png');
 const work = mkdtempSync(join(tmpdir(), 'packager-quotation-preview-'));
 const bundlePath = join(work, 'preview.mjs');
 const htmlPath = join(work, 'preview.html');
@@ -26,7 +26,7 @@ const bundle = await build({
   platform: 'node',
   format: 'esm',
   jsx: 'automatic',
-  loader: { '.png': 'dataurl', '.ttf': 'dataurl', '.css': 'text' },
+  loader: { '.png': 'dataurl', '.jpg': 'dataurl', '.ttf': 'dataurl', '.css': 'text' },
   define: { 'process.env.NODE_ENV': '"production"' },
 });
 writeFileSync(bundlePath, bundle.outputFiles[0].text);

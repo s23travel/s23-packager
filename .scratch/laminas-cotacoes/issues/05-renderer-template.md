@@ -1,7 +1,8 @@
 # 05 — Renderer: discriminador de template
 
-Status: ready-for-agent
+Status: done
 Blocked by: 04
+Commit: ddd6c04
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («Decisões de segurança e persistência → Renderer», «Testes → Worker»).
 

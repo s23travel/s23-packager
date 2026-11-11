@@ -1,7 +1,8 @@
 # 08 — Integração da lâmina no detalhe da cotação
 
-Status: ready-for-agent
+Status: done
 Blocked by: 02, 04, 07
+Commit: 6c19f8b
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («Mapa de implementação → Serviços e componentes»).
 

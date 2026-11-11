@@ -1,7 +1,8 @@
 # 07 — Edge Function `quotation-flyer` sobre pipeline comum
 
-Status: ready-for-agent
+Status: done
 Blocked by: 03, 06
+Commit: ae6a774
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («API da Edge Function», «Decisões de segurança e persistência»).
 
@@ -16,7 +17,7 @@ Criar a Edge Function autenticada `quotation-flyer` com as ações `current`, `d
 - `supabase/functions/quotation-flyer/index.ts` e `handler.ts` (novos): configuração da cotação sobre a pipeline; `requireUser`; campos permitidos por ação — `current: [action, quotationId]`, `download: [action, quotationId, format]`, `preview/publish: [action, quotationId, expectedRevision, requestId, …]` com `image/subtitle/items` só no `preview`.
 - `supabase/functions/package-flyer/handler.ts` e `index.ts`: passam a usar a pipeline, com o mesmo comportamento e mensagens.
 - `supabase/functions/cleanup-package-flyer/index.ts`: processar as duas filas — claim do pacote e claim da cotação; para cada linha, apagar o objeto pelo Storage API e chamar o finish correspondente (`owner_kind`), mantendo o retry/contadores atuais.
-- `supabase/config.toml`: registar `[functions.quotation-flyer]` com `verify_jwt = true`, se o padrão do ficheiro o exigir.
+- `supabase/config.toml`: registar `[functions.quotation-flyer]` com `verify_jwt = false`, como `package-flyer`; a autenticação é feita pelo `requireUser` dentro do handler.
 
 ## Regras
 

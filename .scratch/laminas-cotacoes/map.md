@@ -1,9 +1,10 @@
 # Mapa de implementação: lâminas de cotações
 
-Status: ready-for-agent
+Status: done (2026-11-11)
 
 Referência: `spec.md`, decisões aprovadas em 2026-11-11.
 Referência visual: `preview-cotacao-9x16.png` (1080 × 1920).
+Conferência do template real: `preview-final.png` (1080 × 1920, gerado pelo harness offline).
 
 ## Tarefas
 

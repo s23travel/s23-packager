@@ -1,7 +1,8 @@
 # 03 — Modelo comercial partilhado e modelo da cotação
 
-Status: ready-for-agent
+Status: done
 Blocked by: 01
+Commit: 58e016b
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («Contrato do modelo da cotação», «Decisões de dados», «Mapa de implementação → Serviços e componentes»).
 

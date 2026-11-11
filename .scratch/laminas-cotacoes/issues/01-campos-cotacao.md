@@ -1,7 +1,8 @@
 # 01 — Campos da cotação (data, sinal, restante, não incluído)
 
-Status: ready-for-agent
+Status: done
 Blocked by: —
+Commit: 710d397
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («Decisões aprovadas em 2026-11-11», «Campos a criar», «Campos a renomear no formulário», «Decisões de dados»).
 

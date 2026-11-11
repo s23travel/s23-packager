@@ -1,7 +1,8 @@
 # 06 — Migration: persistência da lâmina da cotação
 
-Status: ready-for-agent
+Status: done
 Blocked by: —
+Commit: 6eadaa2
 
 Especificação: `.scratch/laminas-cotacoes/spec.md` («Decisões de segurança e persistência»). Modelo: `supabase/migrations/20261109201258_package_flyer_attachments.sql` e `20261109234000_fix_package_flyer_cleanup_ambiguity.sql`.
 
