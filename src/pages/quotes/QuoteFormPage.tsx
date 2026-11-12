@@ -35,6 +35,10 @@ import {
   isLegacyPackageData,
   normalizeLegacyToNewStructure,
 } from '../../services/legacyAdapterService';
+import { shiftIsoDate } from '../../lib/dateUtils';
+
+/** "Restante até" é sugerido 10 dias corridos antes da data de início. */
+const BALANCE_DUE_DAYS_BEFORE_START = 10;
 
 /** O editor apresenta café da manhã quando o serviço não traz regime; gravar o default torna-o explícito. */
 function withDefaultMealPlan(items: ServiceItem[]): ServiceItem[] {
@@ -80,6 +84,8 @@ export const QuoteFormPage: React.FC = () => {
   const [salePrice, setSalePrice] = useState<number>(0);
   const [depositAmount, setDepositAmount] = useState<number | ''>('');
   const [balanceDueDate, setBalanceDueDate] = useState('');
+  // Uma vez editado à mão, o campo deixa de acompanhar a data de início.
+  const [balanceDueDateEdited, setBalanceDueDateEdited] = useState(false);
   const [notIncluded, setNotIncluded] = useState<string[]>(['']);
   const [paymentConditions, setPaymentConditions] = useState('');
   const [localTaxNotes, setLocalTaxNotes] = useState('');
@@ -119,6 +125,12 @@ export const QuoteFormPage: React.FC = () => {
     }
   }, [startDate, endDate]);
 
+  // Pré-preenche "Restante até" a partir da data de início, enquanto o valor não for editado.
+  useEffect(() => {
+    if (balanceDueDateEdited) return;
+    setBalanceDueDate(startDate ? shiftIsoDate(startDate, -BALANCE_DUE_DAYS_BEFORE_START) : '');
+  }, [startDate, balanceDueDateEdited]);
+
   // Carregamento de Cotação existente ou Rascunho / Inicialização de Nova Cotação
   useEffect(() => {
     if (!id) {
@@ -149,6 +161,7 @@ export const QuoteFormPage: React.FC = () => {
         setProposalDate(resolveProposalDate(draft.proposalDate));
         setDepositAmount(typeof draft.depositAmount === 'number' ? draft.depositAmount : '');
         setBalanceDueDate(draft.balanceDueDate || '');
+        setBalanceDueDateEdited(Boolean(draft.balanceDueDate));
         setNotIncluded(
           Array.isArray(draft.notIncluded) && draft.notIncluded.length > 0
             ? draft.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
@@ -278,6 +291,7 @@ export const QuoteFormPage: React.FC = () => {
         setProposalDate(resolveProposalDate(rawData.proposalDate, quote.created_at));
         setDepositAmount(typeof rawData.depositAmount === 'number' ? rawData.depositAmount : '');
         setBalanceDueDate(rawData.balanceDueDate || '');
+        setBalanceDueDateEdited(Boolean(rawData.balanceDueDate));
         setNotIncluded(
           Array.isArray(rawData.notIncluded) && rawData.notIncluded.length > 0
             ? rawData.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
@@ -1207,7 +1221,10 @@ export const QuoteFormPage: React.FC = () => {
                 type="date"
                 className="form-input"
                 value={balanceDueDate}
-                onChange={(e) => setBalanceDueDate(e.target.value)}
+                onChange={(e) => {
+                  setBalanceDueDateEdited(true);
+                  setBalanceDueDate(e.target.value);
+                }}
               />
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
                 Data-limite para pagamento do restante.

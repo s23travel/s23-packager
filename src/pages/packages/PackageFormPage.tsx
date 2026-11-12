@@ -34,6 +34,10 @@ import {
   normalizeNotIncluded,
   parseDepositAmount,
 } from '../../services/quotationFlyerFields';
+import { shiftIsoDate } from '../../lib/dateUtils';
+
+/** "Restante até" é sugerido 10 dias corridos antes da data de início. */
+const BALANCE_DUE_DAYS_BEFORE_START = 10;
 
 export const PackageFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,6 +70,8 @@ export const PackageFormPage: React.FC = () => {
   const [paymentConditions, setPaymentConditions] = useState('');
   const [depositAmount, setDepositAmount] = useState<number | ''>('');
   const [balanceDueDate, setBalanceDueDate] = useState('');
+  // Uma vez editado à mão, o campo deixa de acompanhar a data de início.
+  const [balanceDueDateEdited, setBalanceDueDateEdited] = useState(false);
   const [notIncluded, setNotIncluded] = useState<string[]>(['']);
   const [localTaxNotes, setLocalTaxNotes] = useState('');
   const [extraServicesNotes, setExtraServicesNotes] = useState('');
@@ -99,6 +105,12 @@ export const PackageFormPage: React.FC = () => {
     }
   }, [startDate, endDate]);
 
+  // Pré-preenche "Restante até" a partir da data de início, enquanto o valor não for editado.
+  useEffect(() => {
+    if (balanceDueDateEdited) return;
+    setBalanceDueDate(startDate ? shiftIsoDate(startDate, -BALANCE_DUE_DAYS_BEFORE_START) : '');
+  }, [startDate, balanceDueDateEdited]);
+
   // Carregamento de Pacote existente ou Rascunho / Inicialização de Novo Pacote
   useEffect(() => {
     const restoreDraft = (
@@ -117,7 +129,9 @@ export const PackageFormPage: React.FC = () => {
       setExtraServicesNotes(draft.extraServicesNotes ?? fallbacks.extraServicesNotes ?? '');
       setCustomNotes(draft.customNotes ?? fallbacks.customNotes ?? '');
       setDepositAmount(draft.depositAmount ?? fallbacks.depositAmount ?? '');
-      setBalanceDueDate(draft.balanceDueDate ?? fallbacks.balanceDueDate ?? '');
+      const restoredBalanceDueDate = draft.balanceDueDate ?? fallbacks.balanceDueDate ?? '';
+      setBalanceDueDate(restoredBalanceDueDate);
+      setBalanceDueDateEdited(Boolean(restoredBalanceDueDate));
       setNotIncluded(
         draft.notIncluded && draft.notIncluded.length > 0
           ? draft.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
@@ -254,7 +268,9 @@ export const PackageFormPage: React.FC = () => {
         setExtraServicesNotes(typeof rawData.extraServicesNotes === 'string' ? rawData.extraServicesNotes : '');
         setCustomNotes(typeof rawData.customNotes === 'string' ? rawData.customNotes : '');
         setDepositAmount(typeof rawData.depositAmount === 'number' ? rawData.depositAmount : '');
-        setBalanceDueDate(typeof rawData.balanceDueDate === 'string' ? rawData.balanceDueDate : '');
+        const storedBalanceDueDate = typeof rawData.balanceDueDate === 'string' ? rawData.balanceDueDate : '';
+        setBalanceDueDate(storedBalanceDueDate);
+        setBalanceDueDateEdited(Boolean(storedBalanceDueDate));
         setNotIncluded(
           Array.isArray(rawData.notIncluded) && rawData.notIncluded.length > 0
             ? rawData.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
@@ -989,7 +1005,10 @@ export const PackageFormPage: React.FC = () => {
                 type="date"
                 className="form-input"
                 value={balanceDueDate}
-                onChange={(e) => setBalanceDueDate(e.target.value)}
+                onChange={(e) => {
+                  setBalanceDueDateEdited(true);
+                  setBalanceDueDate(e.target.value);
+                }}
               />
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
                 Data-limite para pagamento do restante.
