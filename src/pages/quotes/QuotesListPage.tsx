@@ -124,7 +124,8 @@ export const QuotesListPage: React.FC = () => {
     return quotes.filter((q) => {
       const client = q.client_name?.toLowerCase() || '';
       const ref = q.reference?.toLowerCase() || '';
-      const origin = (q.origin_package_name || q.data?.originPackageName || '')?.toLowerCase();
+      const origin = (q.data?.origin || '')?.toLowerCase();
+      const originPackage = (q.origin_package_name || q.data?.originPackageName || '')?.toLowerCase();
       const curr = q.currency?.toLowerCase() || '';
       const dest = (
         q.data?.destination ||
@@ -137,6 +138,7 @@ export const QuotesListPage: React.FC = () => {
         client.includes(term) ||
         ref.includes(term) ||
         origin.includes(term) ||
+        originPackage.includes(term) ||
         curr.includes(term) ||
         dest.includes(term)
       );
@@ -199,7 +201,7 @@ export const QuotesListPage: React.FC = () => {
           className={`btn btn-sm ${filterMode === 'active' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setFilterMode('active')}
         >
-          Cotações Ativas
+          Ativas
         </button>
         <button
           type="button"
@@ -276,8 +278,8 @@ export const QuotesListPage: React.FC = () => {
                   <tr>
                     <th>Referência</th>
                     <th>Cliente</th>
-                    <th>Destino / Cidade</th>
                     <th>Origem</th>
+                    <th>Destino</th>
                     <th>Valor</th>
                     <th>Status</th>
                     <th>Data</th>
@@ -286,7 +288,6 @@ export const QuotesListPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {paginatedQuotes.map((q) => {
-                    const originName = q.origin_package_name || q.data?.originPackageName;
                     const destination =
                       q.data?.destination ||
                       q.data?.lodging?.find((l) => l.destination)?.destination ||
@@ -317,16 +318,10 @@ export const QuotesListPage: React.FC = () => {
                           </span>
                         </td>
                         <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-                          {destination}
+                          {q.data?.origin || '—'}
                         </td>
-                        <td>
-                          {q.package_id ? (
-                            <Link to={`/pacotes/${q.package_id}`} className="table-link-secondary" title="Ver pacote de origem">
-                              {originName || 'Pacote Base'}
-                            </Link>
-                          ) : (
-                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Avulsa</span>
-                          )}
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                          {destination}
                         </td>
                         <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
                           {formattedPrice}
@@ -341,9 +336,6 @@ export const QuotesListPage: React.FC = () => {
                           <div className="table-actions">
                             <Link to={`/cotacoes/${q.id}`} className="btn btn-sm btn-secondary">
                               Ver
-                            </Link>
-                            <Link to={`/cotacoes/${q.id}/editar`} className="btn btn-sm btn-secondary">
-                              Editar
                             </Link>
 
                             {/* Se arquivada: oferece Desarquivar, e NUNCA oferece exclusão física se houver operação financeira */}

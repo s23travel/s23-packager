@@ -93,7 +93,8 @@ export const PackagesListPage: React.FC = () => {
       const curr = pkg.base_currency?.toLowerCase() || '';
       const hotel = pkg.data?.lodging?.[0]?.name?.toLowerCase() || '';
       const dest = pkg.data?.destination?.toLowerCase() || pkg.data?.lodging?.[0]?.destination?.toLowerCase() || '';
-      return name.includes(term) || ref.includes(term) || curr.includes(term) || dest.includes(term) || hotel.includes(term);
+      const origin = pkg.data?.origin?.toLowerCase() || '';
+      return name.includes(term) || ref.includes(term) || curr.includes(term) || dest.includes(term) || hotel.includes(term) || origin.includes(term);
     });
   }, [packages, searchTerm]);
 
@@ -198,6 +199,7 @@ export const PackagesListPage: React.FC = () => {
                   <tr>
                     <th>Referência</th>
                     <th>Nome do pacote</th>
+                    <th>Origem</th>
                     <th>Destino e duração</th>
                     <th>Status</th>
                     <th>Preço por pessoa</th>
@@ -207,6 +209,7 @@ export const PackagesListPage: React.FC = () => {
                 <tbody>
                   {paginatedPackages.map((pkg) => {
                     const destination = pkg.data?.destination || pkg.data?.lodging?.[0]?.destination || pkg.data?.lodging?.[0]?.name || '—';
+                    const origin = pkg.data?.origin || '—';
                     const duration = pkg.data?.dates?.durationDays ? `${pkg.data.dates.durationDays} dias` : null;
                     const pricePerPerson = getPricePerPerson(pkg);
 
@@ -221,6 +224,9 @@ export const PackagesListPage: React.FC = () => {
                           <Link to={`/pacotes/${pkg.id}`} className="table-link-title">
                             {pkg.name}
                           </Link>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                          {origin}
                         </td>
                         <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                           <span>{destination}</span>
@@ -247,13 +253,10 @@ export const PackagesListPage: React.FC = () => {
                               disabled={cloningId === pkg.id}
                               title="Emitir nova cotação a partir deste pacote"
                             >
-                              {cloningId === pkg.id ? 'Criando...' : 'Nova Cotação'}
+                              {cloningId === pkg.id ? 'Criando...' : 'Novo'}
                             </button>
                             <Link to={`/pacotes/${pkg.id}`} className="btn btn-sm btn-secondary">
                               Ver
-                            </Link>
-                            <Link to={`/pacotes/${pkg.id}/editar`} className="btn btn-sm btn-secondary">
-                              Editar
                             </Link>
                             <button
                               type="button"
