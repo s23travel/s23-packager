@@ -27,6 +27,13 @@ import {
   isLegacyPackageData,
   normalizeLegacyToNewStructure,
 } from '../../services/legacyAdapterService';
+import {
+  NOT_INCLUDED_MAX_ITEMS,
+  NOT_INCLUDED_MAX_LENGTH,
+  depositOverSalePriceWarning,
+  normalizeNotIncluded,
+  parseDepositAmount,
+} from '../../services/quotationFlyerFields';
 
 export const PackageFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -57,6 +64,12 @@ export const PackageFormPage: React.FC = () => {
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [paymentConditions, setPaymentConditions] = useState('');
+  const [depositAmount, setDepositAmount] = useState<number | ''>('');
+  const [balanceDueDate, setBalanceDueDate] = useState('');
+  const [notIncluded, setNotIncluded] = useState<string[]>(['']);
+  const [localTaxNotes, setLocalTaxNotes] = useState('');
+  const [extraServicesNotes, setExtraServicesNotes] = useState('');
+  const [customNotes, setCustomNotes] = useState('');
 
   // Preserva os campos não editados, incluindo metadados de pacotes legados.
   const [originalData, setOriginalData] = useState<PackageData>({});
@@ -88,14 +101,30 @@ export const PackageFormPage: React.FC = () => {
 
   // Carregamento de Pacote existente ou Rascunho / Inicialização de Novo Pacote
   useEffect(() => {
-    const restoreDraft = (draft: PackageDraft, fallbackPaymentConditions = '', fallbackExchangeRate: number | null = null) => {
+    const restoreDraft = (
+      draft: PackageDraft,
+      fallbacks: Partial<PackageData> = {},
+      fallbackExchangeRate: number | null = null
+    ) => {
       setReference(draft.reference || '');
       setName(draft.name || '');
       setStatus(draft.status || 'draft');
       setBaseCurrency(draft.baseCurrency || 'EUR');
       setSupplier(draft.supplier || '');
       setAdditionalInfo(draft.additionalInfo || '');
-      setPaymentConditions(draft.paymentConditions ?? fallbackPaymentConditions);
+      setPaymentConditions(draft.paymentConditions ?? fallbacks.paymentConditions ?? '');
+      setLocalTaxNotes(draft.localTaxNotes ?? fallbacks.localTaxNotes ?? '');
+      setExtraServicesNotes(draft.extraServicesNotes ?? fallbacks.extraServicesNotes ?? '');
+      setCustomNotes(draft.customNotes ?? fallbacks.customNotes ?? '');
+      setDepositAmount(draft.depositAmount ?? fallbacks.depositAmount ?? '');
+      setBalanceDueDate(draft.balanceDueDate ?? fallbacks.balanceDueDate ?? '');
+      setNotIncluded(
+        draft.notIncluded && draft.notIncluded.length > 0
+          ? draft.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
+          : fallbacks.notIncluded && fallbacks.notIncluded.length > 0
+          ? fallbacks.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
+          : ['']
+      );
       setExchangeRate(draft.exchangeRate === undefined ? fallbackExchangeRate : draft.exchangeRate);
       setStartDate(draft.startDate || '');
       setEndDate(draft.endDate || '');
@@ -221,6 +250,16 @@ export const PackageFormPage: React.FC = () => {
         setSupplier(rawData.supplier || '');
         setAdditionalInfo(rawData.additionalInfo || '');
         setPaymentConditions(typeof rawData.paymentConditions === 'string' ? rawData.paymentConditions : '');
+        setLocalTaxNotes(typeof rawData.localTaxNotes === 'string' ? rawData.localTaxNotes : '');
+        setExtraServicesNotes(typeof rawData.extraServicesNotes === 'string' ? rawData.extraServicesNotes : '');
+        setCustomNotes(typeof rawData.customNotes === 'string' ? rawData.customNotes : '');
+        setDepositAmount(typeof rawData.depositAmount === 'number' ? rawData.depositAmount : '');
+        setBalanceDueDate(typeof rawData.balanceDueDate === 'string' ? rawData.balanceDueDate : '');
+        setNotIncluded(
+          Array.isArray(rawData.notIncluded) && rawData.notIncluded.length > 0
+            ? rawData.notIncluded.slice(0, NOT_INCLUDED_MAX_ITEMS)
+            : ['']
+        );
 
         if (rawData.dates) {
           setStartDate(rawData.dates.startDate || '');
@@ -262,7 +301,7 @@ export const PackageFormPage: React.FC = () => {
           setServices(rawData.services || []);
         }
         if (draft?.packageId === id) {
-          restoreDraft(draft, typeof rawData.paymentConditions === 'string' ? rawData.paymentConditions : '', rawData.financials?.exchangeRateUsed ?? null);
+          restoreDraft(draft, rawData, rawData.financials?.exchangeRateUsed ?? null);
         }
         applyNavigationState(draft?.packageId === id ? draft.baseCurrency : pkg.base_currency);
       } catch (err: any) {
@@ -290,6 +329,12 @@ export const PackageFormPage: React.FC = () => {
         supplier,
         additionalInfo,
         paymentConditions,
+        localTaxNotes,
+        extraServicesNotes,
+        customNotes,
+        depositAmount: parseDepositAmount(depositAmount),
+        balanceDueDate,
+        notIncluded: normalizeNotIncluded(notIncluded),
         exchangeRate,
         startDate,
         endDate,
@@ -319,6 +364,12 @@ export const PackageFormPage: React.FC = () => {
       supplier,
       additionalInfo,
       paymentConditions,
+      localTaxNotes,
+      extraServicesNotes,
+      customNotes,
+      depositAmount,
+      balanceDueDate,
+      notIncluded,
       exchangeRate,
       startDate,
       endDate,
@@ -452,6 +503,28 @@ export const PackageFormPage: React.FC = () => {
     });
   };
 
+  const handleNotIncludedLineChange = (index: number, value: string) => {
+    setNotIncluded((prev) => prev.map((line, i) => (i === index ? value : line)));
+  };
+
+  const handleAddNotIncludedLine = () => {
+    setNotIncluded((prev) =>
+      prev.length >= NOT_INCLUDED_MAX_ITEMS ? prev : [...prev, '']
+    );
+  };
+
+  const handleRemoveNotIncludedLine = (index: number) => {
+    setNotIncluded((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [''];
+    });
+  };
+
+  const depositWarning = depositOverSalePriceWarning(
+    typeof depositAmount === 'number' ? depositAmount : undefined,
+    salePrice
+  );
+
   const handleCancel = () => {
     clearPackageDraft();
     navigate(isEditing && id ? `/pacotes/${id}` : '/pacotes');
@@ -498,6 +571,7 @@ export const PackageFormPage: React.FC = () => {
 
       // Estrutura final do PackageData (Fase 2: Nova Estrutura Unificada de Serviços)
       // Campos não editados são conservados; services[] continua sendo a estrutura operacional atual.
+      const normalizedNotIncluded = normalizeNotIncluded(notIncluded);
       const packageData: PackageData = {
         ...originalData,
         origin: origin.trim() || undefined,
@@ -519,7 +593,13 @@ export const PackageFormPage: React.FC = () => {
         financials: { ...originalData.financials, ...calculatedFinancials },
         supplier: supplier.trim() || undefined,
         additionalInfo: additionalInfo.trim() || undefined,
-        paymentConditions: paymentConditions || undefined,
+        paymentConditions: paymentConditions.trim() || undefined,
+        localTaxNotes: localTaxNotes.trim() || undefined,
+        extraServicesNotes: extraServicesNotes.trim() || undefined,
+        customNotes: customNotes.trim() || undefined,
+        depositAmount: parseDepositAmount(depositAmount),
+        balanceDueDate: balanceDueDate || undefined,
+        notIncluded: normalizedNotIncluded.length > 0 ? normalizedNotIncluded : undefined,
       };
 
       if (isEditing && id) {
@@ -692,7 +772,7 @@ export const PackageFormPage: React.FC = () => {
           <div className="form-grid-2" style={{ marginBottom: '1rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="origin">
-                Origem da Viagem
+                Origem
               </label>
               <input
                 id="origin"
@@ -709,7 +789,7 @@ export const PackageFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="destination">
-                Destino Principal da Viagem *
+                Destino *
               </label>
               <input
                 id="destination"
@@ -854,7 +934,7 @@ export const PackageFormPage: React.FC = () => {
 
         {/* SEÇÃO 3: Financeiro (Lista Única de Serviços e Resumo Financeiro) */}
         <div className="card form-card">
-          <h3 className="form-section-title">3. Financeiro ({baseCurrency})</h3>
+          <h3 className="form-section-title">3. Serviços e Financeiro</h3>
           <PackageServicesEditor
             services={services}
             onChangeServices={setServices}
@@ -872,17 +952,170 @@ export const PackageFormPage: React.FC = () => {
             onAddNewService={handleAddNewServiceFromEditor}
           />
 
-          <div className="form-group" style={{ marginTop: '1.25rem' }}>
-            <label className="form-label" htmlFor="paymentConditions">
-              Condições de Pagamento
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ marginTop: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="depositAmount">
+                Sinal
+              </label>
+              <input
+                id="depositAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                className="form-input"
+                value={depositAmount}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setDepositAmount('');
+                    return;
+                  }
+                  const val = parseFloat(raw);
+                  setDepositAmount(isNaN(val) ? '' : val);
+                }}
+                placeholder="Ex: 250.00"
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Valor do sinal na moeda do pacote. Compõe o bloco de pagamento da proposta.
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="balanceDueDate">
+                Restante até
+              </label>
+              <input
+                id="balanceDueDate"
+                type="date"
+                className="form-input"
+                value={balanceDueDate}
+                onChange={(e) => setBalanceDueDate(e.target.value)}
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                Data-limite para pagamento do restante.
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="paymentConditions">
+                Condições de pagamento
+              </label>
+              <input
+                id="paymentConditions"
+                type="text"
+                className="form-input"
+                value={paymentConditions}
+                onChange={(e) => setPaymentConditions(e.target.value)}
+                placeholder="Ex: 30% sinal + saldo até 20 dias antes"
+              />
+            </div>
+          </div>
+
+          {depositWarning && (
+            <p
+              role="status"
+              style={{
+                marginTop: '0.5rem',
+                fontSize: '12px',
+                color: 'var(--warning)',
+              }}
+            >
+              ⚠️ {depositWarning}
+            </p>
+          )}
+
+          <div className="form-group" style={{ marginTop: '1rem' }}>
+            <span className="form-label">Não incluído</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>
+              Até {NOT_INCLUDED_MAX_ITEMS} linhas, {NOT_INCLUDED_MAX_LENGTH} caracteres cada. Linhas vazias são descartadas.
+            </span>
+            {notIncluded.map((line, index) => (
+              <div
+                key={`not-included-${index}`}
+                style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.35rem' }}
+              >
+                <input
+                  type="text"
+                  className="form-input"
+                  maxLength={NOT_INCLUDED_MAX_LENGTH}
+                  value={line}
+                  onChange={(e) => handleNotIncludedLineChange(index, e.target.value)}
+                  placeholder={
+                    index === 0
+                      ? 'Ex: Taxa turística local paga no hotel'
+                      : 'Ex: Bagagem despachada / seguro-viagem'
+                  }
+                  aria-label={`Não incluído, linha ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger-outline"
+                  onClick={() => handleRemoveNotIncludedLine(index)}
+                  title="Remover linha"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {notIncluded.length < NOT_INCLUDED_MAX_ITEMS && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={handleAddNotIncludedLine}
+                >
+                  + Adicionar linha
+                </button>
+              </div>
+            )}
+          </div>
+
+          <details style={{ marginTop: '1rem' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Notas do pacote
+            </summary>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginTop: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="localTaxNotes">
+                  Taxas locais
+                </label>
+                <input
+                  id="localTaxNotes"
+                  type="text"
+                  className="form-input"
+                  value={localTaxNotes}
+                  onChange={(e) => setLocalTaxNotes(e.target.value)}
+                  placeholder="Ex: 3,30€ p/ pessoa/noite no hotel"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="extraServicesNotes">
+                  Serviços extras / opcionais
+                </label>
+                <input
+                  id="extraServicesNotes"
+                  type="text"
+                  className="form-input"
+                  value={extraServicesNotes}
+                  onChange={(e) => setExtraServicesNotes(e.target.value)}
+                  placeholder="Ex: Seguro viagem cancelamento + bagagem"
+                />
+              </div>
+            </div>
+          </details>
+
+          <div className="form-group" style={{ marginTop: '1rem' }}>
+            <label className="form-label" htmlFor="customNotes">
+              Observações / rodapé da proposta
             </label>
             <textarea
-              id="paymentConditions"
+              id="customNotes"
               rows={3}
               className="form-textarea"
-              value={paymentConditions}
-              onChange={(e) => setPaymentConditions(e.target.value)}
-              placeholder="Ex: 30% de entrada e saldo antes da viagem"
+              value={customNotes}
+              onChange={(e) => setCustomNotes(e.target.value)}
+              placeholder="Ex: Valores sujeitos a confirmação de disponibilidade tarifária aérea..."
             />
           </div>
 
@@ -898,6 +1131,9 @@ export const PackageFormPage: React.FC = () => {
               onChange={(e) => setAdditionalInfo(e.target.value)}
               placeholder="Detalhes sobre franquia de bagagem, documentação exigida, seguro ou inclusões específicas..."
             />
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+              Uso interno — não é impressa em lâminas nem em propostas.
+            </span>
           </div>
         </div>
 

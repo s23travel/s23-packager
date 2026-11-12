@@ -580,7 +580,7 @@ export const PackageServicesEditor: React.FC<PackageServicesEditorProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                Preço de Venda ({baseCurrency}):
+                Preço de venda:
               </label>
               {!readOnly && (
                 isManualSalePrice ? (

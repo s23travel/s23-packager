@@ -823,7 +823,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label" htmlFor="clientName">
-                Cliente (1.ª linha do título)
+                Cliente
               </label>
               <input
                 id="clientName"
@@ -1152,7 +1152,7 @@ export const QuoteFormPage: React.FC = () => {
 
         {/* SEÇÃO 3: Serviços e Financeiro */}
         <div className="card form-card">
-          <h3 className="form-section-title">3. Serviços e Financeiro ({currency})</h3>
+          <h3 className="form-section-title">3. Serviços e Financeiro</h3>
           <PackageServicesEditor
             services={services}
             onChangeServices={setServices}
@@ -1173,7 +1173,7 @@ export const QuoteFormPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ marginTop: '1.25rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="depositAmount">
-                Sinal ({currency})
+                Sinal
               </label>
               <input
                 id="depositAmount"
@@ -1216,7 +1216,7 @@ export const QuoteFormPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label" htmlFor="paymentConditions">
-                Condição de pagamento (texto livre, legado)
+                Condições de pagamento
               </label>
               <input
                 id="paymentConditions"
@@ -1243,7 +1243,7 @@ export const QuoteFormPage: React.FC = () => {
           )}
 
           <div className="form-group" style={{ marginTop: '1rem' }}>
-            <span className="form-label">Não incluído (lista)</span>
+            <span className="form-label">Não incluído</span>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>
               Até {NOT_INCLUDED_MAX_ITEMS} linhas, {NOT_INCLUDED_MAX_LENGTH} caracteres cada. Linhas vazias são descartadas.
             </span>
@@ -1290,12 +1290,12 @@ export const QuoteFormPage: React.FC = () => {
 
           <details style={{ marginTop: '1rem' }}>
             <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Notas legadas da cotação
+              Notas da cotação
             </summary>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginTop: '0.75rem' }}>
               <div className="form-group">
                 <label className="form-label" htmlFor="localTaxNotes">
-                  Taxa local na hospedagem (legado)
+                  Taxas locais
                 </label>
                 <input
                   id="localTaxNotes"
@@ -1309,7 +1309,7 @@ export const QuoteFormPage: React.FC = () => {
 
               <div className="form-group">
                 <label className="form-label" htmlFor="extraServicesNotes">
-                  Serviços extras / opcionais (legado)
+                  Serviços extras / opcionais
                 </label>
                 <input
                   id="extraServicesNotes"

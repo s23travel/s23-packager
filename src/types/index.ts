@@ -270,6 +270,12 @@ export interface PackageData {
   localTaxNotes?: string;
   extraServicesNotes?: string;
   customNotes?: string;
+  /** Sinal na moeda do pacote. */
+  depositAmount?: number;
+  /** Data-limite do restante, ISO `YYYY-MM-DD`. */
+  balanceDueDate?: string;
+  /** Linhas de "Não incluído", até 3 itens de 100 caracteres. */
+  notIncluded?: string[];
   [key: string]: unknown;
 }
 
@@ -579,6 +585,12 @@ export interface PackageDraft {
   supplier: string;
   additionalInfo: string;
   paymentConditions?: string;
+  localTaxNotes?: string;
+  extraServicesNotes?: string;
+  customNotes?: string;
+  depositAmount?: number;
+  balanceDueDate?: string;
+  notIncluded?: string[];
   exchangeRate?: number | null;
   startDate: string;
   endDate: string;
