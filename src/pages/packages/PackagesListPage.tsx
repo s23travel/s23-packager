@@ -35,6 +35,17 @@ const getPricePerPerson = (pkg: Package): number => {
   return calculatePricePerPerson(salePrice, pkg.data?.passengers);
 };
 
+/**
+ * Data de início no formato dd/mm/aaaa a partir do ISO `YYYY-MM-DD`,
+ * sem passar por Date para não deslocar o dia pelo fuso horário.
+ */
+const formatStartDate = (iso?: string): string => {
+  if (!iso) return '—';
+  const [year, month, day] = iso.split('-');
+  if (!year || !month || !day) return iso;
+  return `${day}/${month}/${year}`;
+};
+
 export const PackagesListPage: React.FC = () => {
   const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
@@ -201,6 +212,7 @@ export const PackagesListPage: React.FC = () => {
                     <th>Nome do pacote</th>
                     <th>Origem</th>
                     <th>Destino e duração</th>
+                    <th>Data</th>
                     <th>Status</th>
                     <th>Preço por pessoa</th>
                     <th style={{ textAlign: 'right' }}>Ações</th>
@@ -231,6 +243,9 @@ export const PackagesListPage: React.FC = () => {
                         <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                           <span>{destination}</span>
                           {duration && <span style={{ color: 'var(--text-muted)' }}> • {duration}</span>}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                          {formatStartDate(pkg.data?.dates?.startDate)}
                         </td>
                         <td>
                           <StatusBadge status={pkg.status} />
