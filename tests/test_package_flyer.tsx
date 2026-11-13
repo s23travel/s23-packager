@@ -149,3 +149,65 @@ assert.ok(tooMany.model, 'excesso de itens pede revisão no editor, não bloquei
 assert.equal(tooMany.model?.items.length, 7);
 assert.ok(tooMany.warnings.some(warning => /comporta 6 serviços/i.test(warning)));
 console.log('Serviços adicionais, limite do editor e modo compacto: OK');
+
+// O item sugerido da hospedagem diz o que está incluído a partir do regime registado.
+const stay = (mealPlan?: string) => createPackageFlyer({ ...pkg, data: { ...pkg.data,
+  services: [{ id: 'h', type: 'accommodation', description: 'Hotel', currency: 'BRL', amount: 1, quantity: 1,
+    ...(mealPlan === undefined ? {} : { mealPlan }) }],
+} });
+const stayItems = (mealPlan?: string) => stay(mealPlan).model?.items;
+
+assert.deepEqual(stayItems('Café da manhã (BB)'), [{ kind: 'accommodation', label: 'Hospedagem com café da manhã' }]);
+assert.deepEqual(stayItems('Meia-pensão (HB)'), [{ kind: 'accommodation', label: 'Hospedagem com meia-pensão' }]);
+assert.deepEqual(stayItems('Pensão completa (FB)'), [{ kind: 'accommodation', label: 'Hospedagem com pensão completa' }]);
+assert.deepEqual(stayItems('Tudo incluído (AI)'), [{ kind: 'accommodation', label: 'Hospedagem com tudo incluído' }]);
+for (const roomOnly of ['Apenas alojamento (RO)', 'Somente alojamento', 'Room only', 'Somente hospedagem', 'Só alojamento']) {
+  const result = stay(roomOnly);
+  assert.deepEqual(result.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], `${roomOnly} não tem refeições a anunciar`);
+  assert.ok(!result.warnings.some(warning => /regime/i.test(warning)), `${roomOnly} não deve avisar sobre o regime`);
+}
+console.log('Regimes conhecidos e apenas alojamento: OK');
+
+// Regime livre: sai como foi registado, em minúscula inicial e sem o código entre parênteses.
+assert.deepEqual(stayItems('Pequeno-almoço'), [{ kind: 'accommodation', label: 'Hospedagem com pequeno-almoço' }]);
+assert.deepEqual(stayItems('Pequeno-almoço (BB)'), [{ kind: 'accommodation', label: 'Hospedagem com pequeno-almoço' }]);
+assert.deepEqual(stayItems('All inclusive'), [{ kind: 'accommodation', label: 'Hospedagem com all inclusive' }]);
+assert.deepEqual(stayItems('  Bed   &  breakfast (BB) '), [{ kind: 'accommodation', label: 'Hospedagem com bed & breakfast' }]);
+console.log('Regime livre registado: OK');
+
+// Regime que não pode ir para a peça: o texto comercial nunca é truncado nem exposto.
+const withoutMealPlan = stay(undefined);
+assert.deepEqual(withoutMealPlan.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'regime ausente fica em Hospedagem');
+assert.ok(withoutMealPlan.warnings.some(warning => /regime da hospedagem/i.test(warning)), 'regime ausente mantém o aviso');
+
+const internalMeal = stay('Regime do fornecedor secreto');
+assert.deepEqual(internalMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'termos internos não podem ser publicados');
+assert.ok(internalMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const pricedMeal = stay('Meia-pensão por R$ 300');
+assert.deepEqual(pricedMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'preços não podem ser publicados');
+assert.ok(pricedMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const longMeal = stay('Pensão completa com bebidas incluídas e jantar');
+assert.deepEqual(longMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'regime maior do que o espaço fica em Hospedagem');
+assert.ok(longMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const twoStays = createPackageFlyer({ ...pkg, data: { ...pkg.data, services: [
+  { id: 'h1', type: 'accommodation', description: 'Hotel A', currency: 'BRL', amount: 1, quantity: 1, mealPlan: 'Café da manhã (BB)' },
+  { id: 'h2', type: 'accommodation', description: 'Hotel B', currency: 'BRL', amount: 1, quantity: 1, mealPlan: 'Meia-pensão (HB)' },
+] } });
+assert.deepEqual(twoStays.model?.items, [
+  { kind: 'accommodation', label: 'Hospedagem com café da manhã' },
+  { kind: 'accommodation', label: 'Hospedagem com meia-pensão' },
+], 'duas estadas com regimes diferentes são dois itens');
+
+const repeatedStay = createPackageFlyer({ ...pkg, data: { ...pkg.data, services: [
+  { id: 'h1', type: 'accommodation', description: 'Hotel A', currency: 'BRL', amount: 1, quantity: 1, mealPlan: 'Café da manhã (BB)' },
+  { id: 'h2', type: 'accommodation', description: 'Hotel A', currency: 'BRL', amount: 1, quantity: 1, mealPlan: 'Café da manhã (BB)' },
+] } });
+assert.equal(repeatedStay.model?.items.length, 1, 'a mesma estada repetida não duplica a linha');
+
+for (const label of ['Hospedagem com café da manhã', 'Hospedagem com pequeno-almoço']) {
+  assert.equal(itemLabelProblem(label), null, `rótulo sugerido dentro do contrato: ${label}`);
+}
+console.log('Regime não publicável, várias estadas e contrato dos itens: OK');
