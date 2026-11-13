@@ -173,7 +173,20 @@ assert.deepEqual(stayItems('Pequeno-almoço'), [{ kind: 'accommodation', label: 
 assert.deepEqual(stayItems('Pequeno-almoço (BB)'), [{ kind: 'accommodation', label: 'Hospedagem com pequeno-almoço' }]);
 assert.deepEqual(stayItems('All inclusive'), [{ kind: 'accommodation', label: 'Hospedagem com all inclusive' }]);
 assert.deepEqual(stayItems('  Bed   &  breakfast (BB) '), [{ kind: 'accommodation', label: 'Hospedagem com bed & breakfast' }]);
+assert.deepEqual(stayItems('Só hospedagem'), [{ kind: 'accommodation', label: 'Hospedagem' }]);
 console.log('Regime livre registado: OK');
+
+// Refeições vencem a palavra alojamento: o regime composto nomeia a refeição, não fica em "Hospedagem".
+for (const [registered, label] of [
+  ['Alojamento com café da manhã', 'Hospedagem com café da manhã'],
+  ['Alojamento e meia-pensão', 'Hospedagem com meia-pensão'],
+  ['Alojamento com tudo incluído', 'Hospedagem com tudo incluído'],
+] as const) {
+  const result = stay(registered);
+  assert.deepEqual(result.model?.items, [{ kind: 'accommodation', label }], `${registered} nomeia a refeição`);
+  assert.ok(!result.warnings.some(warning => /regime/i.test(warning)), `${registered} não deve avisar sobre o regime`);
+}
+console.log('Alojamento com refeições: OK');
 
 // Pacote antigo sem regime gravado: não há refeições a afirmar, ao contrário da cotação.
 const legacyWithoutMealPlan = createPackageFlyer({ ...legacy, data: {
@@ -201,6 +214,34 @@ assert.ok(internalMeal.warnings.some(warning => /regime da hospedagem/i.test(war
 const pricedMeal = stay('Meia-pensão por R$ 300');
 assert.deepEqual(pricedMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'preços não podem ser publicados');
 assert.ok(pricedMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const pricedCode = stay('Pensão completa (R$ 300)');
+assert.deepEqual(pricedCode.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'preço entre parênteses não pode ser publicado');
+assert.ok(pricedCode.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+assert.ok(!JSON.stringify(pricedCode.model).includes('300'), 'o preço do regime não vaza para o modelo');
+
+const contactMeal = stay('Café da manhã +351 960 153 290');
+assert.deepEqual(contactMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'contactos não podem ser publicados');
+assert.ok(contactMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const negativeMeal = stay('sem café');
+assert.deepEqual(negativeMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'regime negativo não vira afirmação');
+assert.ok(negativeMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const noMealsMeal = stay('não inclui refeições');
+assert.deepEqual(noMealsMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'regime negativo não vira afirmação');
+assert.ok(noMealsMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const shoutedMeal = stay('PEQUENO-ALMOÇO');
+assert.deepEqual(shoutedMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem com pequeno-almoço' }], 'regime em maiúsculas desce por inteiro');
+
+// 25 caracteres de regime cabem nos 40 do item; 26 não cabem e não são truncados.
+const fitsMeal = stay('Pensão completa com vinho');
+assert.deepEqual(fitsMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem com pensão completa com vinho' }], 'regime no limite do item é publicado');
+const overflowsMeal = stay('Pensão completa com vinhos');
+assert.deepEqual(overflowsMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'regime acima do espaço fica em Hospedagem');
+assert.ok(overflowsMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+assert.ok(!overflowsMeal.warnings.some(warning => /\b25\b/.test(warning)), 'o aviso não expõe a constante interna');
 
 const longMeal = stay('Pensão completa com bebidas incluídas e jantar');
 assert.deepEqual(longMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'regime maior do que o espaço fica em Hospedagem');
