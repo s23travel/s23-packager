@@ -1,5 +1,7 @@
+import { normalizeMealPlan } from '../types/index.ts';
 import type { NormalizedPackageData, PackageData, QuotationData, ServiceItem } from '../types/index.ts';
 import {
+  FLYER_ITEM_LABEL_MAX,
   FLYER_ITEMS_MAX,
   itemContentProblem,
   normalizeItemLabel,
@@ -52,6 +54,51 @@ export const MEAL_PLANS: Record<string, string> = {
 export function formatMealPlan(value?: string | null): string | undefined {
   if (typeof value !== 'string') return undefined;
   return MEAL_PLANS[value.trim()];
+}
+
+/** Grafias de apenas alojamento que a normalização do cadastro não reconhece. */
+const ROOM_ONLY_WITHOUT_MEALS = /\b(?:somente|apenas)\s+hospedagem\b/i;
+
+/** Regime sem refeições: não há nada de diferente de "Hospedagem" a anunciar. */
+function isRoomOnly(mealPlan: string): boolean {
+  return normalizeMealPlan(mealPlan) === 'Apenas alojamento (RO)' || ROOM_ONLY_WITHOUT_MEALS.test(mealPlan);
+}
+
+/** Prefixo público da hospedagem com refeições. */
+const MEAL_PREFIX = 'Hospedagem com ';
+/** Espaço do regime dentro do limite de 40 caracteres do item. */
+const MEAL_PLAN_TEXT_MAX = FLYER_ITEM_LABEL_MAX - MEAL_PREFIX.length;
+/** Um regime que começa por "sem"/"não" não vira afirmação de "Hospedagem com". */
+const NEGATIVE_MEAL = /^(?:sem|n[aã]o)\b/i;
+
+interface AccommodationItemText {
+  label: string;
+  /** Aviso quando o regime registado existe mas não pode ir para a peça. */
+  problem?: string;
+}
+
+/** Texto do item de hospedagem a partir do regime registado, sem truncar o texto comercial. */
+function accommodationItemText(mealPlan?: string | null): AccommodationItemText {
+  const unrecognized = {
+    label: 'Hospedagem',
+    problem: 'Confira o regime da hospedagem; não foi exibido por não estar reconhecido.',
+  };
+  if (typeof mealPlan !== 'string' || !mealPlan.trim()) return unrecognized;
+  if (isRoomOnly(mealPlan)) return { label: 'Hospedagem' };
+  // O valor registado é usado como está: só se retira o código entre parênteses.
+  const registered = normalizeItemLabel(mealPlan.replace(/\([^)]*\)/g, ' '));
+  const meal = formatMealPlan(mealPlan) ?? (registered ? registered.charAt(0).toLowerCase() + registered.slice(1) : '');
+  if (!meal) return unrecognized;
+  const label = `${MEAL_PREFIX}${meal}`;
+  const contentProblem = itemContentProblem(label);
+  if (contentProblem) return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: ${contentProblem}` };
+  if (meal.length > MEAL_PLAN_TEXT_MAX) {
+    return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: use até ${MEAL_PLAN_TEXT_MAX} caracteres no regime.` };
+  }
+  if (NEGATIVE_MEAL.test(meal)) {
+    return { label: 'Hospedagem', problem: 'Confira o regime da hospedagem; descreva o que está incluído.' };
+  }
+  return { label };
 }
 
 /** Termos operacionais que nunca podem virar texto público. */
@@ -127,9 +174,9 @@ export function deriveFlyerItems(
       add(air ? 'air' : 'transport', air ? 'Aéreo' : 'Transporte');
     } else if (service.type === 'accommodation') {
       if (isLegacy && lodgingIndex++ >= (data.lodging?.length || 0)) { warnings.push('Hospedagem financeira omitida: confirme o serviço incluído.'); continue; }
-      const meal = service.mealPlan ? formatMealPlan(service.mealPlan) : undefined;
-      if (!meal) warnings.push('Confira o regime da hospedagem; não foi exibido por não estar reconhecido.');
-      add('accommodation', meal ? `Hospedagem com ${meal}` : 'Hospedagem');
+      const accommodation = accommodationItemText(service.mealPlan);
+      if (accommodation.problem) warnings.push(accommodation.problem);
+      add('accommodation', accommodation.label);
     } else if (isLegacy) {
       warnings.push('Serviço financeiro omitido: confirme o serviço incluído.');
     } else if (service.type === 'taxes') {
