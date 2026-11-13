@@ -175,6 +175,20 @@ assert.deepEqual(stayItems('All inclusive'), [{ kind: 'accommodation', label: 'H
 assert.deepEqual(stayItems('  Bed   &  breakfast (BB) '), [{ kind: 'accommodation', label: 'Hospedagem com bed & breakfast' }]);
 console.log('Regime livre registado: OK');
 
+// Pacote antigo sem regime gravado: não há refeições a afirmar, ao contrário da cotação.
+const legacyWithoutMealPlan = createPackageFlyer({ ...legacy, data: {
+  ...legacy.data,
+  lodging: [{ id: 'h', name: 'Hotel legado', destination: 'Paris' }],
+} });
+assert.ok(legacyWithoutMealPlan.model);
+assert.deepEqual(legacyWithoutMealPlan.model?.items, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem' },
+  { kind: 'additional', label: 'Passeio de barco' },
+], 'pacote antigo sem regime fica em Hospedagem');
+assert.ok(legacyWithoutMealPlan.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+console.log('Legado do pacote sem regime: OK');
+
 // Regime que não pode ir para a peça: o texto comercial nunca é truncado nem exposto.
 const withoutMealPlan = stay(undefined);
 assert.deepEqual(withoutMealPlan.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'regime ausente fica em Hospedagem');
