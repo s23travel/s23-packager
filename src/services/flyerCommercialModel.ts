@@ -1,4 +1,4 @@
-import { normalizeMealPlan } from '../types/index.ts';
+import { normalizeMealPlan, ROOM_ONLY_MEAL_PLAN } from '../types/index.ts';
 import type { NormalizedPackageData, PackageData, QuotationData, ServiceItem } from '../types/index.ts';
 import {
   FLYER_ITEM_LABEL_MAX,
@@ -56,20 +56,31 @@ export function formatMealPlan(value?: string | null): string | undefined {
   return MEAL_PLANS[value.trim()];
 }
 
-/** Grafias de apenas alojamento que a normalização do cadastro não reconhece. */
-const ROOM_ONLY_WITHOUT_MEALS = /\b(?:somente|apenas)\s+hospedagem\b/i;
-
-/** Regime sem refeições: não há nada de diferente de "Hospedagem" a anunciar. */
-function isRoomOnly(mealPlan: string): boolean {
-  return normalizeMealPlan(mealPlan) === 'Apenas alojamento (RO)' || ROOM_ONLY_WITHOUT_MEALS.test(mealPlan);
-}
-
 /** Prefixo público da hospedagem com refeições. */
 const MEAL_PREFIX = 'Hospedagem com ';
 /** Espaço do regime dentro do limite de 40 caracteres do item. */
 const MEAL_PLAN_TEXT_MAX = FLYER_ITEM_LABEL_MAX - MEAL_PREFIX.length;
 /** Um regime que começa por "sem"/"não" não vira afirmação de "Hospedagem com". */
 const NEGATIVE_MEAL = /^(?:sem|n[aã]o)\b/i;
+/** O prefixo "Hospedagem com" já diz alojamento; um regime composto não repete essa menção. */
+const LODGING_MENTION = /^(?:apenas|somente|só|so)?[\s,;:.-]*(?:alojamento|hospedagem)\b(?:[\s,;:.-]+(?:com|e)\b)?[\s,;:.-]*/i;
+
+/** Regime sem refeições: não há nada de diferente de "Hospedagem" a anunciar. */
+function isRoomOnly(mealPlan: string): boolean {
+  return normalizeMealPlan(mealPlan) === ROOM_ONLY_MEAL_PLAN;
+}
+
+/** Texto comercial do regime como foi registado: sem o código, sem repetir alojamento e em minúscula inicial. */
+function publicMealText(mealPlan: string): string {
+  const registered = normalizeItemLabel(mealPlan.replace(/\([^)]*\)/g, ' '));
+  const withoutLodging = normalizeItemLabel(registered.replace(LODGING_MENTION, '')) || registered;
+  if (!withoutLodging) return '';
+  // Um regime registado todo em maiúsculas desce por inteiro, para não sair "pEQUENO-ALMOÇO".
+  if (/\p{L}/u.test(withoutLodging) && withoutLodging === withoutLodging.toUpperCase()) {
+    return withoutLodging.toLowerCase();
+  }
+  return withoutLodging.charAt(0).toLowerCase() + withoutLodging.slice(1);
+}
 
 interface AccommodationItemText {
   label: string;
@@ -84,19 +95,20 @@ function accommodationItemText(mealPlan?: string | null): AccommodationItemText 
     problem: 'Confira o regime da hospedagem; não foi exibido por não estar reconhecido.',
   };
   if (typeof mealPlan !== 'string' || !mealPlan.trim()) return unrecognized;
-  if (isRoomOnly(mealPlan)) return { label: 'Hospedagem' };
-  // O valor registado é usado como está: só se retira o código entre parênteses.
-  const registered = normalizeItemLabel(mealPlan.replace(/\([^)]*\)/g, ' '));
-  const meal = formatMealPlan(mealPlan) ?? (registered ? registered.charAt(0).toLowerCase() + registered.slice(1) : '');
-  if (!meal) return unrecognized;
-  const label = `${MEAL_PREFIX}${meal}`;
-  const contentProblem = itemContentProblem(label);
-  if (contentProblem) return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: ${contentProblem}` };
-  if (meal.length > MEAL_PLAN_TEXT_MAX) {
-    return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: use até ${MEAL_PLAN_TEXT_MAX} caracteres no regime.` };
-  }
-  if (NEGATIVE_MEAL.test(meal)) {
+  // O conteúdo é verificado no valor registado, antes de retirar os parênteses: o que está lá dentro também não vai para a peça.
+  const registeredProblem = itemContentProblem(mealPlan);
+  if (registeredProblem) return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: ${registeredProblem}` };
+  if (NEGATIVE_MEAL.test(normalizeItemLabel(mealPlan))) {
     return { label: 'Hospedagem', problem: 'Confira o regime da hospedagem; descreva o que está incluído.' };
+  }
+  if (isRoomOnly(mealPlan)) return { label: 'Hospedagem' };
+  const mealText = formatMealPlan(mealPlan) ?? publicMealText(mealPlan);
+  if (!mealText) return unrecognized;
+  const label = `${MEAL_PREFIX}${mealText}`;
+  const publishedProblem = itemContentProblem(label);
+  if (publishedProblem) return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: ${publishedProblem}` };
+  if (mealText.length > MEAL_PLAN_TEXT_MAX) {
+    return { label: 'Hospedagem', problem: 'Regime da hospedagem omitido: encurte o regime para caber na lâmina.' };
   }
   return { label };
 }

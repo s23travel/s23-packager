@@ -441,6 +441,59 @@ const roomOnlyCard = createQuotationFlyer(quoteWithStay({ mealPlan: 'Apenas aloj
 assert.equal(roomOnlyCard.model?.lodging?.mealPlan, 'apenas alojamento', 'o cartão continua a mostrar apenas alojamento como linha própria');
 console.log('✅ Apenas alojamento na proposta de viagem');
 
+// Refeições vencem a palavra alojamento: o regime composto nomeia a refeição, sem aviso.
+for (const [registered, label] of [
+  ['Alojamento com café da manhã', 'Hospedagem com café da manhã'],
+  ['Alojamento e meia-pensão', 'Hospedagem com meia-pensão'],
+  ['Alojamento com tudo incluído', 'Hospedagem com tudo incluído'],
+] as const) {
+  const stay = createQuotationFlyer(quoteWithStay({ mealPlan: registered }));
+  assert.deepEqual(stay.model?.included, [
+    { kind: 'air', label: 'Aéreo' },
+    { kind: 'accommodation', label },
+  ], `${registered} nomeia a refeição`);
+  assert.ok(!stay.warnings.some(warning => /regime/i.test(warning)), `${registered} não deve avisar sobre o regime`);
+}
+for (const registered of ['Somente hospedagem', 'Só hospedagem']) {
+  const stay = createQuotationFlyer(quoteWithStay({ mealPlan: registered }));
+  assert.deepEqual(stay.model?.included, [
+    { kind: 'air', label: 'Aéreo' },
+    { kind: 'accommodation', label: 'Hospedagem' },
+  ], `${registered} não tem refeições a anunciar`);
+}
+console.log('✅ Alojamento com refeições na proposta de viagem');
+
+// Guardas: o texto registado nunca vira afirmação errada nem expõe dados internos.
+const pricedCode = createQuotationFlyer(quoteWithStay({ mealPlan: 'Pensão completa (R$ 300)' }));
+assert.deepEqual(pricedCode.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem' },
+], 'preço entre parênteses não pode ser publicado');
+assert.ok(pricedCode.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+assert.ok(!JSON.stringify(pricedCode.model).includes('300'), 'o preço do regime não vaza para o modelo');
+assert.equal(pricedCode.model?.lodging?.mealPlan, undefined, 'o cartão não afirma um regime com preço');
+
+const contactMeal = createQuotationFlyer(quoteWithStay({ mealPlan: 'Café da manhã +351 960 153 290' }));
+assert.deepEqual(contactMeal.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem' },
+], 'contactos não podem ser publicados');
+assert.ok(contactMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const negativeMeal = createQuotationFlyer(quoteWithStay({ mealPlan: 'sem café' }));
+assert.deepEqual(negativeMeal.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem' },
+], 'regime negativo não vira afirmação');
+assert.ok(negativeMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const shoutedMeal = createQuotationFlyer(quoteWithStay({ mealPlan: 'PEQUENO-ALMOÇO' }));
+assert.deepEqual(shoutedMeal.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem com pequeno-almoço' },
+], 'regime em maiúsculas desce por inteiro');
+console.log('✅ Guardas do regime na proposta de viagem');
+
 // Regime livre: sai como foi registado, em minúscula inicial e sem o código entre parênteses.
 const freeRegime = createQuotationFlyer(quoteWithStay({ mealPlan: 'Pequeno-almoço (BB)' }));
 assert.deepEqual(freeRegime.model?.included, [

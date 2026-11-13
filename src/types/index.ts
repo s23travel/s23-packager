@@ -74,24 +74,19 @@ export const MEAL_PLAN_OPTIONS = [
 
 export type MealPlanOption = (typeof MEAL_PLAN_OPTIONS)[number];
 
+/** Regime de apenas alojamento; é o único caso em que a peça não nomeia refeições. */
+export const ROOM_ONLY_MEAL_PLAN: MealPlanOption = 'Apenas alojamento (RO)';
+
 export function normalizeMealPlan(value?: string | null): string {
   if (!value) return '';
   const trimmed = value.trim();
   const lower = trimmed.toLowerCase();
 
-  if (
-    lower.includes('apenas') ||
-    lower.includes('alojamento') ||
-    lower === 'ro' ||
-    lower.includes('room only') ||
-    lower.includes('só hospedagem') ||
-    lower.includes('so hospedagem')
-  ) {
-    return 'Apenas alojamento (RO)';
-  }
+  // As refeições vencem a palavra alojamento: "Alojamento com café da manhã" não é apenas alojamento.
   if (
     lower.includes('café') ||
     lower.includes('cafe') ||
+    lower.includes('pequeno-almoço') ||
     lower === 'bb' ||
     lower.includes('bed & breakfast') ||
     lower.includes('breakfast')
@@ -106,6 +101,17 @@ export function normalizeMealPlan(value?: string | null): string {
   }
   if (lower.includes('tudo') || lower.includes('all inclusive') || lower === 'ai') {
     return 'Tudo incluído (AI)';
+  }
+  if (
+    lower.includes('apenas') ||
+    lower.includes('alojamento') ||
+    lower === 'ro' ||
+    lower.includes('room only') ||
+    lower.includes('só hospedagem') ||
+    lower.includes('so hospedagem') ||
+    lower.includes('somente hospedagem')
+  ) {
+    return ROOM_ONLY_MEAL_PLAN;
   }
 
   return trimmed;
