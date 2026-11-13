@@ -1,6 +1,6 @@
 # Especificação: regime da hospedagem nos serviços apresentados da lâmina
 
-Status: ready-for-agent
+Status: done
 
 ## Problema
 

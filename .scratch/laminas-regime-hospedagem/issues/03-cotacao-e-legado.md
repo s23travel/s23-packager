@@ -1,7 +1,8 @@
 # 03 — Lâmina de cotação e legado
 
-Status: ready-for-agent
+Status: done
 Blocked by: 02
+Commit: ecd8513
 
 Especificação: `.scratch/laminas-regime-hospedagem/spec.md` («Decisões de implementação», «Decisões de teste»).
 

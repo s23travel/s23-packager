@@ -1,7 +1,8 @@
 # 04 — Correções da revisão: normalização de regimes e guardas
 
-Status: ready-for-agent
+Status: done
 Blocked by: 03
+Commit: 9817459
 
 Especificação: `.scratch/laminas-regime-hospedagem/spec.md` («Apenas alojamento é um caso próprio», «Refeições vencem a palavra alojamento», «Regime negativo não vira afirmação», «Regime que não pode ser publicado»).
 

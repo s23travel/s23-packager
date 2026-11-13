@@ -1,7 +1,8 @@
 # 01 — Rótulo do regime na derivação partilhada
 
-Status: ready-for-agent
+Status: done
 Blocked by: —
+Commit: 6a0a1cf
 
 Especificação: `.scratch/laminas-regime-hospedagem/spec.md` («Solução», «Decisões de implementação»).
 
