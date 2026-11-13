@@ -401,4 +401,154 @@ assert.ok(
 );
 console.log('✅ Regime da hospedagem em falta');
 
+// 12. Regime da hospedagem na lista de incluídos: mesma regra da lâmina de pacote.
+const flights = quote.data.services!.filter(service => service.type !== 'accommodation');
+const quoteWithStay = (overrides: Partial<ServiceItem> = {}): Quotation => ({
+  ...quote,
+  data: {
+    ...quote.data,
+    services: [...flights, hotel(overrides)],
+  },
+});
+
+// O cartão de hospedagem mantém o regime em linha própria, sem o prefixo da lista.
+const established: Array<[string, string, string]> = [
+  ['Café da manhã (BB)', 'Hospedagem com café da manhã', 'café da manhã'],
+  ['Meia-pensão (HB)', 'Hospedagem com meia-pensão', 'meia-pensão'],
+  ['Pensão completa (FB)', 'Hospedagem com pensão completa', 'pensão completa'],
+  ['Tudo incluído (AI)', 'Hospedagem com tudo incluído', 'tudo incluído'],
+];
+for (const [registered, label, cardMealPlan] of established) {
+  const stay = createQuotationFlyer(quoteWithStay({ mealPlan: registered }));
+  assert.deepEqual(stay.model?.included, [
+    { kind: 'air', label: 'Aéreo' },
+    { kind: 'accommodation', label },
+  ], `${registered} vira "${label}"`);
+  assert.equal(stay.model?.lodging?.mealPlan, cardMealPlan, 'cartão de hospedagem sem o prefixo "Hospedagem com"');
+}
+console.log('✅ Regimes conhecidos na proposta de viagem e no cartão');
+
+// Apenas alojamento: a lista não menciona o regime e não gera aviso.
+for (const registered of ['Apenas alojamento (RO)', 'Somente alojamento', 'Room only']) {
+  const stay = createQuotationFlyer(quoteWithStay({ mealPlan: registered }));
+  assert.deepEqual(stay.model?.included, [
+    { kind: 'air', label: 'Aéreo' },
+    { kind: 'accommodation', label: 'Hospedagem' },
+  ], `${registered} não tem refeições a anunciar`);
+  assert.ok(!stay.warnings.some(warning => /regime/i.test(warning)), `${registered} não deve avisar sobre o regime`);
+}
+const roomOnlyCard = createQuotationFlyer(quoteWithStay({ mealPlan: 'Apenas alojamento (RO)' }));
+assert.equal(roomOnlyCard.model?.lodging?.mealPlan, 'apenas alojamento', 'o cartão continua a mostrar apenas alojamento como linha própria');
+console.log('✅ Apenas alojamento na proposta de viagem');
+
+// Refeições vencem a palavra alojamento: o regime composto nomeia a refeição, sem aviso.
+for (const [registered, label] of [
+  ['Alojamento com café da manhã', 'Hospedagem com café da manhã'],
+  ['Alojamento e meia-pensão', 'Hospedagem com meia-pensão'],
+  ['Alojamento com tudo incluído', 'Hospedagem com tudo incluído'],
+] as const) {
+  const stay = createQuotationFlyer(quoteWithStay({ mealPlan: registered }));
+  assert.deepEqual(stay.model?.included, [
+    { kind: 'air', label: 'Aéreo' },
+    { kind: 'accommodation', label },
+  ], `${registered} nomeia a refeição`);
+  assert.ok(!stay.warnings.some(warning => /regime/i.test(warning)), `${registered} não deve avisar sobre o regime`);
+}
+for (const registered of ['Somente hospedagem', 'Só hospedagem']) {
+  const stay = createQuotationFlyer(quoteWithStay({ mealPlan: registered }));
+  assert.deepEqual(stay.model?.included, [
+    { kind: 'air', label: 'Aéreo' },
+    { kind: 'accommodation', label: 'Hospedagem' },
+  ], `${registered} não tem refeições a anunciar`);
+}
+console.log('✅ Alojamento com refeições na proposta de viagem');
+
+// Guardas: o texto registado nunca vira afirmação errada nem expõe dados internos.
+const pricedCode = createQuotationFlyer(quoteWithStay({ mealPlan: 'Pensão completa (R$ 300)' }));
+assert.deepEqual(pricedCode.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem' },
+], 'preço entre parênteses não pode ser publicado');
+assert.ok(pricedCode.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+assert.ok(!JSON.stringify(pricedCode.model).includes('300'), 'o preço do regime não vaza para o modelo');
+assert.equal(pricedCode.model?.lodging?.mealPlan, undefined, 'o cartão não afirma um regime com preço');
+
+const contactMeal = createQuotationFlyer(quoteWithStay({ mealPlan: 'Café da manhã +351 960 153 290' }));
+assert.deepEqual(contactMeal.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem' },
+], 'contactos não podem ser publicados');
+assert.ok(contactMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const negativeMeal = createQuotationFlyer(quoteWithStay({ mealPlan: 'sem café' }));
+assert.deepEqual(negativeMeal.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem' },
+], 'regime negativo não vira afirmação');
+assert.ok(negativeMeal.warnings.some(warning => /regime da hospedagem/i.test(warning)));
+
+const shoutedMeal = createQuotationFlyer(quoteWithStay({ mealPlan: 'PEQUENO-ALMOÇO' }));
+assert.deepEqual(shoutedMeal.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem com pequeno-almoço' },
+], 'regime em maiúsculas desce por inteiro');
+console.log('✅ Guardas do regime na proposta de viagem');
+
+// Regime livre: sai como foi registado, em minúscula inicial e sem o código entre parênteses.
+const freeRegime = createQuotationFlyer(quoteWithStay({ mealPlan: 'Pequeno-almoço (BB)' }));
+assert.deepEqual(freeRegime.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem com pequeno-almoço' },
+]);
+console.log('✅ Regime livre registado na proposta de viagem');
+
+// Regime que não pode ir para a peça: "Hospedagem" com aviso, sem truncar o texto.
+for (const registered of ['Regime do fornecedor secreto', 'Pensão completa com bebidas incluídas e jantar']) {
+  const stay = createQuotationFlyer(quoteWithStay({ mealPlan: registered }));
+  assert.deepEqual(stay.model?.included, [
+    { kind: 'air', label: 'Aéreo' },
+    { kind: 'accommodation', label: 'Hospedagem' },
+  ], `${registered} não pode ser publicado`);
+  assert.ok(stay.warnings.some(warning => /regime da hospedagem/i.test(warning)), `${registered} deve avisar sobre o regime`);
+}
+console.log('✅ Regime não publicável na proposta de viagem');
+
+// Duas estadas com regimes diferentes são dois itens; a mesma estada repetida não duplica.
+const twoStays = createQuotationFlyer({
+  ...quote,
+  data: {
+    ...quote.data,
+    services: [
+      ...flights,
+      hotel({ id: 'h1', description: 'Hotel A', mealPlan: 'Café da manhã (BB)' }),
+      hotel({ id: 'h2', description: 'Hotel B', mealPlan: 'Meia-pensão (HB)' }),
+    ],
+  },
+});
+assert.deepEqual(twoStays.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem com café da manhã' },
+  { kind: 'accommodation', label: 'Hospedagem com meia-pensão' },
+], 'duas estadas com regimes diferentes são dois itens');
+console.log('✅ Várias estadas na proposta de viagem');
+
+// 13. Legado: cotação antiga sem regime assume café da manhã, como o editor já mostra.
+const legacyWithoutMealPlan = createQuotationFlyer({
+  ...quote,
+  data: {
+    ...quote.data,
+    services: undefined,
+    outboundTransport: quote.data.outboundTransport ?? { type: 'flight', route: 'Voo de ida Porto (OPO) para Paris (ORY)', carrier: 'easyJet', departureTime: '08:10', arrivalTime: '11:05' },
+    inboundTransport: quote.data.inboundTransport ?? { type: 'flight', route: 'Voo de volta Paris (ORY) para Porto (OPO)', carrier: 'easyJet', departureTime: '18:40', arrivalTime: '19:45' },
+    lodging: [{ id: 'h', name: 'Ibis Paris', destination: 'Paris', nights: 3 }],
+  },
+});
+assert.ok(legacyWithoutMealPlan.model, `legado sem regime deve gerar modelo: ${legacyWithoutMealPlan.errors.join(' | ')}`);
+assert.equal(legacyWithoutMealPlan.model?.lodging?.mealPlan, 'café da manhã', 'cartão de hospedagem mantém o default do editor');
+assert.deepEqual(legacyWithoutMealPlan.model?.included, [
+  { kind: 'air', label: 'Aéreo' },
+  { kind: 'accommodation', label: 'Hospedagem com café da manhã' },
+], 'cotação antiga sem regime continua a anunciar café da manhã');
+console.log('✅ Legado da cotação sem regime');
+
 console.log('\n🎉 TODOS OS TESTES DO MODELO DA COTAÇÃO PASSARAM!\n');

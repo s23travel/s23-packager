@@ -1,5 +1,7 @@
+import { normalizeMealPlan, ROOM_ONLY_MEAL_PLAN } from '../types/index.ts';
 import type { NormalizedPackageData, PackageData, QuotationData, ServiceItem } from '../types/index.ts';
 import {
+  FLYER_ITEM_LABEL_MAX,
   FLYER_ITEMS_MAX,
   itemContentProblem,
   normalizeItemLabel,
@@ -52,6 +54,63 @@ export const MEAL_PLANS: Record<string, string> = {
 export function formatMealPlan(value?: string | null): string | undefined {
   if (typeof value !== 'string') return undefined;
   return MEAL_PLANS[value.trim()];
+}
+
+/** Prefixo público da hospedagem com refeições. */
+const MEAL_PREFIX = 'Hospedagem com ';
+/** Espaço do regime dentro do limite de 40 caracteres do item. */
+const MEAL_PLAN_TEXT_MAX = FLYER_ITEM_LABEL_MAX - MEAL_PREFIX.length;
+/** Um regime que começa por "sem"/"não" não vira afirmação de "Hospedagem com". */
+const NEGATIVE_MEAL = /^(?:sem|n[aã]o)\b/i;
+/** O prefixo "Hospedagem com" já diz alojamento; um regime composto não repete essa menção. */
+const LODGING_MENTION = /^(?:apenas|somente|só|so)?[\s,;:.-]*(?:alojamento|hospedagem)\b(?:[\s,;:.-]+(?:com|e)\b)?[\s,;:.-]*/i;
+
+/** Regime sem refeições: não há nada de diferente de "Hospedagem" a anunciar. */
+function isRoomOnly(mealPlan: string): boolean {
+  return normalizeMealPlan(mealPlan) === ROOM_ONLY_MEAL_PLAN;
+}
+
+/** Texto comercial do regime como foi registado: sem o código, sem repetir alojamento e em minúscula inicial. */
+function publicMealText(mealPlan: string): string {
+  const registered = normalizeItemLabel(mealPlan.replace(/\([^)]*\)/g, ' '));
+  const withoutLodging = normalizeItemLabel(registered.replace(LODGING_MENTION, '')) || registered;
+  if (!withoutLodging) return '';
+  // Um regime registado todo em maiúsculas desce por inteiro, para não sair "pEQUENO-ALMOÇO".
+  if (/\p{L}/u.test(withoutLodging) && withoutLodging === withoutLodging.toUpperCase()) {
+    return withoutLodging.toLowerCase();
+  }
+  return withoutLodging.charAt(0).toLowerCase() + withoutLodging.slice(1);
+}
+
+interface AccommodationItemText {
+  label: string;
+  /** Aviso quando o regime registado existe mas não pode ir para a peça. */
+  problem?: string;
+}
+
+/** Texto do item de hospedagem a partir do regime registado, sem truncar o texto comercial. */
+function accommodationItemText(mealPlan?: string | null): AccommodationItemText {
+  const unrecognized = {
+    label: 'Hospedagem',
+    problem: 'Confira o regime da hospedagem; não foi exibido por não estar reconhecido.',
+  };
+  if (typeof mealPlan !== 'string' || !mealPlan.trim()) return unrecognized;
+  // O conteúdo é verificado no valor registado, antes de retirar os parênteses: o que está lá dentro também não vai para a peça.
+  const registeredProblem = itemContentProblem(mealPlan);
+  if (registeredProblem) return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: ${registeredProblem}` };
+  if (NEGATIVE_MEAL.test(normalizeItemLabel(mealPlan))) {
+    return { label: 'Hospedagem', problem: 'Confira o regime da hospedagem; descreva o que está incluído.' };
+  }
+  if (isRoomOnly(mealPlan)) return { label: 'Hospedagem' };
+  const mealText = formatMealPlan(mealPlan) ?? publicMealText(mealPlan);
+  if (!mealText) return unrecognized;
+  const label = `${MEAL_PREFIX}${mealText}`;
+  const publishedProblem = itemContentProblem(label);
+  if (publishedProblem) return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: ${publishedProblem}` };
+  if (mealText.length > MEAL_PLAN_TEXT_MAX) {
+    return { label: 'Hospedagem', problem: 'Regime da hospedagem omitido: encurte o regime para caber na lâmina.' };
+  }
+  return { label };
 }
 
 /** Termos operacionais que nunca podem virar texto público. */
@@ -127,9 +186,9 @@ export function deriveFlyerItems(
       add(air ? 'air' : 'transport', air ? 'Aéreo' : 'Transporte');
     } else if (service.type === 'accommodation') {
       if (isLegacy && lodgingIndex++ >= (data.lodging?.length || 0)) { warnings.push('Hospedagem financeira omitida: confirme o serviço incluído.'); continue; }
-      const meal = service.mealPlan ? formatMealPlan(service.mealPlan) : undefined;
-      if (!meal) warnings.push('Confira o regime da hospedagem; não foi exibido por não estar reconhecido.');
-      add('accommodation', meal ? `Hospedagem com ${meal}` : 'Hospedagem');
+      const accommodation = accommodationItemText(service.mealPlan);
+      if (accommodation.problem) warnings.push(accommodation.problem);
+      add('accommodation', accommodation.label);
     } else if (isLegacy) {
       warnings.push('Serviço financeiro omitido: confirme o serviço incluído.');
     } else if (service.type === 'taxes') {
