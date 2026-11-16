@@ -21,6 +21,8 @@ export interface PackageRenderModel {
   destination: string;
   period: string;
   price: { amount: number; currency: 'BRL' | 'EUR'; formatted: string };
+  /** Sinal por pessoa; ausente quando o pacote não tem sinal registado. */
+  deposit?: { amount: number; currency: 'BRL' | 'EUR'; formatted: string };
   items: Array<{ kind: ItemKind; label: string }>;
   paymentConditions?: string;
   subtitle: string;
@@ -91,7 +93,7 @@ export function validPackageModel(value: unknown): value is PackageRenderModel {
   if (!isRecord(value)) return false;
   const price = value.price;
   const items = value.items;
-  const allowed = ['version', 'origin', 'destination', 'period', 'price', 'items', 'paymentConditions', 'subtitle'];
+  const allowed = ['version', 'origin', 'destination', 'period', 'price', 'deposit', 'items', 'paymentConditions', 'subtitle'];
   if (!hasOnlyKeys(value, allowed) || value.version !== 1) return false;
   if (!text(value.origin, 2, 45) || !text(value.destination, 2, 45) || !text(value.period, 0, 70) ||
       !text(value.subtitle, 3, 100)) return false;
@@ -99,6 +101,7 @@ export function validPackageModel(value: unknown): value is PackageRenderModel {
       typeof price.amount !== 'number' || !Number.isFinite(price.amount) || price.amount <= 0 ||
       (price.currency !== 'BRL' && price.currency !== 'EUR') ||
       typeof price.formatted !== 'string' || price.formatted.length > 20) return false;
+  if (value.deposit !== undefined && !validMoney(value.deposit)) return false;
   if (!Array.isArray(items) || items.length > 6) return false;
   if (!items.every(item => isRecord(item) && hasOnlyKeys(item, ['kind', 'label']) &&
       ITEM_KINDS.has(item.kind as ItemKind) && text(item.label, 1, 40))) return false;

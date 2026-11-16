@@ -10,6 +10,8 @@ export interface PackageFlyerServerModel {
   destination: string;
   period: string;
   price: { amount: number; currency: 'BRL' | 'EUR'; formatted: string };
+  /** Sinal por pessoa; ausente quando o pacote não tem sinal registado. */
+  deposit?: { amount: number; currency: 'BRL' | 'EUR'; formatted: string };
   items: Array<{ kind: FlyerItemKind; label: string }>;
   paymentConditions?: string;
   subtitle: string;

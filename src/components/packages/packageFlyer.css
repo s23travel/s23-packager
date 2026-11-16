@@ -52,6 +52,8 @@
 .package-flyer__route svg { display: inline-block; width: 6%; vertical-align: middle; }
 .package-flyer__price { display: grid; font-size: var(--flyer-text-body); font-weight: var(--weight-semibold); }
 .package-flyer__price strong { font-size: var(--flyer-text-price); font-weight: var(--weight-bold); }
+/* Sinal e prazo do restante: um degrau acima do rótulo, sem competir com o preço. */
+.package-flyer__deposit { font-size: calc(var(--flyer-text-body) * 1.1); }
 .package-flyer__period { font-size: var(--flyer-text-items); font-weight: var(--weight-bold); }
 .package-flyer__items {
   background: var(--flyer-panel);

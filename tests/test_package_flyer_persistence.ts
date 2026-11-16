@@ -19,6 +19,7 @@ const packageRecord = {
     passengers: { adults: 2, children: 0 },
     financials: { currency: 'BRL', salePrice: 1500, pricePerPerson: 750, priceTotal: { amount: 1500, currency: 'BRL' } },
     paymentConditions: '10x no cartão',
+    depositAmount: 200,
     services: [
       { type: 'outbound_transport', description: 'Voo internacional' },
       { type: 'accommodation', description: 'Hospedagem', mealPlan: 'BB' },
@@ -105,6 +106,7 @@ async function run() {
   assert.deepEqual(modelResult.model, { ...createPackageFlyer(packageRecord as Package).model!, subtitle: 'Uma viagem entre mar e montanha' });
   assert.equal(modelResult.model?.period, '12 a 19 de abril de 2027');
   assert.equal(modelResult.model?.price.formatted, 'R$ 750,00');
+  assert.deepEqual(modelResult.model?.deposit, { amount: 200, currency: 'BRL', formatted: 'R$ 200,00' });
   assert.equal(modelResult.model?.items[0].label, 'Aéreo');
   assert.equal(modelResult.model?.subtitle, 'Uma viagem entre mar e montanha');
   assert.equal(createPackageFlyerServerModel({ ...packageRecord, data: { ...packageRecord.data, financials: { ...packageRecord.data.financials, pricePerPerson: 999 } } }, 'Uma viagem entre mar e montanha').model, null);

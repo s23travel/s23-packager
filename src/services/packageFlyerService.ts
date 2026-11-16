@@ -9,6 +9,7 @@ import {
   safePaymentConditions,
   validDate,
 } from './flyerCommercialModel.ts';
+import { parseDepositAmount } from './quotationFlyerFields.ts';
 
 /** Contrato público da lâmina v1: somente dados destinados à divulgação. */
 export interface PackageFlyerModel {
@@ -17,6 +18,8 @@ export interface PackageFlyerModel {
   destination: string;
   period: string;
   price: { amount: number; currency: Currency; formatted: string };
+  /** Sinal por pessoa, na moeda do pacote. Ausente quando não há sinal registado. */
+  deposit?: { amount: number; currency: Currency; formatted: string };
   items: Array<{ kind: FlyerItemKind; label: string }>;
   paymentConditions?: string;
   subtitle?: string;
@@ -68,6 +71,18 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
     !(typeof amount === 'number' && Number.isFinite(amount) && amount > 0)) errors.push('Informe um preço comercial por pessoa válido na moeda do pacote.');
   if (typeof amount === 'number' && Number.isFinite(amount) && formatMoney(amount, currency).length > 20) errors.push('Preço longo demais para a lâmina.');
 
+  // O sinal aparece na peça como "sinal X + restante até 10 dias antes":
+  // só faz sentido quando há mesmo um restante a pagar.
+  let deposit: PackageFlyerModel['deposit'];
+  const depositAmount = parseDepositAmount(data.depositAmount);
+  if (typeof depositAmount === 'number' && depositAmount > 0) {
+    if (typeof amount === 'number' && depositAmount < amount) {
+      deposit = { amount: depositAmount, currency, formatted: formatMoney(depositAmount, currency) };
+    } else {
+      warnings.push('Sinal omitido da lâmina: é igual ou maior que o preço por pessoa.');
+    }
+  }
+
   const { isLegacy, services } = resolveFlyerServices(data, normalized);
   const items: PackageFlyerModel['items'] = deriveFlyerItems(data, services, isLegacy, warnings);
 
@@ -75,12 +90,13 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
   if (typeof data.paymentConditions === 'string' && data.paymentConditions.trim()) {
     paymentConditions = safePaymentConditions(data.paymentConditions);
     if (!paymentConditions) warnings.push('Condições de pagamento omitidas: revise o texto comercial antes de divulgar.');
-  } else warnings.push('Condições de pagamento não informadas.');
+  } else if (!deposit) warnings.push('Condições de pagamento não informadas.');
 
   if (errors.length || !validDate(start) || !validDate(end) || typeof amount !== 'number') return { model: null, errors, warnings };
   return {
     model: { version: 1, origin, destination, period: displayPeriod(start, end),
-      price: { amount, currency, formatted: formatMoney(amount, currency) }, items, paymentConditions },
+      price: { amount, currency, formatted: formatMoney(amount, currency) },
+      ...(deposit ? { deposit } : {}), items, paymentConditions },
     errors, warnings,
   };
 }

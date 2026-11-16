@@ -122,6 +122,7 @@ export function PackageFlyerCreator({ package: pkg, open: openProp, showToggle =
           <p><strong>Rota:</strong> {flyer.model.origin} para {flyer.model.destination}</p>
           <p><strong>Período:</strong> {flyer.model.period}</p>
           <p><strong>Valor por pessoa:</strong> {flyer.model.price.formatted} por pessoa em quarto duplo</p>
+          {flyer.model.deposit && <p><strong>Sinal:</strong> {flyer.model.deposit.formatted} + restante até 10 dias antes</p>}
           {flyer.model.paymentConditions && <p><strong>Pagamento:</strong> {flyer.model.paymentConditions}</p>}
           {creator.previewModel && (creator.previewModel.items.length > 0 ? <><p><strong>Serviços apresentados:</strong></p><ul>{creator.previewModel.items.map((item, i) => <li key={i}>{item.label}</li>)}</ul></> : <p>Nenhum serviço apresentado.</p>)}
         </div>

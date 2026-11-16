@@ -4,15 +4,20 @@ import { escapeHtml, flyerIcon, flyerLogo, flyerPhoto } from './flyerMarkupShare
 /** Markup compartilhado entre a prévia React e o renderer confiável. */
 export function renderPackageFlyerMarkup(model: PackageFlyerModel, logoUrl: string): string {
   const photo = flyerPhoto(model.imageUrl, 'package-flyer__photo');
-  const payment = model.paymentConditions ? `<span>${escapeHtml(model.paymentConditions)}</span>` : '';
+  const payment = model.paymentConditions ? `<span class="package-flyer__conditions">${escapeHtml(model.paymentConditions)}</span>` : '';
+  // Terceira linha do bloco de valor: o sinal sai do pacote; o prazo do restante é
+  // a condição comercial acordada, não a data-limite gravada no cadastro.
+  const deposit = model.deposit
+    ? `<span class="package-flyer__deposit">sinal ${escapeHtml(model.deposit.formatted)} + restante até 10 dias antes</span>`
+    : '';
   const subtitle = model.subtitle ? `<p>${escapeHtml(model.subtitle)}</p>` : '';
   const items = model.items.map(item => `<li>${flyerIcon(item.kind)}${escapeHtml(item.label)}</li>`).join('');
   const list = items ? `<ul>${items}</ul>` : '';
   // Valor e período entram na mesma caixa dos serviços: a peça lê como um bloco só,
   // como no modelo aprovado, e a foto fica livre em volta.
   const panel = `<section class="package-flyer__items" aria-label="Valor, serviços apresentados e subtítulo">`
-    + `<div class="package-flyer__price"><span>Valor</span><strong>${escapeHtml(model.price.formatted)}</strong>`
-    + `<span>por pessoa em quarto duplo</span>${payment}</div>`
+    + `<div class="package-flyer__price"><span class="package-flyer__price-label">valor por pessoa em quarto duplo</span>`
+    + `<strong>${escapeHtml(model.price.formatted)}</strong>${deposit}${payment}</div>`
     + `<div class="package-flyer__period">${escapeHtml(model.period)}</div>${list}${subtitle}</section>`;
   // Estimativa de ~32 caracteres por linha na fonte normal. Acima de 6 linhas,
   // a caixa passa ao modo compacto para o rodapé não sair da área segura.

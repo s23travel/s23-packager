@@ -32,9 +32,9 @@ const html = renderToStaticMarkup(<PackageFlyerTemplate model={result.model!} />
 assert.match(html, /Porto/);
 assert.match(html, /Açores/);
 assert.match(html, /R\$ 748,00/);
-assert.match(html, /<span>Valor<\/span>/);
-assert.match(html, /por pessoa em quarto duplo/);
+assert.match(html, /valor por pessoa em quarto duplo/);
 assert.match(html, /30% de entrada e saldo antes da viagem/);
+assert.doesNotMatch(html, /sinal /, 'sem sinal registado a terceira linha não aparece');
 assert.equal(result.model?.paymentConditions, '30% de entrada e saldo antes da viagem');
 const flexiblePayment = createPackageFlyer({ ...pkg, data: {
   ...pkg.data, paymentConditions: 'Entrada de R$ 500,00 e restante em 6 parcelas sem juros.',
@@ -42,6 +42,18 @@ const flexiblePayment = createPackageFlyer({ ...pkg, data: {
 assert.equal(flexiblePayment.model?.paymentConditions, 'Entrada de R$ 500,00 e restante em 6 parcelas sem juros.');
 const cashPayment = createPackageFlyer({ ...pkg, data: { ...pkg.data, paymentConditions: 'À vista' } });
 assert.equal(cashPayment.model?.paymentConditions, 'À vista', 'condição à vista com acento deve ser reconhecida');
+
+// Terceira linha do bloco de valor: só existe quando o pacote tem sinal.
+const withDeposit = createPackageFlyer({ ...pkg, data: { ...pkg.data, depositAmount: 250 } });
+assert.deepEqual(withDeposit.model?.deposit, { amount: 250, currency: 'BRL', formatted: 'R$ 250,00' });
+const depositHtml = renderToStaticMarkup(<PackageFlyerTemplate model={withDeposit.model!} />).replace(/<img[^>]+>/g, '');
+assert.match(depositHtml, /sinal R\$ 250,00 \+ restante até 10 dias antes/);
+const depositOnly = createPackageFlyer({ ...pkg, data: { ...pkg.data, depositAmount: '115,50', paymentConditions: undefined } });
+assert.deepEqual(depositOnly.model?.deposit, { amount: 115.5, currency: 'BRL', formatted: 'R$ 115,50' }, 'sinal digitado como texto vira valor');
+assert.ok(!depositOnly.warnings.some(warning => /Condições de pagamento não informadas/.test(warning)), 'com sinal não falta condição de pagamento');
+const largeDeposit = createPackageFlyer({ ...pkg, data: { ...pkg.data, depositAmount: 1000 } });
+assert.equal(largeDeposit.model?.deposit, undefined, 'sinal maior que o preço por pessoa não é anunciado');
+assert.ok(largeDeposit.warnings.some(warning => /Sinal omitido/.test(warning)));
 assert.match(html, /café da manhã/i);
 assert.doesNotMatch(html, /fornecedor secreto|Hotel interno|996/);
 console.log('Prévia comercial fictícia: OK');

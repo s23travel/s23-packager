@@ -43,6 +43,7 @@ const packageModel = {
   destination: 'Paris',
   period: '12 — 19 abril 2027',
   price: { amount: 1496, currency: 'BRL' as const, formatted: 'R$ 1.496,00' },
+  deposit: { amount: 250, currency: 'BRL' as const, formatted: 'R$ 250,00' },
   items: [
     { kind: 'air' as const, label: 'Aéreo' },
     { kind: 'accommodation' as const, label: 'Hotel com café da manhã' },
@@ -135,6 +136,9 @@ assert.ok(!validPackageModel({ ...packageModel, items: [{ kind: 'ticket', label:
 assert.ok(!validPackageModel({ ...packageModel, price: { ...packageModel.price, amount: 0 } }), 'preço não positivo é rejeitado');
 assert.ok(!validPackageModel({ ...packageModel, price: { ...packageModel.price, currency: 'USD' } }), 'moeda desconhecida é rejeitada');
 assert.ok(!validPackageModel({ ...packageModel, paymentConditions: 'x'.repeat(101) }), 'condições longas são rejeitadas');
+assert.ok(!validPackageModel({ ...packageModel, deposit: { ...packageModel.deposit, formatted: 'x'.repeat(21) } }), 'sinal formatado longo é rejeitado');
+assert.ok(!validPackageModel({ ...packageModel, deposit: { amount: 250, currency: 'BRL' } }), 'sinal sem formatação é rejeitado');
+assert.ok(validPackageModel({ ...packageModel, deposit: undefined }), 'sinal ausente é aceito');
 console.log('Validação do modelo de pacote: OK');
 
 // --- Validação do modelo de cotação ----------------------------------------
@@ -212,6 +216,8 @@ const expectedPackageHtml = `<!doctype html><html lang="pt-BR"><head><meta chars
 const packageHtml = createHtml('package', packageModel, image, assets);
 assert.equal(packageHtml, expectedPackageHtml, 'HTML do pacote tem de ser idêntico ao contrato atual');
 assert.match(packageHtml, /package-flyer/);
+assert.match(packageHtml, /valor por pessoa em quarto duplo/);
+assert.match(packageHtml, /sinal R\$ 250,00 \+ restante até 10 dias antes/);
 assert.doesNotMatch(packageHtml, /quotation-flyer/);
 assert.match(packageHtml, /<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-src 'none'">/);
 console.log('HTML do pacote inalterado: OK');
