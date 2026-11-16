@@ -971,7 +971,7 @@ export const PackageFormPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ marginTop: '1.25rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="depositAmount">
-                Sinal
+                Sinal (p/pessoa)
               </label>
               <input
                 id="depositAmount"
