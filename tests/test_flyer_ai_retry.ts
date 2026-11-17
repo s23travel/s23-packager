@@ -101,6 +101,19 @@ async function run() {
   assert.equal(recoveredSubtitle.calls[1].imageConfig, undefined);
   assert.match(recoveredSubtitle.calls[0].endpoint, /gemini-nano-banana-2\.1/);
 
+  // Frase acima de 100 caracteres é aparada para caber no contrato, sem perder a imagem.
+  const longSubtitle = createHarness([
+    modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
+    modelReply([{ text: 'Banhada por uma luz dourada inconfundível, Lisboa revela sua alma poética entre colinas históricas e a brisa suave do Tejo.' }]),
+  ]);
+  const longResponse = await longSubtitle.handler(request());
+  const longBody = await longResponse.json() as { data: { subtitle: string } };
+  assert.equal(longResponse.status, 200);
+  assert.ok(longBody.data.subtitle.length <= 100, 'subtítulo longo aparado para até 100 caracteres');
+  assert.notEqual(longBody.data.subtitle, 'Descubra novas paisagens e culturas.', 'mantém a frase do modelo aparada em vez do fallback');
+  assert.match(longBody.data.subtitle, /Banhada por uma luz dourada/, 'preserva o início da frase do modelo');
+  assert.equal(longSubtitle.calls.length, 2);
+
   // Mesmo que a resposta de texto venha grande, ela ainda é lida e aproveitada.
   const paddedSubtitle = createHarness([
     modelReply([{ text: 'Descubra opções com hospedagem inclusa.' }, { inlineData: { mimeType: 'image/png', data: PNG } }]),
