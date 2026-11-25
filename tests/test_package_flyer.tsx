@@ -217,7 +217,12 @@ console.log('Legado do pacote sem regime: OK');
 // Regime que não pode ir para a peça: o texto comercial nunca é truncado nem exposto.
 const withoutMealPlan = stay(undefined);
 assert.deepEqual(withoutMealPlan.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'regime ausente fica em Hospedagem');
-assert.ok(withoutMealPlan.warnings.some(warning => /regime da hospedagem/i.test(warning)), 'regime ausente mantém o aviso');
+assert.ok(withoutMealPlan.warnings.some(warning => /nenhum regime está registado/i.test(warning)), 'regime ausente avisa que falta registar o regime');
+
+// Um valor que só tem o código entre parênteses não identifica o regime.
+const codeOnlyMeal = stay('(BB)');
+assert.deepEqual(codeOnlyMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'código isolado não vira regime');
+assert.ok(codeOnlyMeal.warnings.some(warning => /não estar reconhecido/i.test(warning)), 'código isolado mantém o aviso de regime não reconhecido');
 
 const internalMeal = stay('Regime do fornecedor secreto');
 assert.deepEqual(internalMeal.model?.items, [{ kind: 'accommodation', label: 'Hospedagem' }], 'termos internos não podem ser publicados');

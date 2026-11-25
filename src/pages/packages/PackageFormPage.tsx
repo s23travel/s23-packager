@@ -26,6 +26,7 @@ import {
   generateServiceId,
   isLegacyPackageData,
   normalizeLegacyToNewStructure,
+  withDefaultMealPlan,
 } from '../../services/legacyAdapterService';
 import {
   NOT_INCLUDED_MAX_ITEMS,
@@ -360,7 +361,7 @@ export const PackageFormPage: React.FC = () => {
         children,
         origin,
         destination,
-        services,
+        services: withDefaultMealPlan(services),
         salePrice,
       });
 
@@ -592,7 +593,7 @@ export const PackageFormPage: React.FC = () => {
         ...originalData,
         origin: origin.trim() || undefined,
         destination: destination.trim(),
-        services,
+        services: withDefaultMealPlan(services),
         dates: {
           ...originalData.dates,
           startDate,

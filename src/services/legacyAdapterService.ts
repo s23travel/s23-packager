@@ -458,6 +458,18 @@ export function createDefaultServiceItem(
 }
 
 /**
+ * O editor apresenta café da manhã quando o serviço de hospedagem não traz regime;
+ * gravar o default torna explícito o que a operadora vê no formulário.
+ */
+export function withDefaultMealPlan(items: ServiceItem[]): ServiceItem[] {
+  return items.map(item =>
+    item.type === 'accommodation' && !item.mealPlan
+      ? { ...item, mealPlan: 'Café da manhã (BB)' }
+      : item
+  );
+}
+
+/**
  * Calcula o FinancialSummary determinístico diretamente a partir de uma lista de ServiceItem[].
  */
 export function calculateFinancialSummaryFromServices(input: {

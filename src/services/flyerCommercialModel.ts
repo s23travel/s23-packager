@@ -94,7 +94,12 @@ function accommodationItemText(mealPlan?: string | null): AccommodationItemText 
     label: 'Hospedagem',
     problem: 'Confira o regime da hospedagem; não foi exibido por não estar reconhecido.',
   };
-  if (typeof mealPlan !== 'string' || !mealPlan.trim()) return unrecognized;
+  if (typeof mealPlan !== 'string' || !mealPlan.trim()) {
+    return {
+      label: 'Hospedagem',
+      problem: 'Confira o regime da hospedagem; nenhum regime está registado no serviço.',
+    };
+  }
   // O conteúdo é verificado no valor registado, antes de retirar os parênteses: o que está lá dentro também não vai para a peça.
   const registeredProblem = itemContentProblem(mealPlan);
   if (registeredProblem) return { label: 'Hospedagem', problem: `Regime da hospedagem omitido: ${registeredProblem}` };

@@ -5,6 +5,7 @@ import {
   isLegacyPackageData,
   normalizeLegacyToNewStructure,
   serviceItemToCostComponent,
+  withDefaultMealPlan,
 } from '../src/services/legacyAdapterService';
 import {
   savePackageDraft,
@@ -647,6 +648,20 @@ runTest('34. additionalInfo em texto não vira custo financeiro estruturado fals
   const normalized = normalizeLegacyToNewStructure(legacy);
   assert.strictEqual(normalized.services.length, 0);
   assert.strictEqual(normalized.additionalInfo, 'Tx.local: 60€\nTraslado Ida/Volta: 145€');
+});
+
+// 35. O regime que o editor apresenta para a hospedagem fica gravado no pacote
+runTest('35. withDefaultMealPlan grava café da manhã na hospedagem sem regime e não inventa regime fora do default', () => {
+  const withoutPlan: ServiceItem = { ...createDefaultServiceItem('accommodation', 'EUR'), mealPlan: undefined };
+  const roomOnly: ServiceItem = { ...createDefaultServiceItem('accommodation', 'EUR'), mealPlan: 'Apenas alojamento (RO)' };
+  const transport: ServiceItem = { ...createDefaultServiceItem('outbound_transport', 'EUR'), mealPlan: undefined };
+
+  const [stay, room, flight] = withDefaultMealPlan([withoutPlan, roomOnly, transport]);
+
+  assert.strictEqual(stay.mealPlan, 'Café da manhã (BB)');
+  assert.strictEqual(room.mealPlan, 'Apenas alojamento (RO)');
+  assert.strictEqual(flight.mealPlan, undefined);
+  assert.strictEqual(withoutPlan.mealPlan, undefined, 'o serviço original não é alterado');
 });
 
 console.log(`\n====================================================`);

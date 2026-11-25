@@ -34,20 +34,12 @@ import {
   generateServiceId,
   isLegacyPackageData,
   normalizeLegacyToNewStructure,
+  withDefaultMealPlan,
 } from '../../services/legacyAdapterService';
 import { shiftIsoDate } from '../../lib/dateUtils';
 
 /** "Restante até" é sugerido 10 dias corridos antes da data de início. */
 const BALANCE_DUE_DAYS_BEFORE_START = 10;
-
-/** O editor apresenta café da manhã quando o serviço não traz regime; gravar o default torna-o explícito. */
-function withDefaultMealPlan(items: ServiceItem[]): ServiceItem[] {
-  return items.map(item =>
-    item.type === 'accommodation' && !item.mealPlan
-      ? { ...item, mealPlan: 'Café da manhã (BB)' }
-      : item
-  );
-}
 
 export const QuoteFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
