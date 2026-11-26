@@ -39,13 +39,13 @@ const quotationRecord = {
   currency: 'EUR' as const,
   exchange_rate: null,
   exchange_rate_date: null,
-  created_at: '2026-11-11T09:30:00Z',
+  created_at: '2026-11-01T09:30:00Z',
   updated_at: updatedAt,
   archived_at: null,
   data: {
     origin: 'Porto',
     destination: 'Paris',
-    proposalDate: '2026-11-11',
+    proposalDate: '2026-11-01',
     dates: { startDate: '2027-04-02', endDate: '2027-04-05', durationDays: 4, durationNights: 3 },
     passengers: { adults: 2, children: 0, infants: 0 },
     depositAmount: 250,
@@ -182,7 +182,7 @@ async function run() {
   assert.ok(modelResult.model);
   assert.equal(modelResult.model?.template, 'quotation');
   assert.equal(modelResult.model?.clientName, 'Sandra Colognesi');
-  assert.equal(modelResult.model?.proposalDate, '11/11/2026');
+  assert.equal(modelResult.model?.proposalDate, '11/11/2026', 'data da lâmina deve refletir updated_at, não a criação nem a data anterior salva no conteúdo');
   assert.equal(modelResult.model?.destination, 'Paris');
   assert.equal(modelResult.model?.subtitle, subtitle);
   assert.equal(modelResult.model?.price.total.formatted, '€ 700,00');

@@ -413,7 +413,7 @@ export function createQuotationFlyer(quote: Quotation): QuotationFlyerResult {
       version: 1,
       template: 'quotation',
       clientName,
-      proposalDate: formatProposalDate(resolveProposalDate(data.proposalDate, quote.created_at)),
+      proposalDate: formatProposalDate(resolveProposalDate(quote.updated_at, quote.created_at)),
       origin,
       destination,
       dates: { period, start: formatIsoDate(start), end: formatIsoDate(end) },

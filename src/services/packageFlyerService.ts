@@ -9,11 +9,13 @@ import {
   safePaymentConditions,
   validDate,
 } from './flyerCommercialModel.ts';
-import { parseDepositAmount } from './quotationFlyerFields.ts';
+import { formatProposalDate, parseDepositAmount, resolveProposalDate } from './quotationFlyerFields.ts';
 
 /** Contrato público da lâmina v1: somente dados destinados à divulgação. */
 export interface PackageFlyerModel {
   version: 1;
+  /** Data do último salvamento em `DD/MM/AAAA`. */
+  updatedDate: string;
   origin: string;
   destination: string;
   period: string;
@@ -94,7 +96,7 @@ export function createPackageFlyer(pkg: Package): PackageFlyerResult {
 
   if (errors.length || !validDate(start) || !validDate(end) || typeof amount !== 'number') return { model: null, errors, warnings };
   return {
-    model: { version: 1, origin, destination, period: displayPeriod(start, end),
+    model: { version: 1, updatedDate: formatProposalDate(resolveProposalDate(pkg.updated_at, pkg.created_at)), origin, destination, period: displayPeriod(start, end),
       price: { amount, currency, formatted: formatMoney(amount, currency) },
       ...(deposit ? { deposit } : {}), items, paymentConditions },
     errors, warnings,

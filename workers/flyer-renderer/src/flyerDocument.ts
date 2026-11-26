@@ -17,6 +17,7 @@ export type FlyerImage = { mimeType: 'image/png' | 'image/jpeg'; data: string };
 export type ItemKind = 'air' | 'transport' | 'accommodation' | 'transfer' | 'insurance' | 'additional';
 export interface PackageRenderModel {
   version: 1;
+  updatedDate: string;
   origin: string;
   destination: string;
   period: string;
@@ -93,9 +94,9 @@ export function validPackageModel(value: unknown): value is PackageRenderModel {
   if (!isRecord(value)) return false;
   const price = value.price;
   const items = value.items;
-  const allowed = ['version', 'origin', 'destination', 'period', 'price', 'deposit', 'items', 'paymentConditions', 'subtitle'];
+  const allowed = ['version', 'updatedDate', 'origin', 'destination', 'period', 'price', 'deposit', 'items', 'paymentConditions', 'subtitle'];
   if (!hasOnlyKeys(value, allowed) || value.version !== 1) return false;
-  if (!text(value.origin, 2, 45) || !text(value.destination, 2, 45) || !text(value.period, 0, 70) ||
+  if (!text(value.updatedDate, 1, 10) || !text(value.origin, 2, 45) || !text(value.destination, 2, 45) || !text(value.period, 0, 70) ||
       !text(value.subtitle, 3, 100)) return false;
   if (!isRecord(price) || !hasOnlyKeys(price, MONEY_KEYS) ||
       typeof price.amount !== 'number' || !Number.isFinite(price.amount) || price.amount <= 0 ||

@@ -6,6 +6,7 @@ import { validFlyerItems } from './flyerItemsContract.ts';
 export type FlyerItemKind = 'air' | 'transport' | 'accommodation' | 'transfer' | 'insurance' | 'additional';
 export interface PackageFlyerServerModel {
   version: 1;
+  updatedDate: string;
   origin: string;
   destination: string;
   period: string;
@@ -28,7 +29,7 @@ export interface PackageFlyerServerResult {
  * e, quando a operadora editou a lista, os serviços apresentados revistos.
  */
 export function createPackageFlyerServerModel(
-  packageRecord: { base_currency: unknown; data: unknown },
+  packageRecord: { base_currency: unknown; data: unknown; updated_at?: unknown; created_at?: unknown },
   subtitle: unknown,
   items?: unknown,
 ): PackageFlyerServerResult {

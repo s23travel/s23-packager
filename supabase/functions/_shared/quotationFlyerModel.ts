@@ -15,7 +15,7 @@ export interface QuotationFlyerServerResult {
  * cliente, data, valores, sinal e não incluídos saem sempre do registo salvo.
  */
 export function createQuotationFlyerServerModel(
-  quotationRecord: { client_name?: unknown; currency?: unknown; data?: unknown; created_at?: unknown },
+  quotationRecord: { client_name?: unknown; currency?: unknown; data?: unknown; created_at?: unknown; updated_at?: unknown },
   subtitle: unknown,
   items?: unknown,
 ): QuotationFlyerServerResult {

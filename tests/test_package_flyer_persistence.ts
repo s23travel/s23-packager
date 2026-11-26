@@ -11,6 +11,7 @@ const requestId2 = '5116a000-a3a6-4883-b59a-62e393204deb';
 const updatedAt = '2026-11-09T12:00:00.000Z';
 const packageRecord = {
   id: packageId,
+  created_at: '2026-11-01T12:00:00.000Z',
   updated_at: updatedAt,
   base_currency: 'BRL',
   data: {
@@ -105,6 +106,7 @@ async function run() {
   assert.equal(modelResult.errors.length, 0);
   assert.deepEqual(modelResult.model, { ...createPackageFlyer(packageRecord as Package).model!, subtitle: 'Uma viagem entre mar e montanha' });
   assert.equal(modelResult.model?.period, '12 a 19 de abril de 2027');
+  assert.equal(modelResult.model?.updatedDate, '09/11/2026');
   assert.equal(modelResult.model?.price.formatted, 'R$ 750,00');
   assert.deepEqual(modelResult.model?.deposit, { amount: 200, currency: 'BRL', formatted: 'R$ 200,00' });
   assert.equal(modelResult.model?.items[0].label, 'Aéreo');
@@ -113,6 +115,7 @@ async function run() {
 
   const html = renderPackageFlyerMarkup({ ...modelResult.model!, origin: '<img src=x onerror=alert(1)>', imageUrl: 'javascript:alert(1)' }, 'data:image/png;base64,AA==');
   assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  assert.ok(html.includes('09/11/2026'), 'lâmina usa a data do último salvamento do pacote');
   assert.ok(!html.includes('javascript:alert(1)'));
   assert.ok(!html.includes('package-flyer__photo'), 'URL inválida não deve virar foto de fundo');
 

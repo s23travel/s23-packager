@@ -39,6 +39,7 @@ const image = {
 
 const packageModel = {
   version: 1 as const,
+  updatedDate: '11/11/2026',
   origin: 'Porto',
   destination: 'Paris',
   period: '12 — 19 abril 2027',
@@ -175,9 +176,9 @@ console.log('Validação do modelo de cotação: OK');
 const parityQuote = {
   id: 'parity', package_id: null, reference: 'COT-TESTE', client_name: 'Cliente Teste', status: 'draft',
   currency: 'EUR', exchange_rate: null, exchange_rate_date: null,
-  created_at: '2026-11-11T10:00:00Z', updated_at: '2026-11-11T10:00:00Z', archived_at: null,
+      created_at: '2026-11-01T10:00:00Z', updated_at: '2026-11-11T10:00:00Z', archived_at: null,
   data: {
-    origin: 'Porto', destination: 'Paris', proposalDate: '2026-11-11',
+    origin: 'Porto', destination: 'Paris', proposalDate: '2026-11-01',
     dates: { startDate: '2027-04-02', endDate: '2027-04-05', durationNights: 3 },
     passengers: { adults: 2, children: 0, infants: 0 },
     depositAmount: 250, balanceDueDate: '2027-03-20', notIncluded: ['Taxa local de 34€ paga no hotel'],
